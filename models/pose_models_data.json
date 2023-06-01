@@ -1,0 +1,44 @@
+[
+    {
+        "Model": "YOLOv8n-pose",
+        "Size (pixels)": "640",
+        "mAP": "50.4",
+        "params (M)": "3.3",
+        "FLOPs (B)": "9.2"
+    },
+    {
+        "Model": "YOLOv8s-pose",
+        "Size (pixels)": "640",
+        "mAP": "60.0",
+        "params (M)": "11.6",
+        "FLOPs (B)": "30.2"
+    },
+    {
+        "Model": "YOLOv8m-pose",
+        "Size (pixels)": "640",
+        "mAP": "65.0",
+        "params (M)": "26.4",
+        "FLOPs (B)": "81.0"
+    },
+    {
+        "Model": "YOLOv8l-pose",
+        "Size (pixels)": "640",
+        "mAP": "67.6",
+        "params (M)": "44.4",
+        "FLOPs (B)": "168.6"
+    },
+    {
+        "Model": "YOLOv8x-pose",
+        "Size (pixels)": "640",
+        "mAP": "69.2",
+        "params (M)": "69.4",
+        "FLOPs (B)": "263.2"
+    },
+    {
+        "Model": "YOLOv8x-pose-p6",
+        "Size (pixels)": "640",
+        "mAP": "71.6",
+        "params (M)": "99.1",
+        "FLOPs (B)": "1066.4"
+    }
+]

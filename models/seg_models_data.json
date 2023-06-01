@@ -1,0 +1,42 @@
+[
+    {
+        "Model": "YOLOv8n-seg",
+        "Size (pixels)": "640",
+        "mAP (box)": "36.7",
+        "mAP (mask)": "30.5",
+        "params (M)": "3.4",
+        "FLOPs (B)": "12.6"
+    },
+    {
+        "Model": "YOLOv8s-seg",
+        "Size (pixels)": "640",
+        "mAP (box)": "44.6",
+        "mAP (mask)": "36.8",
+        "params (M)": "11.8",
+        "FLOPs (B)": "42.6"
+    },
+    {
+        "Model": "YOLOv8m-seg",
+        "Size (pixels)": "640",
+        "mAP (box)": "49.9",
+        "mAP (mask)": "40.8",
+        "params (M)": "27.3",
+        "FLOPs (B)": "110.2"
+    },
+    {
+        "Model": "YOLOv8l-seg",
+        "Size (pixels)": "640",
+        "mAP (box)": "52.3",
+        "mAP (mask)": "42.6",
+        "params (M)": "46.0",
+        "FLOPs (B)": "220.5"
+    },
+    {
+        "Model": "YOLOv8x-seg",
+        "Size (pixels)": "640",
+        "mAP (box)": "53.4",
+        "mAP (mask)": "43.4",
+        "params (M)": "71.8",
+        "FLOPs (B)": "344.1"
+    }
+]
