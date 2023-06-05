@@ -1,0 +1,10 @@
+# object confidence threshold (for object detection)
+conf: 0.25
+# intersection over union (IoU) threshold for NMS (for object detection)
+iou: 0.7
+# use half precision (FP16)
+half: False
+# maximum number of detections per image
+max_det: 300
+# whether to use class-agnostic NMS or not
+agnostic_nms: False

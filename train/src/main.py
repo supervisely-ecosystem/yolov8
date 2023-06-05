@@ -18,13 +18,9 @@ from supervisely.app.widgets import (
     Field,
     Progress,
     SelectDataset,
-    Image,
-    ModelInfo,
     ClassesTable,
     DoneLabel,
-    ProjectThumbnail,
     Editor,
-    Select,
     Checkbox,
     RadioTabs,
     RadioTable,
@@ -32,11 +28,17 @@ from supervisely.app.widgets import (
     RandomSplitsTable,
     Text,
     FileThumbnail,
+    GridPlot,
+    FolderThumbnail,
 )
 from train.src.utils import get_train_val_sets, verify_train_val_sets
 from train.src.sly_to_yolov8 import transform
 from ultralytics import YOLO
 import torch
+from train.src.metrics_watcher import Watcher
+import threading
+import pandas as pd
+from functools import partial
 
 
 # function for updating global variables
@@ -72,6 +74,9 @@ dataset_ids = [dataset_id] if dataset_id else []
 update_globals(dataset_ids)
 
 sly.logger.info(f"App root directory: {g.app_root_directory}")
+
+if os.path.exists(g.local_artifacts_dir):
+    sly.fs.remove_dir(g.local_artifacts_dir)
 
 
 ### 1. Dataset selection
@@ -297,14 +302,14 @@ n_workers_input_f = Field(
     title="Number of workers",
     description="Number of worker threads for data loading",
 )
-train_settings_editor = Editor(language_mode="yaml", height_lines=30)
+train_settings_editor = Editor(language_mode="yaml", height_lines=50)
 with open(g.train_params_filepath, "r") as f:
     train_params = f.read()
 train_settings_editor.set_text(train_params)
 train_settings_editor_f = Field(
     content=train_settings_editor,
     title="Additional configuration",
-    description="Tune learning rate, weight decay and other parameters",
+    description="Tune learning rate, augmentations and other parameters",
 )
 save_train_params_button = Button("Save training hyperparameters")
 reselect_train_params_button = Button(
@@ -347,8 +352,23 @@ card_train_params.lock()
 start_training_button = Button("start training")
 progress_bar_download_project = Progress()
 progress_bar_convert_to_yolo = Progress()
+progress_bar_epochs = Progress()
+plot_titles = ["train", "val", "precision", "recall"]
+grid_plot = GridPlot(data=plot_titles, columns=2)
+grid_plot.hide()
+progress_bar_upload_artifacts = Progress()
+train_done = DoneLabel("Training completed. Training artifacts were uploaded to Team Files")
+train_done.hide()
 train_progress_content = Container(
-    [start_training_button, progress_bar_download_project, progress_bar_convert_to_yolo]
+    [
+        start_training_button,
+        progress_bar_download_project,
+        progress_bar_convert_to_yolo,
+        progress_bar_epochs,
+        grid_plot,
+        progress_bar_upload_artifacts,
+        train_done,
+    ]
 )
 card_train_progress = Card(
     title="Training progress",
@@ -362,18 +382,11 @@ card_train_progress.lock()
 
 
 ### 7. Training artifacts
-train_artifacts_url = f"files/"
-train_artifacts_button = Button(
-    text="Training artifacts",
-    button_type="success",
-    plain=True,
-    icon="zmdi zmdi-folder",
-    link=train_artifacts_url,
-)
+train_artifacts_folder = FolderThumbnail()
 card_train_artifacts = Card(
     title="Training artifacts",
     description="Checkpoints, logs and other visualizations",
-    content=train_artifacts_button,
+    content=train_artifacts_folder,
     collapsable=True,
     lock_message="Complete the previous step to unlock",
 )
@@ -392,7 +405,7 @@ app = sly.Application(
             card_train_progress,
             card_train_artifacts,
         ]
-    )
+    ),
 )
 
 
@@ -675,9 +688,57 @@ def start_training():
     warmup_epochs = additional_params["warmup_epochs"]
     warmup_momentum = additional_params["warmup_momentum"]
     warmup_bias_lr = additional_params["warmup_bias_lr"]
+    amp = additional_params["amp"]
+    hsv_h = additional_params["hsv_h"]
+    hsv_s = additional_params["hsv_s"]
+    hsv_v = additional_params["hsv_v"]
+    degrees = additional_params["degrees"]
+    translate = additional_params["translate"]
+    scale = additional_params["scale"]
+    shear = additional_params["shear"]
+    perspective = additional_params["perspective"]
+    flipud = additional_params["flipud"]
+    fliplr = additional_params["fliplr"]
+    mosaic = additional_params["mosaic"]
+    mixup = additional_params["mixup"]
+    copy_paste = additional_params["copy_paste"]
+    # set up epoch progress bar and grid plot
+    grid_plot.show()
+    watch_file = os.path.join(g.local_artifacts_dir, "results.csv")
+
+    def on_results_file_changed(filepath, pbar):
+        pbar.update()
+        results = pd.read_csv(filepath)
+        results.columns = [col.replace(" ", "") for col in results.columns]
+        train_box_loss = results["train/box_loss"].iat[-1]
+        train_cls_loss = results["train/cls_loss"].iat[-1]
+        train_dfl_loss = results["train/dfl_loss"].iat[-1]
+        precision = results["metrics/precision(B)"].iat[-1]
+        recall = results["metrics/recall(B)"].iat[-1]
+        val_box_loss = results["val/box_loss"].iat[-1]
+        val_cls_loss = results["val/cls_loss"].iat[-1]
+        val_dfl_loss = results["val/dfl_loss"].iat[-1]
+        x = results["epoch"].iat[-1]
+        grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
+        grid_plot.add_scalar("train/cls loss", float(train_cls_loss), int(x))
+        grid_plot.add_scalar("train/dfl loss", float(train_dfl_loss), int(x))
+        grid_plot.add_scalar("precision/", float(precision), int(x))
+        grid_plot.add_scalar("recall/", float(recall), int(x))
+        grid_plot.add_scalar("val/box loss", float(val_box_loss), int(x))
+        grid_plot.add_scalar("val/cls loss", float(val_cls_loss), int(x))
+        grid_plot.add_scalar("val/dfl loss", float(val_dfl_loss), int(x))
+
+    watcher = Watcher(
+        watch_file, on_results_file_changed, progress_bar_epochs(message="Epochs:", total=n_epochs)
+    )
     # train model and upload best checkpoints to team files
     device = 0 if torch.cuda.is_available() else "cpu"
     data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
+
+    def watcher_func():
+        watcher.watch()
+
+    threading.Thread(target=watcher_func, daemon=True).start()
     model.train(
         data=data_path,
         epochs=n_epochs,
@@ -696,16 +757,59 @@ def start_training():
         warmup_epochs=warmup_epochs,
         warmup_momentum=warmup_momentum,
         warmup_bias_lr=warmup_bias_lr,
+        amp=amp,
+        hsv_h=hsv_h,
+        hsv_s=hsv_s,
+        hsv_v=hsv_v,
+        degrees=degrees,
+        translate=translate,
+        scale=scale,
+        shear=shear,
+        perspective=perspective,
+        flipud=flipud,
+        fliplr=fliplr,
+        mosaic=mosaic,
+        mixup=mixup,
+        copy_paste=copy_paste,
     )
     # upload training artifacts to team files
+    remote_artifacts_dir = os.path.join(
+        "/yolov8_train", task_type_select.get_value(), project_info.name, str(g.app_session_id)
+    )
+
+    def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
+        value = int(monitor.bytes_read / 1048576)
+        if progress.total == 0:
+            progress.set(value, monitor.len, report=False)
+        else:
+            progress.set_current_value(value, report=False)
+        artifacts_pbar.update(progress.current - artifacts_pbar.n)
+
+    local_files = sly.fs.list_files_recursively(g.local_artifacts_dir)
+    total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
+    # convert bytes to megabytes
+    total_size = int(total_size / 1048576)
+    progress = sly.Progress(
+        message="",
+        total_cnt=total_size,
+        is_size=True,
+    )
+    progress_cb = partial(upload_monitor, api=api, progress=progress)
+    with progress_bar_upload_artifacts(
+        message="Uploading train artifacts to Team Files...", total=total_size
+    ) as artifacts_pbar:
+        team_files_dir = api.file.upload_directory(
+            team_id=sly.env.team_id(),
+            local_dir=g.local_artifacts_dir,
+            remote_dir=remote_artifacts_dir,
+            progress_size_cb=progress_cb,
+        )
+    file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
+    train_artifacts_folder.set(file_info)
     # finish training
     start_training_button.loading = False
     start_training_button.disable()
+    train_done.show()
     card_train_artifacts.unlock()
     card_train_artifacts.uncollapse()
-    sly.app.show_dialog(
-        title="Training completed",
-        description="You can find training artifacts in Team Files",
-        status="success",
-    )
     # delete app data since it is no longer needed
