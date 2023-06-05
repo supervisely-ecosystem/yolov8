@@ -30,6 +30,7 @@ from supervisely.app.widgets import (
     FileThumbnail,
     GridPlot,
     FolderThumbnail,
+    TrainValSplits,
 )
 from train.src.utils import get_train_val_sets, verify_train_val_sets
 from train.src.sly_to_yolov8 import transform
@@ -146,24 +147,7 @@ card_classes.lock()
 
 
 ### 3. Train / validation split
-random_split_table = RandomSplitsTable(
-    items_count=100,
-    start_train_percent=80,
-    disabled=False,
-)
-train_val_tabs = RadioTabs(
-    titles=["Random", "Based on image tags", "Based on datasets"],
-    descriptions=[
-        "Shuffle data and split with defined probability",
-        "Images must have assigned train and val tag",
-        "Select on or several datasets for every split",
-    ],
-    contents=[
-        random_split_table,
-        Text("Currently not supported", status="info"),
-        Text("Currently not supported", status="info"),
-    ],
-)
+train_val_split = TrainValSplits(project_id=project_id)
 unlabeled_images_select = SelectString(values=["keep unlabeled images", "ignore unlabeled images"])
 unlabeled_images_select_f = Field(
     content=unlabeled_images_select,
@@ -182,7 +166,7 @@ split_done = DoneLabel("Data was successfully splitted")
 split_done.hide()
 train_val_content = Container(
     [
-        train_val_tabs,
+        train_val_split,
         unlabeled_images_select_f,
         split_data_button,
         resplit_data_button,
@@ -529,8 +513,7 @@ def select_other_classes():
 
 @split_data_button.click
 def split_data():
-    train_val_tabs.disable()
-    random_split_table.disable()
+    train_val_split.disable()
     unlabeled_images_select.disable()
     split_data_button.hide()
     split_done.show()
@@ -541,8 +524,7 @@ def split_data():
 
 @resplit_data_button.click
 def resplit_data():
-    train_val_tabs.enable()
-    random_split_table.enable()
+    train_val_split.enable()
     unlabeled_images_select.enable()
     split_data_button.show()
     split_done.hide()
@@ -569,6 +551,14 @@ def reselect_model():
     models_table.enable()
     model_path_input.enable()
     reselect_model_button.hide()
+
+
+@model_path_input.value_changed
+def change_file_preview(value):
+    file_info = None
+    if value != "":
+        file_info = api.file.get_info_by_path(sly.env.team_id(), value)
+    model_file_thumbnail.set(file_info)
 
 
 @save_train_params_button.click
@@ -635,6 +625,8 @@ def start_training():
         project = sly.Project(g.project_dir, sly.OpenMode.READ)
         n_images_after = project.total_items
         if n_images_after != n_images_after:
+            random_content = train_val_split._get_random_content()
+            random_split_table = random_content._widgets[0]
             split_counts = random_split_table.get_splits_counts()
             val_part = split_counts["val"] / split_counts["total"]
             new_val_count = round(n_images_after * val_part)
@@ -648,9 +640,7 @@ def start_training():
                     "Val split length is 0 after ignoring images. Please check your data"
                 )
     # split the data
-    split_method = train_val_tabs.get_active_tab()
-    split_counts = random_split_table.get_splits_counts()
-    train_set, val_set = get_train_val_sets(g.project_dir, split_method, split_counts)
+    train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
     verify_train_val_sets(train_set, val_set)
     # convert dataset from supervisely to yolo format
     if os.path.exists(g.yolov8_project_dir):
@@ -670,7 +660,12 @@ def start_training():
             pretrained = False
         model = YOLO(model_filename)
     elif weights_type == "Custom models":
-        pass
+        custom_link = model_path_input.get_value()
+        model_filename = "custom_model.pt"
+        weights_dst_path = os.path.join(g.app_data_dir, model_filename)
+        api.file.download(sly.env.team_id(), custom_link, weights_dst_path)
+        pretrained = True
+        model = YOLO(weights_dst_path)
     # get training params
     n_epochs = n_epochs_input.get_value()
     patience = patience_input.get_value()

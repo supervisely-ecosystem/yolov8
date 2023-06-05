@@ -57,26 +57,6 @@ def _transform_annotation(ann, class_names, save_path):
     return False
 
 
-def _process_split(project, class_names, images_dir, labels_dir, split, progress_cb):
-    for batch in sly.batched(split, batch_size=max(int(len(split) / 50), 10)):
-        for dataset_name, item_name in batch:
-            dataset = project.datasets.get(dataset_name)
-            ann_path = dataset.get_ann_path(item_name)
-            ann_json = sly.json.load_json_file(ann_path)
-            ann = sly.Annotation.from_json(ann_json, project.meta)
-
-            save_ann_path = os.path.join(labels_dir, f"{sly.fs.get_file_name(item_name)}.txt")
-            empty = _transform_annotation(ann, class_names, save_ann_path)
-            if empty:
-                sly.logger.warning(f"Empty annotation: dataset={dataset_name}, image={item_name}")
-
-            img_path = dataset.get_img_path(item_name)
-            save_img_path = os.path.join(images_dir, item_name)
-            sly.fs.copy_file(img_path, save_img_path)
-
-        progress_cb(len(batch))
-
-
 def _transform_set(set_name, data_yaml, project_meta, items, progress_cb):
     res_images_dir = data_yaml[set_name]
     res_labels_dir = data_yaml[f"labels_{set_name}"]
