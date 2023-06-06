@@ -599,6 +599,8 @@ def start_training():
         local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "detect", "train")
     elif task_type == "pose estimation":
         local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "pose", "train")
+    elif task_type == "instance segmentation":
+        local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "segment", "train")
     if os.path.exists(local_artifacts_dir):
         sly.fs.remove_dir(local_artifacts_dir)
     start_training_button.loading = True
@@ -725,6 +727,8 @@ def start_training():
             train_pose_loss = results["train/pose_loss"].iat[-1]
         if "train/kobj_loss" in results.columns:
             train_kobj_loss = results["train/kobj_loss"].iat[-1]
+        if "train/seg_loss" in results.columns:
+            train_seg_loss = results["train/seg_loss"].iat[-1]
         precision = results["metrics/precision(B)"].iat[-1]
         recall = results["metrics/recall(B)"].iat[-1]
         val_box_loss = results["val/box_loss"].iat[-1]
@@ -734,6 +738,8 @@ def start_training():
             val_pose_loss = results["val/pose_loss"].iat[-1]
         if "val/kobj_loss" in results.columns:
             val_kobj_loss = results["val/kobj_loss"].iat[-1]
+        if "val/seg_loss" in results.columns:
+            val_seg_loss = results["val/seg_loss"].iat[-1]
         x = results["epoch"].iat[-1]
         grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
         grid_plot.add_scalar("train/cls loss", float(train_cls_loss), int(x))
@@ -742,6 +748,8 @@ def start_training():
             grid_plot.add_scalar("train/pose loss", float(train_pose_loss), int(x))
         if "train/kobj_loss" in results.columns:
             grid_plot.add_scalar("train/kobj loss", float(train_kobj_loss), int(x))
+        if "train/seg_loss" in results.columns:
+            grid_plot.add_scalar("train/seg loss", float(train_seg_loss), int(x))
         grid_plot.add_scalar("precision/", float(precision), int(x))
         grid_plot.add_scalar("recall/", float(recall), int(x))
         grid_plot.add_scalar("val/box loss", float(val_box_loss), int(x))
@@ -751,6 +759,8 @@ def start_training():
             grid_plot.add_scalar("val/pose loss", float(val_pose_loss), int(x))
         if "val/kobj_loss" in results.columns:
             grid_plot.add_scalar("val/kobj loss", float(val_kobj_loss), int(x))
+        if "val/seg_loss" in results.columns:
+            grid_plot.add_scalar("val/seg loss", float(val_seg_loss), int(x))
 
     watcher = Watcher(
         watch_file, on_results_file_changed, progress_bar_epochs(message="Epochs:", total=n_epochs)

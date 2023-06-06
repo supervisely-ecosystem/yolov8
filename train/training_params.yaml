@@ -37,7 +37,7 @@ shear: 0.0
 perspective: 0.0
 # image flip up-down (probability)
 flipud: 0.0
-# image flip left-right (probability)
+# image flip left-right (probability) - will be disabled for pose estimation task
 fliplr: 0.5
 # image mosaic (probability)
 mosaic: 0.0
