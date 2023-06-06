@@ -21,5 +21,3 @@ seg_models_data = sly.json.load_json_file(seg_models_data_path)
 pose_models_data = sly.json.load_json_file(pose_models_data_path)
 
 train_params_filepath = os.path.join(app_root_directory, "train", "training_params.yaml")
-
-local_artifacts_dir = os.path.join(app_root_directory, "runs", "detect", "train")

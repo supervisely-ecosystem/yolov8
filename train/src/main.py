@@ -76,9 +76,6 @@ update_globals(dataset_ids)
 
 sly.logger.info(f"App root directory: {g.app_root_directory}")
 
-if os.path.exists(g.local_artifacts_dir):
-    sly.fs.remove_dir(g.local_artifacts_dir)
-
 
 ### 1. Dataset selection
 dataset_selector = SelectDataset(project_id=project_id, multiselect=True, select_all_datasets=True)
@@ -338,7 +335,7 @@ progress_bar_download_project = Progress()
 progress_bar_convert_to_yolo = Progress()
 progress_bar_epochs = Progress()
 plot_titles = ["train", "val", "precision", "recall"]
-grid_plot = GridPlot(data=plot_titles, columns=2)
+grid_plot = GridPlot(data=plot_titles, columns=2, gap=20)
 grid_plot.hide()
 progress_bar_upload_artifacts = Progress()
 train_done = DoneLabel("Training completed. Training artifacts were uploaded to Team Files")
@@ -597,6 +594,13 @@ def change_train_params():
 
 @start_training_button.click
 def start_training():
+    task_type = task_type_select.get_value()
+    if task_type == "object detection":
+        local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "detect", "train")
+    elif task_type == "pose estimation":
+        local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "pose", "train")
+    if os.path.exists(local_artifacts_dir):
+        sly.fs.remove_dir(local_artifacts_dir)
     start_training_button.loading = True
     # get number of images in selected datasets
     n_images = 0
@@ -645,7 +649,14 @@ def start_training():
     # convert dataset from supervisely to yolo format
     if os.path.exists(g.yolov8_project_dir):
         sly.fs.clean_dir(g.yolov8_project_dir)
-    transform(g.project_dir, g.yolov8_project_dir, train_set, val_set, progress_bar_convert_to_yolo)
+    transform(
+        g.project_dir,
+        g.yolov8_project_dir,
+        train_set,
+        val_set,
+        progress_bar_convert_to_yolo,
+        task_type,
+    )
     # download model
     weights_type = model_tabs.get_active_tab()
     if weights_type == "Pretrained models":
@@ -694,12 +705,14 @@ def start_training():
     perspective = additional_params["perspective"]
     flipud = additional_params["flipud"]
     fliplr = additional_params["fliplr"]
+    if task_type == "pose estimation":
+        fliplr = 0.0
     mosaic = additional_params["mosaic"]
     mixup = additional_params["mixup"]
     copy_paste = additional_params["copy_paste"]
     # set up epoch progress bar and grid plot
     grid_plot.show()
-    watch_file = os.path.join(g.local_artifacts_dir, "results.csv")
+    watch_file = os.path.join(local_artifacts_dir, "results.csv")
 
     def on_results_file_changed(filepath, pbar):
         pbar.update()
@@ -708,20 +721,36 @@ def start_training():
         train_box_loss = results["train/box_loss"].iat[-1]
         train_cls_loss = results["train/cls_loss"].iat[-1]
         train_dfl_loss = results["train/dfl_loss"].iat[-1]
+        if "train/pose_loss" in results.columns:
+            train_pose_loss = results["train/pose_loss"].iat[-1]
+        if "train/kobj_loss" in results.columns:
+            train_kobj_loss = results["train/kobj_loss"].iat[-1]
         precision = results["metrics/precision(B)"].iat[-1]
         recall = results["metrics/recall(B)"].iat[-1]
         val_box_loss = results["val/box_loss"].iat[-1]
         val_cls_loss = results["val/cls_loss"].iat[-1]
         val_dfl_loss = results["val/dfl_loss"].iat[-1]
+        if "val/pose_loss" in results.columns:
+            val_pose_loss = results["val/pose_loss"].iat[-1]
+        if "val/kobj_loss" in results.columns:
+            val_kobj_loss = results["val/kobj_loss"].iat[-1]
         x = results["epoch"].iat[-1]
         grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
         grid_plot.add_scalar("train/cls loss", float(train_cls_loss), int(x))
         grid_plot.add_scalar("train/dfl loss", float(train_dfl_loss), int(x))
+        if "train/pose_loss" in results.columns:
+            grid_plot.add_scalar("train/pose loss", float(train_pose_loss), int(x))
+        if "train/kobj_loss" in results.columns:
+            grid_plot.add_scalar("train/kobj loss", float(train_kobj_loss), int(x))
         grid_plot.add_scalar("precision/", float(precision), int(x))
         grid_plot.add_scalar("recall/", float(recall), int(x))
         grid_plot.add_scalar("val/box loss", float(val_box_loss), int(x))
         grid_plot.add_scalar("val/cls loss", float(val_cls_loss), int(x))
         grid_plot.add_scalar("val/dfl loss", float(val_dfl_loss), int(x))
+        if "val/pose_loss" in results.columns:
+            grid_plot.add_scalar("val/pose loss", float(val_pose_loss), int(x))
+        if "val/kobj_loss" in results.columns:
+            grid_plot.add_scalar("val/kobj loss", float(val_kobj_loss), int(x))
 
     watcher = Watcher(
         watch_file, on_results_file_changed, progress_bar_epochs(message="Epochs:", total=n_epochs)
@@ -780,7 +809,7 @@ def start_training():
             progress.set_current_value(value, report=False)
         artifacts_pbar.update(progress.current - artifacts_pbar.n)
 
-    local_files = sly.fs.list_files_recursively(g.local_artifacts_dir)
+    local_files = sly.fs.list_files_recursively(local_artifacts_dir)
     total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
     # convert bytes to megabytes
     total_size = int(total_size / 1048576)
@@ -795,7 +824,7 @@ def start_training():
     ) as artifacts_pbar:
         team_files_dir = api.file.upload_directory(
             team_id=sly.env.team_id(),
-            local_dir=g.local_artifacts_dir,
+            local_dir=local_artifacts_dir,
             remote_dir=remote_artifacts_dir,
             progress_size_cb=progress_cb,
         )

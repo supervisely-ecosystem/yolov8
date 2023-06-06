@@ -3,34 +3,66 @@ import yaml
 import supervisely as sly
 
 
-def _transform_label(class_names, img_size, label: sly.Label):
-    class_number = class_names.index(label.obj_class.name)
-    rect_geometry = label.geometry.to_bbox()
-    center = rect_geometry.center
-    x_center = round(center.col / img_size[1], 6)
-    y_center = round(center.row / img_size[0], 6)
-    width = round(rect_geometry.width / img_size[1], 6)
-    height = round(rect_geometry.height / img_size[0], 6)
-    result = "{} {} {} {} {}".format(class_number, x_center, y_center, width, height)
+def _transform_label(class_names, img_size, label: sly.Label, task_type):
+    if task_type == "object detection":
+        class_number = class_names.index(label.obj_class.name)
+        rect_geometry = label.geometry.to_bbox()
+        center = rect_geometry.center
+        x_center = round(center.col / img_size[1], 6)
+        y_center = round(center.row / img_size[0], 6)
+        width = round(rect_geometry.width / img_size[1], 6)
+        height = round(rect_geometry.height / img_size[0], 6)
+        result = "{} {} {} {} {}".format(class_number, x_center, y_center, width, height)
+    elif task_type == "pose estimation":
+        class_number = class_names.index(label.obj_class.name)
+        rect_geometry = label.geometry.to_bbox()
+        center = rect_geometry.center
+        x_center = round(center.col / img_size[1], 6)
+        y_center = round(center.row / img_size[0], 6)
+        width = round(rect_geometry.width / img_size[1], 6)
+        height = round(rect_geometry.height / img_size[0], 6)
+        nodes = label.geometry.nodes
+        keypoints = []
+        for node in nodes.values():
+            keypoints.append(round(node.location.col / img_size[1], 6))
+            keypoints.append(round(node.location.row / img_size[0], 6))
+        keypoints_str = " ".join(str(point) for point in keypoints)
+        result = f"{class_number} {x_center} {y_center} {width} {height} {keypoints_str}"
     return result
 
 
-def _create_data_config(output_dir, meta: sly.ProjectMeta):
+def _create_data_config(output_dir, meta: sly.ProjectMeta, task_type):
     class_names = []
     class_colors = []
     for obj_class in meta.obj_classes:
         class_names.append(obj_class.name)
         class_colors.append(obj_class.color)
-
-    data_yaml = {
-        "train": os.path.join(output_dir, "images/train"),
-        "val": os.path.join(output_dir, "images/val"),
-        "labels_train": os.path.join(output_dir, "labels/train"),
-        "labels_val": os.path.join(output_dir, "labels/val"),
-        "nc": len(class_names),
-        "names": class_names,
-        "colors": class_colors,
-    }
+    if task_type == "object detection":
+        data_yaml = {
+            "train": os.path.join(output_dir, "images/train"),
+            "val": os.path.join(output_dir, "images/val"),
+            "labels_train": os.path.join(output_dir, "labels/train"),
+            "labels_val": os.path.join(output_dir, "labels/val"),
+            "nc": len(class_names),
+            "names": class_names,
+            "colors": class_colors,
+        }
+    elif task_type == "pose estimation":
+        for obj_class in meta.obj_classes:
+            if obj_class.geometry_type.geometry_name() == "graph":
+                geometry_config = obj_class.geometry_config
+                n_keypoints = len(geometry_config["nodes"])
+                flip_idx = [i for i in range(n_keypoints)]
+                break
+        data_yaml = {
+            "train": os.path.join(output_dir, "images/train"),
+            "val": os.path.join(output_dir, "images/val"),
+            "labels_train": os.path.join(output_dir, "labels/train"),
+            "labels_val": os.path.join(output_dir, "labels/val"),
+            "kpt_shape": [n_keypoints, 2],
+            "flip_idx": flip_idx,
+            "names": class_names,
+        }
     sly.fs.mkdir(data_yaml["train"])
     sly.fs.mkdir(data_yaml["val"])
     sly.fs.mkdir(data_yaml["labels_train"])
@@ -43,11 +75,11 @@ def _create_data_config(output_dir, meta: sly.ProjectMeta):
     return data_yaml
 
 
-def _transform_annotation(ann, class_names, save_path):
+def _transform_annotation(ann, class_names, save_path, task_type):
     yolov8_ann = []
     for label in ann.labels:
         if label.obj_class.name in class_names:
-            yolov8_ann.append(_transform_label(class_names, ann.img_size, label))
+            yolov8_ann.append(_transform_label(class_names, ann.img_size, label, task_type))
 
     with open(save_path, "w") as file:
         file.write("\n".join(yolov8_ann))
@@ -57,7 +89,7 @@ def _transform_annotation(ann, class_names, save_path):
     return False
 
 
-def _transform_set(set_name, data_yaml, project_meta, items, progress_cb):
+def _transform_set(set_name, data_yaml, project_meta, items, progress_cb, task_type):
     res_images_dir = data_yaml[set_name]
     res_labels_dir = data_yaml[f"labels_{set_name}"]
     classes_names = data_yaml["names"]
@@ -78,15 +110,22 @@ def _transform_set(set_name, data_yaml, project_meta, items, progress_cb):
                 _img_name = f"{_item_name}{sly.fs.get_file_ext(item.img_path)}"
 
                 save_ann_path = os.path.join(res_labels_dir, _ann_name)
-                _transform_annotation(ann, classes_names, save_ann_path)
+                _transform_annotation(ann, classes_names, save_ann_path, task_type)
                 save_img_path = os.path.join(res_images_dir, _img_name)
                 sly.fs.copy_file(item.img_path, save_img_path)
                 pbar.update()
 
 
-def transform(sly_project_dir, yolov8_output_dir, train_set, val_set, progress_cb):
+def transform(
+    sly_project_dir,
+    yolov8_output_dir,
+    train_set,
+    val_set,
+    progress_cb,
+    task_type="object detection",
+):
     project = sly.Project(sly_project_dir, sly.OpenMode.READ)
-    data_yaml = _create_data_config(yolov8_output_dir, project.meta)
+    data_yaml = _create_data_config(yolov8_output_dir, project.meta, task_type)
 
-    _transform_set("train", data_yaml, project.meta, train_set, progress_cb)
-    _transform_set("val", data_yaml, project.meta, val_set, progress_cb)
+    _transform_set("train", data_yaml, project.meta, train_set, progress_cb, task_type)
+    _transform_set("val", data_yaml, project.meta, val_set, progress_cb, task_type)
