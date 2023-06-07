@@ -5,7 +5,7 @@ import yaml
 import random
 import supervisely as sly
 import supervisely.io.env as env
-import train.src.globals as g
+import src.globals as g
 from dotenv import load_dotenv
 import yaml
 from supervisely.app.widgets import (
@@ -32,11 +32,11 @@ from supervisely.app.widgets import (
     TrainValSplits,
     Flexbox,
 )
-from train.src.utils import get_train_val_sets, verify_train_val_sets
-from train.src.sly_to_yolov8 import transform
+from src.utils import get_train_val_sets, verify_train_val_sets
+from src.sly_to_yolov8 import transform
 from ultralytics import YOLO
 import torch
-from train.src.metrics_watcher import Watcher
+from src.metrics_watcher import Watcher
 import threading
 import pandas as pd
 from functools import partial
