@@ -25,12 +25,12 @@ from supervisely.app.widgets import (
     RadioTabs,
     RadioTable,
     RadioGroup,
-    RandomSplitsTable,
-    Text,
+    NotificationBox,
     FileThumbnail,
     GridPlot,
     FolderThumbnail,
     TrainValSplits,
+    Flexbox,
 )
 from train.src.utils import get_train_val_sets, verify_train_val_sets
 from train.src.sly_to_yolov8 import transform
@@ -182,6 +182,10 @@ card_train_val_split.lock()
 
 
 ### 4. Model selection
+models_table_notification = NotificationBox(
+    title="List of models in the table below depends on selected task type",
+    description="If you want to see list of available models for another computer vision task, please, go back to task type & training classes step and change task type",
+)
 model_tabs_titles = ["Pretrained models", "Custom models"]
 model_tabs_descriptions = [
     "Models trained outside Supervisely",
@@ -195,6 +199,7 @@ models_table = RadioTable(
     columns=models_table_columns,
     rows=models_table_rows,
 )
+models_table_content = Container([models_table_notification, models_table])
 team_files_url = f"{env.server_address()}/files/"
 team_files_button = Button(
     text="Open Team Files",
@@ -217,7 +222,7 @@ custom_tab_content = Container(
         model_file_thumbnail,
     ]
 )
-model_tabs_contents = [models_table, custom_tab_content]
+model_tabs_contents = [models_table_content, custom_tab_content]
 model_tabs = RadioTabs(
     titles=model_tabs_titles,
     contents=model_tabs_contents,
@@ -273,9 +278,17 @@ image_size_input = InputNumber(value=640, step=10)
 image_size_input_f = Field(content=image_size_input, title="Input image size")
 select_optimizer = SelectString(values=["AdamW", "Adam", "SGD", "RMSProp"])
 select_optimizer_f = Field(content=select_optimizer, title="Optimizer")
-save_period_input = InputNumber(value=1, min=1)
+save_period_input = InputNumber(value=5, min=1)
 save_period_input_f = Field(
     content=save_period_input, title="Save period", description="Save checkpoint every n epochs"
+)
+save_best = Checkbox(content="save best checkpoint", checked=True)
+save_best.disable()
+save_last = Checkbox(content="save last checkpoint", checked=True)
+save_last.disable()
+save_checkpoints_content = Flexbox(
+    widgets=[save_best, save_last],
+    center_content=False,
 )
 n_workers_input = InputNumber(value=8, min=1)
 n_workers_input_f = Field(
@@ -311,6 +324,7 @@ train_params_content = Container(
         image_size_input_f,
         select_optimizer_f,
         save_period_input_f,
+        save_checkpoints_content,
         n_workers_input_f,
         train_settings_editor_f,
         save_train_params_button,
@@ -401,6 +415,31 @@ def on_dataset_selected(new_dataset_ids):
 
 @select_data_button.click
 def select_input_data():
+    project_shapes = [cls.geometry_type.geometry_name() for cls in project_meta.obj_classes]
+    if "bitmap" in project_shapes or "polygon" in project_shapes:
+        task_type_select.set_value("instance segmentation")
+        models_table_columns = [key for key in g.seg_models_data[0].keys()]
+        models_table_subtitles = [None] * len(models_table_columns)
+        models_table_rows = []
+        for element in g.seg_models_data:
+            models_table_rows.append(list(element.values()))
+        models_table.set_data(
+            columns=models_table_columns,
+            rows=models_table_rows,
+            subtitles=models_table_subtitles,
+        )
+    elif "graph" in project_shapes:
+        task_type_select.set_value("pose estimation")
+        models_table_columns = [key for key in g.pose_models_data[0].keys()]
+        models_table_subtitles = [None] * len(models_table_columns)
+        models_table_rows = []
+        for element in g.pose_models_data:
+            models_table_rows.append(list(element.values()))
+        models_table.set_data(
+            columns=models_table_columns,
+            rows=models_table_rows,
+            subtitles=models_table_subtitles,
+        )
     select_data_button.loading = True
     dataset_selector.disable()
     classes_table.read_meta(project_meta)
@@ -443,44 +482,59 @@ def select_task(task_type):
                 description="Please, change task type or select another project with classes of shape rectangle",
                 status="warning",
             )
-        models_table_columns = [key for key in g.det_models_data[0].keys()]
-        models_table_subtitles = [None] * len(models_table_columns)
-        models_table_rows = []
-        for element in g.det_models_data:
-            models_table_rows.append(list(element.values()))
-        models_table.set_data(
-            columns=models_table_columns, rows=models_table_rows, subtitles=models_table_subtitles
-        )
+            select_classes_button.disable()
+        else:
+            select_classes_button.enable()
+            models_table_columns = [key for key in g.det_models_data[0].keys()]
+            models_table_subtitles = [None] * len(models_table_columns)
+            models_table_rows = []
+            for element in g.det_models_data:
+                models_table_rows.append(list(element.values()))
+            models_table.set_data(
+                columns=models_table_columns,
+                rows=models_table_rows,
+                subtitles=models_table_subtitles,
+            )
     elif task_type == "instance segmentation":
         if "bitmap" not in project_shapes and "polygon" not in project_shapes:
             sly.app.show_dialog(
-                title="There are no classes of shape bitmap / polygon in selected project",
+                title="There are no classes of shape mask (bitmap / polygon) in selected project",
                 description="Please, change task type or select another project with classes of shape bitmap / polygon",
                 status="warning",
             )
-        models_table_columns = [key for key in g.seg_models_data[0].keys()]
-        models_table_subtitles = [None] * len(models_table_columns)
-        models_table_rows = []
-        for element in g.seg_models_data:
-            models_table_rows.append(list(element.values()))
-        models_table.set_data(
-            columns=models_table_columns, rows=models_table_rows, subtitles=models_table_subtitles
-        )
+            select_classes_button.disable()
+        else:
+            select_classes_button.enable()
+            models_table_columns = [key for key in g.seg_models_data[0].keys()]
+            models_table_subtitles = [None] * len(models_table_columns)
+            models_table_rows = []
+            for element in g.seg_models_data:
+                models_table_rows.append(list(element.values()))
+            models_table.set_data(
+                columns=models_table_columns,
+                rows=models_table_rows,
+                subtitles=models_table_subtitles,
+            )
     elif task_type == "pose estimation":
         if "graph" not in project_shapes:
             sly.app.show_dialog(
-                title="There are no classes of shape graph in selected project",
+                title="There are no classes of shape keypoints (graph) in selected project",
                 description="Please, change task type or select another project with classes of shape graph",
                 status="warning",
             )
-        models_table_columns = [key for key in g.pose_models_data[0].keys()]
-        models_table_subtitles = [None] * len(models_table_columns)
-        models_table_rows = []
-        for element in g.pose_models_data:
-            models_table_rows.append(list(element.values()))
-        models_table.set_data(
-            columns=models_table_columns, rows=models_table_rows, subtitles=models_table_subtitles
-        )
+            select_classes_button.disable()
+        else:
+            select_classes_button.enable()
+            models_table_columns = [key for key in g.pose_models_data[0].keys()]
+            models_table_subtitles = [None] * len(models_table_columns)
+            models_table_rows = []
+            for element in g.pose_models_data:
+                models_table_rows.append(list(element.values()))
+            models_table.set_data(
+                columns=models_table_columns,
+                rows=models_table_rows,
+                subtitles=models_table_subtitles,
+            )
 
 
 @select_classes_button.click
@@ -596,10 +650,13 @@ def change_train_params():
 def start_training():
     task_type = task_type_select.get_value()
     if task_type == "object detection":
+        necessary_geometries = ["rectangle"]
         local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "detect", "train")
     elif task_type == "pose estimation":
+        necessary_geometries = ["graph"]
         local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "pose", "train")
     elif task_type == "instance segmentation":
+        necessary_geometries = ["bitmap", "polygon"]
         local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "segment", "train")
     if os.path.exists(local_artifacts_dir):
         sly.fs.remove_dir(local_artifacts_dir)
@@ -624,13 +681,25 @@ def start_training():
     # remove unselected classes
     selected_classes = classes_table.get_selected_classes()
     sly.Project.remove_classes_except(g.project_dir, classes_to_keep=selected_classes, inplace=True)
+    # remove classes with unnecessary shapes
+    unnecessary_classes = []
+    for cls in project_meta.obj_classes:
+        if (
+            cls.name in selected_classes
+            and cls.geometry_type.geometry_name() not in necessary_geometries
+        ):
+            unnecessary_classes.append(cls.name)
+    if len(unnecessary_classes) > 0:
+        sly.Project.remove_classes(
+            g.project_dir, classes_to_remove=unnecessary_classes, inplace=True
+        )
     # remove unlabeled images if such option was selected by user
     if unlabeled_images_select.get_value() == "ignore unlabeled images":
         n_images_before = n_images
         sly.Project.remove_items_without_objects(g.project_dir, inplace=True)
         project = sly.Project(g.project_dir, sly.OpenMode.READ)
         n_images_after = project.total_items
-        if n_images_after != n_images_after:
+        if n_images_before != n_images_after:
             random_content = train_val_split._get_random_content()
             random_split_table = random_content._widgets[0]
             split_counts = random_split_table.get_splits_counts()
@@ -679,39 +748,11 @@ def start_training():
         api.file.download(sly.env.team_id(), custom_link, weights_dst_path)
         pretrained = True
         model = YOLO(weights_dst_path)
-    # get training params
-    n_epochs = n_epochs_input.get_value()
-    patience = patience_input.get_value()
-    batch_size = batch_size_input.get_value()
-    image_size = image_size_input.get_value()
-    optimizer = select_optimizer.get_value()
-    n_workers = n_workers_input.get_value()
-    save_period = save_period_input.get_value()
+    # get additional training params
     additional_params = train_settings_editor.get_text()
     additional_params = yaml.safe_load(additional_params)
-    lr0 = additional_params["lr0"]
-    lrf = additional_params["lrf"]
-    momentum = additional_params["momentum"]
-    weight_decay = additional_params["weight_decay"]
-    warmup_epochs = additional_params["warmup_epochs"]
-    warmup_momentum = additional_params["warmup_momentum"]
-    warmup_bias_lr = additional_params["warmup_bias_lr"]
-    amp = additional_params["amp"]
-    hsv_h = additional_params["hsv_h"]
-    hsv_s = additional_params["hsv_s"]
-    hsv_v = additional_params["hsv_v"]
-    degrees = additional_params["degrees"]
-    translate = additional_params["translate"]
-    scale = additional_params["scale"]
-    shear = additional_params["shear"]
-    perspective = additional_params["perspective"]
-    flipud = additional_params["flipud"]
-    fliplr = additional_params["fliplr"]
     if task_type == "pose estimation":
-        fliplr = 0.0
-    mosaic = additional_params["mosaic"]
-    mixup = additional_params["mixup"]
-    copy_paste = additional_params["copy_paste"]
+        additional_params["fliplr"] = 0.0
     # set up epoch progress bar and grid plot
     grid_plot.show()
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
@@ -763,7 +804,9 @@ def start_training():
             grid_plot.add_scalar("val/seg loss", float(val_seg_loss), int(x))
 
     watcher = Watcher(
-        watch_file, on_results_file_changed, progress_bar_epochs(message="Epochs:", total=n_epochs)
+        watch_file,
+        on_results_file_changed,
+        progress_bar_epochs(message="Epochs:", total=n_epochs_input.get_value()),
     )
     # train model and upload best checkpoints to team files
     device = 0 if torch.cuda.is_available() else "cpu"
@@ -775,36 +818,16 @@ def start_training():
     threading.Thread(target=watcher_func, daemon=True).start()
     model.train(
         data=data_path,
-        epochs=n_epochs,
-        patience=patience,
-        batch=batch_size,
-        imgsz=image_size,
-        save_period=save_period,
+        epochs=n_epochs_input.get_value(),
+        patience=patience_input.get_value(),
+        batch=batch_size_input.get_value(),
+        imgsz=image_size_input.get_value(),
+        save_period=save_period_input.get_value(),
         device=device,
-        workers=n_workers,
-        optimizer=optimizer,
+        workers=n_workers_input.get_value(),
+        optimizer=select_optimizer.get_value(),
         pretrained=pretrained,
-        lr0=lr0,
-        lrf=lrf,
-        momentum=momentum,
-        weight_decay=weight_decay,
-        warmup_epochs=warmup_epochs,
-        warmup_momentum=warmup_momentum,
-        warmup_bias_lr=warmup_bias_lr,
-        amp=amp,
-        hsv_h=hsv_h,
-        hsv_s=hsv_s,
-        hsv_v=hsv_v,
-        degrees=degrees,
-        translate=translate,
-        scale=scale,
-        shear=shear,
-        perspective=perspective,
-        flipud=flipud,
-        fliplr=fliplr,
-        mosaic=mosaic,
-        mixup=mixup,
-        copy_paste=copy_paste,
+        **additional_params,
     )
     # upload training artifacts to team files
     remote_artifacts_dir = os.path.join(
