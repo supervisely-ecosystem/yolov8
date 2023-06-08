@@ -767,7 +767,7 @@ def start_training():
 
     def on_results_file_changed(filepath, pbar):
         lock.acquire()
-        pbar.update()
+        # pbar.update()
         results = pd.read_csv(filepath)
         results.columns = [col.replace(" ", "") for col in results.columns]
         train_box_loss = results["train/box_loss"].iat[-1]
@@ -791,6 +791,7 @@ def start_training():
         if "val/seg_loss" in results.columns:
             val_seg_loss = results["val/seg_loss"].iat[-1]
         x = results["epoch"].iat[-1]
+        pbar.update(x + 1 - pbar.n)
         grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
         grid_plot.add_scalar("train/cls loss", float(train_cls_loss), int(x))
         grid_plot.add_scalar("train/dfl loss", float(train_dfl_loss), int(x))
