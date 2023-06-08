@@ -658,6 +658,11 @@ def start_training():
     elif task_type == "instance segmentation":
         necessary_geometries = ["bitmap", "polygon"]
         local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "segment", "train")
+
+    # for debug only
+    print("Local artifacts dir:")
+    print(local_artifacts_dir)
+
     if os.path.exists(local_artifacts_dir):
         sly.fs.remove_dir(local_artifacts_dir)
     start_training_button.loading = True
@@ -684,10 +689,15 @@ def start_training():
     # remove classes with unnecessary shapes
     unnecessary_classes = []
     for cls in project_meta.obj_classes:
-        if cls.name in selected_classes and cls.geometry_type.geometry_name() not in necessary_geometries:
+        if (
+            cls.name in selected_classes
+            and cls.geometry_type.geometry_name() not in necessary_geometries
+        ):
             unnecessary_classes.append(cls.name)
     if len(unnecessary_classes) > 0:
-        sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
+        sly.Project.remove_classes(
+            g.project_dir, classes_to_remove=unnecessary_classes, inplace=True
+        )
     # remove unlabeled images if such option was selected by user
     if unlabeled_images_select.get_value() == "ignore unlabeled images":
         n_images_before = n_images
@@ -706,7 +716,9 @@ def start_training():
                     description="Val split length is 0 after ignoring images. Please check your data",
                     status="error",
                 )
-                raise ValueError("Val split length is 0 after ignoring images. Please check your data")
+                raise ValueError(
+                    "Val split length is 0 after ignoring images. Please check your data"
+                )
     # split the data
     train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
     verify_train_val_sets(train_set, val_set)
