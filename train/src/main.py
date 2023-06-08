@@ -791,7 +791,7 @@ def start_training():
         if "val/seg_loss" in results.columns:
             val_seg_loss = results["val/seg_loss"].iat[-1]
         x = results["epoch"].iat[-1]
-        pbar.update(x + 1 - pbar.n)
+        pbar.update(int(x) + 1 - pbar.n)
         grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
         grid_plot.add_scalar("train/cls loss", float(train_cls_loss), int(x))
         grid_plot.add_scalar("train/dfl loss", float(train_dfl_loss), int(x))
