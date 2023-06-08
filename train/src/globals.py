@@ -21,4 +21,4 @@ det_models_data = sly.json.load_json_file(det_models_data_path)
 seg_models_data = sly.json.load_json_file(seg_models_data_path)
 pose_models_data = sly.json.load_json_file(pose_models_data_path)
 
-train_params_filepath = "training_params.yaml"
+train_params_filepath = "train/training_params.yaml"
