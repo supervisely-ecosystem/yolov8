@@ -651,20 +651,21 @@ def start_training():
     task_type = task_type_select.get_value()
     if task_type == "object detection":
         necessary_geometries = ["rectangle"]
-        local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "detect", "train")
+        # for debug
+        # local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "detect", "train")
+        local_artifacts_dir = os.path.join(g.root_source_path, "runs", "detect", "train")
     elif task_type == "pose estimation":
         necessary_geometries = ["graph"]
-        # local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "pose", "train")
-
         # for debug
+        # local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "pose", "train")
         local_artifacts_dir = os.path.join(g.root_source_path, "runs", "pose", "train")
     elif task_type == "instance segmentation":
         necessary_geometries = ["bitmap", "polygon"]
-        local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "segment", "train")
+        # for debug
+        # local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "segment", "train")
+        local_artifacts_dir = os.path.join(g.root_source_path, "runs", "segment", "train")
 
-    # for debug only
-    print("Local artifacts dir:")
-    print(local_artifacts_dir)
+    sly.logger.info(f"Local artifacts dir: {local_artifacts_dir}")
 
     if os.path.exists(local_artifacts_dir):
         sly.fs.remove_dir(local_artifacts_dir)
@@ -812,6 +813,7 @@ def start_training():
     # train model and upload best checkpoints to team files
     device = 0 if torch.cuda.is_available() else "cpu"
     data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
+    sly.logger.info(f"Using device: {device}")
 
     def watcher_func():
         watcher.watch()
@@ -874,3 +876,4 @@ def start_training():
     sly.fs.remove_dir(g.app_data_dir)
     if weights_type == "Pretrained models":
         sly.fs.silent_remove(model_filename)
+    app.stop()
