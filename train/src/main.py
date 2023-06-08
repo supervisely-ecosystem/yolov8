@@ -870,3 +870,4 @@ def start_training():
     card_train_artifacts.unlock()
     card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
+    sly.fs.remove_dir(g.app_data_dir)
