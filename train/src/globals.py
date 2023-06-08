@@ -3,7 +3,7 @@ from pathlib import Path
 import supervisely as sly
 from dotenv import load_dotenv
 
-load_dotenv("train/local.env")
+load_dotenv("local.env")
 
 root_source_path = str(Path(__file__).parents[2])
 app_root_directory = str(Path(__file__).parents[1])

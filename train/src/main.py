@@ -684,15 +684,10 @@ def start_training():
     # remove classes with unnecessary shapes
     unnecessary_classes = []
     for cls in project_meta.obj_classes:
-        if (
-            cls.name in selected_classes
-            and cls.geometry_type.geometry_name() not in necessary_geometries
-        ):
+        if cls.name in selected_classes and cls.geometry_type.geometry_name() not in necessary_geometries:
             unnecessary_classes.append(cls.name)
     if len(unnecessary_classes) > 0:
-        sly.Project.remove_classes(
-            g.project_dir, classes_to_remove=unnecessary_classes, inplace=True
-        )
+        sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
     # remove unlabeled images if such option was selected by user
     if unlabeled_images_select.get_value() == "ignore unlabeled images":
         n_images_before = n_images
@@ -711,9 +706,7 @@ def start_training():
                     description="Val split length is 0 after ignoring images. Please check your data",
                     status="error",
                 )
-                raise ValueError(
-                    "Val split length is 0 after ignoring images. Please check your data"
-                )
+                raise ValueError("Val split length is 0 after ignoring images. Please check your data")
     # split the data
     train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
     verify_train_val_sets(train_set, val_set)
@@ -871,3 +864,5 @@ def start_training():
     card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
+    if weights_type == "Pretrained models":
+        sly.fs.silent_remove(model_filename)
