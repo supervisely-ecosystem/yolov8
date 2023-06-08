@@ -763,11 +763,8 @@ def start_training():
     # set up epoch progress bar and grid plot
     grid_plot.show()
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
-    lock = threading.Lock()
 
     def on_results_file_changed(filepath, pbar):
-        lock.acquire()
-        # pbar.update()
         results = pd.read_csv(filepath)
         results.columns = [col.replace(" ", "") for col in results.columns]
         train_box_loss = results["train/box_loss"].iat[-1]
@@ -812,7 +809,6 @@ def start_training():
             grid_plot.add_scalar("val/kobj loss", float(val_kobj_loss), int(x))
         if "val/seg_loss" in results.columns:
             grid_plot.add_scalar("val/seg loss", float(val_seg_loss), int(x))
-        lock.release()
 
     watcher = Watcher(
         watch_file,
@@ -841,6 +837,7 @@ def start_training():
         pretrained=pretrained,
         **additional_params,
     )
+    progress_bar_epochs.hide()
     # upload training artifacts to team files
     remote_artifacts_dir = os.path.join(
         "/yolov8_train", task_type_select.get_value(), project_info.name, str(g.app_session_id)
