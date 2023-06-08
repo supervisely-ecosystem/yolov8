@@ -649,21 +649,19 @@ def change_train_params():
 @start_training_button.click
 def start_training():
     task_type = task_type_select.get_value()
+    if sly.is_production():
+        local_dir = g.root_source_path
+    else:
+        local_dir = g.app_root_directory
     if task_type == "object detection":
         necessary_geometries = ["rectangle"]
-        # for debug
-        # local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "detect", "train")
-        local_artifacts_dir = os.path.join(g.root_source_path, "runs", "detect", "train")
+        local_artifacts_dir = os.path.join(local_dir, "runs", "detect", "train")
     elif task_type == "pose estimation":
         necessary_geometries = ["graph"]
-        # for debug
-        # local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "pose", "train")
-        local_artifacts_dir = os.path.join(g.root_source_path, "runs", "pose", "train")
+        local_artifacts_dir = os.path.join(local_dir, "runs", "pose", "train")
     elif task_type == "instance segmentation":
         necessary_geometries = ["bitmap", "polygon"]
-        # for debug
-        # local_artifacts_dir = os.path.join(g.app_root_directory, "runs", "segment", "train")
-        local_artifacts_dir = os.path.join(g.root_source_path, "runs", "segment", "train")
+        local_artifacts_dir = os.path.join(local_dir, "runs", "segment", "train")
 
     sly.logger.info(f"Local artifacts dir: {local_artifacts_dir}")
 
