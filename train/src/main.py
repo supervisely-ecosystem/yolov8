@@ -694,15 +694,10 @@ def start_training():
     # remove classes with unnecessary shapes
     unnecessary_classes = []
     for cls in project_meta.obj_classes:
-        if (
-            cls.name in selected_classes
-            and cls.geometry_type.geometry_name() not in necessary_geometries
-        ):
+        if cls.name in selected_classes and cls.geometry_type.geometry_name() not in necessary_geometries:
             unnecessary_classes.append(cls.name)
     if len(unnecessary_classes) > 0:
-        sly.Project.remove_classes(
-            g.project_dir, classes_to_remove=unnecessary_classes, inplace=True
-        )
+        sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
     # remove unlabeled images if such option was selected by user
     if unlabeled_images_select.get_value() == "ignore unlabeled images":
         n_images_before = n_images
@@ -721,9 +716,7 @@ def start_training():
                     description="Val split length is 0 after ignoring images. Please check your data",
                     status="error",
                 )
-                raise ValueError(
-                    "Val split length is 0 after ignoring images. Please check your data"
-                )
+                raise ValueError("Val split length is 0 after ignoring images. Please check your data")
     # split the data
     train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
     verify_train_val_sets(train_set, val_set)
@@ -740,6 +733,15 @@ def start_training():
     )
     # download model
     weights_type = model_tabs.get_active_tab()
+
+    def download_monitor(monitor, api: sly.Api, progress: sly.Progress):
+        value = monitor
+        if progress.total == 0:
+            progress.set(value, monitor.len, report=False)
+        else:
+            progress.set_current_value(value, report=False)
+        weights_pbar.update(progress.current)
+
     if weights_type == "Pretrained models":
         selected_model = models_table.get_selected_row()[0]
         if selected_model.endswith("det"):
@@ -748,19 +750,9 @@ def start_training():
             model_filename = selected_model.lower() + ".pt"
             pretrained = True
             weights_dst_path = os.path.join(g.app_data_dir, model_filename)
-            weights_url = (
-                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
-            )
+            weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
             with urlopen(weights_url) as file:
                 weights_size = file.length
-
-            def download_monitor(monitor, api: sly.Api, progress: sly.Progress):
-                value = monitor
-                if progress.total == 0:
-                    progress.set(value, monitor.len, report=False)
-                else:
-                    progress.set_current_value(value, report=False)
-                weights_pbar.update(progress.current)
 
             progress = sly.Progress(
                 message="",
@@ -789,9 +781,29 @@ def start_training():
         custom_link = model_path_input.get_value()
         model_filename = "custom_model.pt"
         weights_dst_path = os.path.join(g.app_data_dir, model_filename)
-        api.file.download(sly.env.team_id(), custom_link, weights_dst_path)
+        file_info = api.file.get_info_by_path(sly.env.team_id(), custom_link)
+        file_size = file_info.sizeb
+        progress = sly.Progress(
+            message="",
+            total_cnt=file_size,
+            is_size=True,
+        )
+        progress_cb = partial(download_monitor, api=api, progress=progress)
+        with progress_bar_download_model(
+            message="Downloading model weights...",
+            total=file_size,
+            unit="bytes",
+            unit_scale=True,
+        ) as weights_pbar:
+            api.file.download(
+                team_id=sly.env.team_id(),
+                remote_path=custom_link,
+                local_save_path=weights_dst_path,
+                progress_cb=progress_cb,
+            )
         pretrained = True
         model = YOLO(weights_dst_path)
+    progress_bar_download_model.hide()
     # get additional training params
     additional_params = train_settings_editor.get_text()
     additional_params = yaml.safe_load(additional_params)
