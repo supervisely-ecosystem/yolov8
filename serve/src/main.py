@@ -21,10 +21,10 @@ from typing import List, Any, Dict, Union
 
 load_dotenv("serve/local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
-app_root_directory = str(Path(__file__).parents[2])
-det_models_data_path = os.path.join(app_root_directory, "models", "det_models_data.json")
-seg_models_data_path = os.path.join(app_root_directory, "models", "seg_models_data.json")
-pose_models_data_path = os.path.join(app_root_directory, "models", "pose_models_data.json")
+root_source_path = str(Path(__file__).parents[2])
+det_models_data_path = os.path.join(root_source_path, "models", "det_models_data.json")
+seg_models_data_path = os.path.join(root_source_path, "models", "seg_models_data.json")
+pose_models_data_path = os.path.join(root_source_path, "models", "pose_models_data.json")
 det_models_data = sly.json.load_json_file(det_models_data_path)
 seg_models_data = sly.json.load_json_file(seg_models_data_path)
 pose_models_data = sly.json.load_json_file(pose_models_data_path)
@@ -259,7 +259,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
 m = YOLOv8Model(
     use_gui=True,
-    custom_inference_settings=os.path.join(app_root_directory, "serve", "custom_settings.yaml"),
+    custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
 )
 
 if sly.is_production():
