@@ -40,6 +40,7 @@ from src.metrics_watcher import Watcher
 import threading
 import pandas as pd
 from functools import partial
+from urllib.request import urlopen
 
 
 # function for updating global variables
@@ -347,6 +348,7 @@ card_train_params.lock()
 start_training_button = Button("start training")
 progress_bar_download_project = Progress()
 progress_bar_convert_to_yolo = Progress()
+progress_bar_download_model = Progress()
 progress_bar_epochs = Progress()
 plot_titles = ["train", "val", "precision", "recall"]
 grid_plot = GridPlot(data=plot_titles, columns=2, gap=20)
@@ -359,6 +361,7 @@ train_progress_content = Container(
         start_training_button,
         progress_bar_download_project,
         progress_bar_convert_to_yolo,
+        progress_bar_download_model,
         progress_bar_epochs,
         grid_plot,
         progress_bar_upload_artifacts,
@@ -744,10 +747,44 @@ def start_training():
         if select_train_mode.get_value() == "Finetune mode":
             model_filename = selected_model.lower() + ".pt"
             pretrained = True
+            weights_dst_path = os.path.join(g.app_data_dir, model_filename)
+            weights_url = (
+                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
+            )
+            with urlopen(weights_url) as file:
+                weights_size = file.length
+
+            def download_monitor(monitor, api: sly.Api, progress: sly.Progress):
+                value = monitor
+                if progress.total == 0:
+                    progress.set(value, monitor.len, report=False)
+                else:
+                    progress.set_current_value(value, report=False)
+                weights_pbar.update(progress.current)
+
+            progress = sly.Progress(
+                message="",
+                total_cnt=weights_size,
+                is_size=True,
+            )
+            progress_cb = partial(download_monitor, api=api, progress=progress)
+
+            with progress_bar_download_model(
+                message="Downloading model weights...",
+                total=weights_size,
+                unit="bytes",
+                unit_scale=True,
+            ) as weights_pbar:
+                sly.fs.download(
+                    url=weights_url,
+                    save_path=weights_dst_path,
+                    progress=progress_cb,
+                )
+            model = YOLO(weights_dst_path)
         else:
             model_filename = selected_model.lower() + ".yaml"
             pretrained = False
-        model = YOLO(model_filename)
+            model = YOLO(model_filename)
     elif weights_type == "Custom models":
         custom_link = model_path_input.get_value()
         model_filename = "custom_model.pt"
@@ -844,7 +881,7 @@ def start_training():
     )
 
     def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
-        value = int(monitor.bytes_read / 1048576)
+        value = monitor.bytes_read
         if progress.total == 0:
             progress.set(value, monitor.len, report=False)
         else:
@@ -853,8 +890,6 @@ def start_training():
 
     local_files = sly.fs.list_files_recursively(local_artifacts_dir)
     total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
-    # convert bytes to megabytes
-    total_size = int(total_size / 1048576)
     progress = sly.Progress(
         message="",
         total_cnt=total_size,
@@ -862,7 +897,10 @@ def start_training():
     )
     progress_cb = partial(upload_monitor, api=api, progress=progress)
     with progress_bar_upload_artifacts(
-        message="Uploading train artifacts to Team Files...", total=total_size
+        message="Uploading train artifacts to Team Files...",
+        total=total_size,
+        unit="bytes",
+        unit_scale=True,
     ) as artifacts_pbar:
         team_files_dir = api.file.upload_directory(
             team_id=sly.env.team_id(),
@@ -880,6 +918,6 @@ def start_training():
     card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
-    if weights_type == "Pretrained models":
-        sly.fs.silent_remove(model_filename)
+    # if weights_type == "Pretrained models":
+    #     sly.fs.silent_remove(model_filename)
     app.stop()

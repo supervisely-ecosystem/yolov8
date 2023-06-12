@@ -201,6 +201,12 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     ) -> List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]:
         input_image = sly.image.read(image_path)
         results = self.model(input_image)
+        if self.task_type == "object detection":
+            boxes = results[0].boxes
+        elif self.task_type == "instance segmentation":
+            masks = results[0].masks
+        elif self.task_type == "pose estimation":
+            keypoints = results[0].data.keypoints
         return results
 
 
