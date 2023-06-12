@@ -19,10 +19,10 @@
   "community_agent": false,
   "docker_image": "supervisely/yolov8:1.0.0",
   "instance_version": "6.7.16",
-  "entrypoint": "python -m uvicorn src.main:app --app-dir ./serve --host 0.0.0.0 --port 8000 --ws websockets",
+  "entrypoint": "python -m uvicorn src.main:m.app --app-dir ./serve --host 0.0.0.0 --port 8000 --ws websockets",
   "port": 8000,
   "task_location": "application_sessions",
   "license": {
-    "type": "AGPL-3.0" 
+    "type": "AGPL-3.0"
   }
 }
