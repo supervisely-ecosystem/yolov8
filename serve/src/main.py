@@ -105,16 +105,43 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         model_dir,
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
     ):
-        self.task_type = self.task_type_select.get_value()
         model_source = self.gui.get_model_source()
         if model_source == "Pretrained models":
+            self.task_type = self.task_type_select.get_value()
             selected_model = self.gui.get_checkpoint_info()["Model"]
             if selected_model.endswith("det"):
                 selected_model = selected_model[:-4]
             model_filename = selected_model.lower() + ".pt"
-        self.model = YOLO(model_filename)
+            weights_url = (
+                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
+            )
+            weights_dst_path = os.path.join(model_dir, model_filename)
+            if not sly.fs.file_exists(weights_dst_path):
+                self.download(
+                    src_path=weights_url,
+                    dst_path=weights_dst_path,
+                )
+        elif model_source == "Custom models":
+            self.task_type = self.custom_task_type_select.get_value()
+            custom_link = self.gui.get_custom_link()
+            weights_file_name = os.path.basename(custom_link)
+            weights_dst_path = os.path.join(model_dir, weights_file_name)
+            if not sly.fs.file_exists(weights_dst_path):
+                self.download(
+                    src_path=custom_link,
+                    dst_path=weights_dst_path,
+                )
+        self.model = YOLO(weights_dst_path)
         self.class_names = list(self.model.names.values())
-        if self.task_type_select.get_value() == "pose estimation":
+        if device.startswith("cuda"):
+            if device == "cuda":
+                self.device = 0
+            else:
+                self.device = int(device[-1])
+        else:
+            self.device = "cpu"
+        self.model.to(self.device)
+        if self.task_type == "pose estimation":
             if model_source == "Pretrained models":
                 self.keypoints_template = human_template
         print(f"✅ Model has been successfully loaded on {device.upper()} device")
@@ -200,13 +227,33 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self, image_path: str, settings: Dict[str, Any]
     ) -> List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]:
         input_image = sly.image.read(image_path)
-        results = self.model(input_image)
+        predictions = self.model(
+            source=input_image,
+            conf=settings["conf"],
+            iou=settings["iou"],
+            half=settings["half"],
+            device=self.device,
+            max_det=settings["max_det"],
+            agnostic_nms=settings["agnostic_nms"],
+        )
+        results = []
         if self.task_type == "object detection":
-            boxes = results[0].boxes
+            boxes_data = predictions[0].boxes.data
+            for box in boxes_data:
+                left, top, right, bottom, confidence, cls_index = (
+                    int(box[0]),
+                    int(box[1]),
+                    int(box[2]),
+                    int(box[3]),
+                    float(box[4]),
+                    int(box[5]),
+                )
+                bbox = [top, left, bottom, right]
+                results.append(PredictionBBox(self.class_names[cls_index], bbox, confidence))
         elif self.task_type == "instance segmentation":
-            masks = results[0].masks
+            masks = predictions[0].masks.data
         elif self.task_type == "pose estimation":
-            keypoints = results[0].data.keypoints
+            keypoints = predictions[0].keypoints.data
         return results
 
 
