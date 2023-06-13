@@ -163,7 +163,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 colors = get_predefined_colors(len(self.get_classes()))
                 classes = []
                 for name, rgb in zip(self.get_classes(), colors):
-                    classes.append(ObjClass(name, self._get_obj_class_shape(), rgb))
+                    if self.task_type == "object detection":
+                        classes.append(ObjClass(name, sly.Rectangle, rgb))
+                    else:
+                        classes.append(ObjClass(name, sly.Bitmap, rgb))
                 self._model_meta = ProjectMeta(classes)
                 self._get_confidence_tag_meta()
             elif self.task_type == "pose estimation":
@@ -251,7 +254,21 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 bbox = [top, left, bottom, right]
                 results.append(PredictionBBox(self.class_names[cls_index], bbox, confidence))
         elif self.task_type == "instance segmentation":
+            boxes_data = predictions[0].boxes.data
             masks = predictions[0].masks.data
+            for box, mask in zip(boxes_data, masks):
+                left, top, right, bottom, confidence, cls_index = (
+                    int(box[0]),
+                    int(box[1]),
+                    int(box[2]),
+                    int(box[3]),
+                    float(box[4]),
+                    int(box[5]),
+                )
+                bbox = [top, left, bottom, right]
+                # results.append(PredictionBBox(self.class_names[cls_index], bbox, confidence))
+                mask = mask.numpy()
+                results.append(PredictionMask(self.class_names[cls_index], mask))
         elif self.task_type == "pose estimation":
             keypoints = predictions[0].keypoints.data
         return results
