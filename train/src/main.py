@@ -353,6 +353,11 @@ progress_bar_epochs = Progress()
 plot_titles = ["train", "val", "precision", "recall"]
 grid_plot = GridPlot(data=plot_titles, columns=2, gap=20)
 grid_plot.hide()
+plot_notification = NotificationBox(
+    title="Some metrics can have unserializable values",
+    description="During training process some model performance metrics can have NaN values. In this case these NaN values will be replaced with zero",
+)
+plot_notification.hide()
 progress_bar_upload_artifacts = Progress()
 train_done = DoneLabel("Training completed. Training artifacts were uploaded to Team Files")
 train_done.hide()
@@ -364,6 +369,7 @@ train_progress_content = Container(
         progress_bar_download_model,
         progress_bar_epochs,
         grid_plot,
+        plot_notification,
         progress_bar_upload_artifacts,
         train_done,
     ]
@@ -811,11 +817,13 @@ def start_training():
         additional_params["fliplr"] = 0.0
     # set up epoch progress bar and grid plot
     grid_plot.show()
+    plot_notification.show()
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
 
     def on_results_file_changed(filepath, pbar):
         results = pd.read_csv(filepath)
         results.columns = [col.replace(" ", "") for col in results.columns]
+        results.fillna(0, inplace=True)
         train_box_loss = results["train/box_loss"].iat[-1]
         train_cls_loss = results["train/cls_loss"].iat[-1]
         train_dfl_loss = results["train/dfl_loss"].iat[-1]
