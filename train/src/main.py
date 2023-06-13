@@ -847,8 +847,8 @@ def start_training():
             grid_plot.add_scalar("train/kobj loss", float(train_kobj_loss), int(x))
         if "train/seg_loss" in results.columns:
             grid_plot.add_scalar("train/seg loss", float(train_seg_loss), int(x))
-        grid_plot.add_scalar("precision/", float(precision), int(x))
-        grid_plot.add_scalar("recall/", float(recall), int(x))
+        grid_plot.add_scalar("precision/precision", float(precision), int(x))
+        grid_plot.add_scalar("recall/recall", float(recall), int(x))
         grid_plot.add_scalar("val/box loss", float(val_box_loss), int(x))
         grid_plot.add_scalar("val/cls loss", float(val_cls_loss), int(x))
         grid_plot.add_scalar("val/dfl loss", float(val_dfl_loss), int(x))
@@ -930,6 +930,4 @@ def start_training():
     card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
-    # if weights_type == "Pretrained models":
-    #     sly.fs.silent_remove(model_filename)
     app.stop()
