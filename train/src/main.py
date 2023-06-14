@@ -822,9 +822,9 @@ def start_training():
 
     def check_number(value):
         if isinstance(value, (int, float)) and not np.isnan(value):
-            return value
+            return True
         else:
-            return 0
+            return False
 
     def on_results_file_changed(filepath, pbar):
         results = pd.read_csv(filepath)
@@ -849,28 +849,42 @@ def start_training():
             val_kobj_loss = results["val/kobj_loss"].iat[-1]
         if "val/seg_loss" in results.columns:
             val_seg_loss = results["val/seg_loss"].iat[-1]
-        x = results["epoch"].iat[-1]
+        x = results["epoch"].iat[-1] + 1
         pbar.update(int(x) + 1 - pbar.n)
-        grid_plot.add_scalar("train/box loss", check_number(float(train_box_loss)), int(x))
-        grid_plot.add_scalar("train/cls loss", check_number(float(train_cls_loss)), int(x))
-        grid_plot.add_scalar("train/dfl loss", check_number(float(train_dfl_loss)), int(x))
+        if check_number(float(train_box_loss)):
+            grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
+        if check_number(float(train_cls_loss)):
+            grid_plot.add_scalar("train/cls loss", float(train_cls_loss), int(x))
+        if check_number(float(train_dfl_loss)):
+            grid_plot.add_scalar("train/dfl loss", float(train_dfl_loss), int(x))
         if "train/pose_loss" in results.columns:
-            grid_plot.add_scalar("train/pose loss", check_number(float(train_pose_loss)), int(x))
+            if check_number(float(train_pose_loss)):
+                grid_plot.add_scalar("train/pose loss", float(train_pose_loss), int(x))
         if "train/kobj_loss" in results.columns:
-            grid_plot.add_scalar("train/kobj loss", check_number(float(train_kobj_loss)), int(x))
+            if check_number(float(train_kobj_loss)):
+                grid_plot.add_scalar("train/kobj loss", float(train_kobj_loss), int(x))
         if "train/seg_loss" in results.columns:
-            grid_plot.add_scalar("train/seg loss", check_number(float(train_seg_loss)), int(x))
-        grid_plot.add_scalar("precision/precision", check_number(float(precision)), int(x))
-        grid_plot.add_scalar("recall/recall", check_number(float(recall)), int(x))
-        grid_plot.add_scalar("val/box loss", check_number(float(val_box_loss)), int(x))
-        grid_plot.add_scalar("val/cls loss", check_number(float(val_cls_loss)), int(x))
-        grid_plot.add_scalar("val/dfl loss", check_number(float(val_dfl_loss)), int(x))
+            if check_number(float(train_seg_loss)):
+                grid_plot.add_scalar("train/seg loss", float(train_seg_loss), int(x))
+        if check_number(float(precision)):
+            grid_plot.add_scalar("precision/precision", float(precision), int(x))
+        if check_number(float(recall)):
+            grid_plot.add_scalar("recall/recall", float(recall), int(x))
+        if check_number(float(val_box_loss)):
+            grid_plot.add_scalar("val/box loss", float(val_box_loss), int(x))
+        if check_number(float(val_cls_loss)):
+            grid_plot.add_scalar("val/cls loss", float(val_cls_loss), int(x))
+        if check_number(float(val_dfl_loss)):
+            grid_plot.add_scalar("val/dfl loss", float(val_dfl_loss), int(x))
         if "val/pose_loss" in results.columns:
-            grid_plot.add_scalar("val/pose loss", check_number(float(val_pose_loss)), int(x))
+            if check_number(float(val_pose_loss)):
+                grid_plot.add_scalar("val/pose loss", float(val_pose_loss), int(x))
         if "val/kobj_loss" in results.columns:
-            grid_plot.add_scalar("val/kobj loss", check_number(float(val_kobj_loss)), int(x))
+            if check_number(float(val_kobj_loss)):
+                grid_plot.add_scalar("val/kobj loss", float(val_kobj_loss), int(x))
         if "val/seg_loss" in results.columns:
-            grid_plot.add_scalar("val/seg loss", check_number(float(val_seg_loss)), int(x))
+            if check_number(float(val_seg_loss)):
+                grid_plot.add_scalar("val/seg loss", float(val_seg_loss), int(x))
 
     watcher = Watcher(
         watch_file,
