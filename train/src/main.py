@@ -829,6 +829,7 @@ def start_training():
     def on_results_file_changed(filepath, pbar):
         results = pd.read_csv(filepath)
         results.columns = [col.replace(" ", "") for col in results.columns]
+        print(results.tail(1))
         train_box_loss = results["train/box_loss"].iat[-1]
         train_cls_loss = results["train/cls_loss"].iat[-1]
         train_dfl_loss = results["train/dfl_loss"].iat[-1]
@@ -849,7 +850,7 @@ def start_training():
             val_kobj_loss = results["val/kobj_loss"].iat[-1]
         if "val/seg_loss" in results.columns:
             val_seg_loss = results["val/seg_loss"].iat[-1]
-        x = results["epoch"].iat[-1] + 1
+        x = results["epoch"].iat[-1]
         pbar.update(int(x) + 1 - pbar.n)
         if check_number(float(train_box_loss)):
             grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
