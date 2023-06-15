@@ -1,6 +1,7 @@
 import os
 import sys
-import time
+
+# import time
 import traceback
 
 
@@ -31,7 +32,7 @@ class Watcher(object):
         while self.running:
             try:
                 # Look for changes
-                time.sleep(self.refresh_delay_secs)
+                # time.sleep(self.refresh_delay_secs)
                 self.look()
             except KeyboardInterrupt:
                 print("\nDone")
