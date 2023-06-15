@@ -356,7 +356,7 @@ grid_plot = GridPlot(data=plot_titles, columns=3, gap=20)
 grid_plot.hide()
 plot_notification = NotificationBox(
     title="Some metrics can have unserializable values",
-    description="During training process model performance metrics can have NaN values on some epochs and may not be displayed on the plots",
+    description="During training process model performance metrics can have NaN / Inf values on some epochs and may not be displayed on the plots",
 )
 plot_notification.hide()
 progress_bar_upload_artifacts = Progress()
@@ -701,15 +701,10 @@ def start_training():
     # remove classes with unnecessary shapes
     unnecessary_classes = []
     for cls in project_meta.obj_classes:
-        if (
-            cls.name in selected_classes
-            and cls.geometry_type.geometry_name() not in necessary_geometries
-        ):
+        if cls.name in selected_classes and cls.geometry_type.geometry_name() not in necessary_geometries:
             unnecessary_classes.append(cls.name)
     if len(unnecessary_classes) > 0:
-        sly.Project.remove_classes(
-            g.project_dir, classes_to_remove=unnecessary_classes, inplace=True
-        )
+        sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
     # remove unlabeled images if such option was selected by user
     if unlabeled_images_select.get_value() == "ignore unlabeled images":
         n_images_before = n_images
@@ -728,9 +723,7 @@ def start_training():
                     description="Val split length is 0 after ignoring images. Please check your data",
                     status="error",
                 )
-                raise ValueError(
-                    "Val split length is 0 after ignoring images. Please check your data"
-                )
+                raise ValueError("Val split length is 0 after ignoring images. Please check your data")
     # split the data
     train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
     verify_train_val_sets(train_set, val_set)
@@ -764,9 +757,7 @@ def start_training():
             model_filename = selected_model.lower() + ".pt"
             pretrained = True
             weights_dst_path = os.path.join(g.app_data_dir, model_filename)
-            weights_url = (
-                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
-            )
+            weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
             with urlopen(weights_url) as file:
                 weights_size = file.length
 
@@ -826,10 +817,12 @@ def start_training():
     if task_type == "pose estimation":
         additional_params["fliplr"] = 0.0
     # set up epoch progress bar and grid plot
+    pd.set_option("display.max_columns", None)
+    pd.set_option("display.width", None)
+    pd.set_option("display.max_colwidth", None)
     grid_plot.show()
     plot_notification.show()
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
-    lock = threading.Lock()
 
     def check_number(value):
         # if value is not str, NaN, infinity or negative infinity
@@ -839,7 +832,6 @@ def start_training():
             return False
 
     def on_results_file_changed(filepath, pbar):
-        lock.acquire()
         results = pd.read_csv(filepath)
         results.columns = [col.replace(" ", "") for col in results.columns]
         print(results.tail(1))
@@ -899,7 +891,6 @@ def start_training():
         if "val/seg_loss" in results.columns:
             if check_number(float(val_seg_loss)):
                 grid_plot.add_scalar("val/seg loss", float(val_seg_loss), int(x))
-        lock.release()
 
     watcher = Watcher(
         watch_file,
@@ -929,6 +920,7 @@ def start_training():
         **additional_params,
     )
     progress_bar_epochs.hide()
+    watcher.running = False
 
     # remove unnecessary files from local artifacts dir
     weights_dir = os.path.join(local_artifacts_dir, "weights")

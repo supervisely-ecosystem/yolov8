@@ -7,7 +7,6 @@ import traceback
 
 class Watcher(object):
     running = True
-    refresh_delay_secs = 2
 
     # Constructor
     def __init__(self, watch_file, call_func_on_change=None, *args, **kwargs):
@@ -32,15 +31,12 @@ class Watcher(object):
         while self.running:
             try:
                 # Look for changes
-                # time.sleep(self.refresh_delay_secs)
                 self.look()
             except KeyboardInterrupt:
                 print("\nDone")
                 break
             except FileNotFoundError:
-                # Action on file not found
                 pass
             except Exception as e:
-                # print("Unhandled error: %s" % sys.exc_info()[0])
                 print("Unhandled error:")
                 print(traceback.format_exc())
