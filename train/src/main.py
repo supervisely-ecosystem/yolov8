@@ -41,6 +41,7 @@ import threading
 import pandas as pd
 from functools import partial
 from urllib.request import urlopen
+import math
 
 
 # function for updating global variables
@@ -700,10 +701,15 @@ def start_training():
     # remove classes with unnecessary shapes
     unnecessary_classes = []
     for cls in project_meta.obj_classes:
-        if cls.name in selected_classes and cls.geometry_type.geometry_name() not in necessary_geometries:
+        if (
+            cls.name in selected_classes
+            and cls.geometry_type.geometry_name() not in necessary_geometries
+        ):
             unnecessary_classes.append(cls.name)
     if len(unnecessary_classes) > 0:
-        sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
+        sly.Project.remove_classes(
+            g.project_dir, classes_to_remove=unnecessary_classes, inplace=True
+        )
     # remove unlabeled images if such option was selected by user
     if unlabeled_images_select.get_value() == "ignore unlabeled images":
         n_images_before = n_images
@@ -722,7 +728,9 @@ def start_training():
                     description="Val split length is 0 after ignoring images. Please check your data",
                     status="error",
                 )
-                raise ValueError("Val split length is 0 after ignoring images. Please check your data")
+                raise ValueError(
+                    "Val split length is 0 after ignoring images. Please check your data"
+                )
     # split the data
     train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
     verify_train_val_sets(train_set, val_set)
@@ -756,7 +764,9 @@ def start_training():
             model_filename = selected_model.lower() + ".pt"
             pretrained = True
             weights_dst_path = os.path.join(g.app_data_dir, model_filename)
-            weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
+            weights_url = (
+                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
+            )
             with urlopen(weights_url) as file:
                 weights_size = file.length
 
@@ -822,7 +832,8 @@ def start_training():
     lock = threading.Lock()
 
     def check_number(value):
-        if isinstance(value, (int, float)) and not np.isnan(value):
+        # if value is not str, NaN, infinity or negative infinity
+        if isinstance(value, (int, float)) and math.isfinite(value):
             return True
         else:
             return False
