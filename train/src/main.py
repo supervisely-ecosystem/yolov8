@@ -350,12 +350,12 @@ progress_bar_download_project = Progress()
 progress_bar_convert_to_yolo = Progress()
 progress_bar_download_model = Progress()
 progress_bar_epochs = Progress()
-plot_titles = ["train", "val", "precision", "recall"]
-grid_plot = GridPlot(data=plot_titles, columns=2, gap=20)
+plot_titles = ["train", "val", "precision & recall"]
+grid_plot = GridPlot(data=plot_titles, columns=3, gap=20)
 grid_plot.hide()
 plot_notification = NotificationBox(
     title="Some metrics can have unserializable values",
-    description="During training process some model performance metrics can have NaN values. In this case these NaN values will be replaced with zero",
+    description="During training process model performance metrics can have NaN values on some epochs and may not be displayed on the plots",
 )
 plot_notification.hide()
 progress_bar_upload_artifacts = Progress()
@@ -819,6 +819,7 @@ def start_training():
     grid_plot.show()
     plot_notification.show()
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
+    lock = threading.Lock()
 
     def check_number(value):
         if isinstance(value, (int, float)) and not np.isnan(value):
@@ -827,6 +828,7 @@ def start_training():
             return False
 
     def on_results_file_changed(filepath, pbar):
+        lock.acquire()
         results = pd.read_csv(filepath)
         results.columns = [col.replace(" ", "") for col in results.columns]
         print(results.tail(1))
@@ -868,9 +870,9 @@ def start_training():
             if check_number(float(train_seg_loss)):
                 grid_plot.add_scalar("train/seg loss", float(train_seg_loss), int(x))
         if check_number(float(precision)):
-            grid_plot.add_scalar("precision/precision", float(precision), int(x))
+            grid_plot.add_scalar("precision & recall/precision", float(precision), int(x))
         if check_number(float(recall)):
-            grid_plot.add_scalar("recall/recall", float(recall), int(x))
+            grid_plot.add_scalar("precision & recall/recall", float(recall), int(x))
         if check_number(float(val_box_loss)):
             grid_plot.add_scalar("val/box loss", float(val_box_loss), int(x))
         if check_number(float(val_cls_loss)):
@@ -886,6 +888,7 @@ def start_training():
         if "val/seg_loss" in results.columns:
             if check_number(float(val_seg_loss)):
                 grid_plot.add_scalar("val/seg loss", float(val_seg_loss), int(x))
+        lock.release()
 
     watcher = Watcher(
         watch_file,
@@ -915,6 +918,15 @@ def start_training():
         **additional_params,
     )
     progress_bar_epochs.hide()
+
+    # remove unnecessary files from local artifacts dir
+    weights_dir = os.path.join(local_artifacts_dir, "weights")
+    weights_files = sly.fs.list_files(weights_dir)
+    for filepath in weights_files:
+        filename = os.path.basename(filepath)
+        if filename not in ["best.pt", "last.pt"]:
+            sly.fs.silent_remove(filepath)
+
     # upload training artifacts to team files
     remote_artifacts_dir = os.path.join(
         "/yolov8_train", task_type_select.get_value(), project_info.name, str(g.app_session_id)
