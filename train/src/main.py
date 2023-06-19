@@ -707,10 +707,15 @@ def start_training():
     # remove classes with unnecessary shapes
     unnecessary_classes = []
     for cls in project_meta.obj_classes:
-        if cls.name in selected_classes and cls.geometry_type.geometry_name() not in necessary_geometries:
+        if (
+            cls.name in selected_classes
+            and cls.geometry_type.geometry_name() not in necessary_geometries
+        ):
             unnecessary_classes.append(cls.name)
     if len(unnecessary_classes) > 0:
-        sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
+        sly.Project.remove_classes(
+            g.project_dir, classes_to_remove=unnecessary_classes, inplace=True
+        )
     # remove unlabeled images if such option was selected by user
     if unlabeled_images_select.get_value() == "ignore unlabeled images":
         n_images_before = n_images
@@ -729,7 +734,9 @@ def start_training():
                     description="Val split length is 0 after ignoring images. Please check your data",
                     status="error",
                 )
-                raise ValueError("Val split length is 0 after ignoring images. Please check your data")
+                raise ValueError(
+                    "Val split length is 0 after ignoring images. Please check your data"
+                )
     # split the data
     train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
     verify_train_val_sets(train_set, val_set)
@@ -763,7 +770,9 @@ def start_training():
             model_filename = selected_model.lower() + ".pt"
             pretrained = True
             weights_dst_path = os.path.join(g.app_data_dir, model_filename)
-            weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
+            weights_url = (
+                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
+            )
             with urlopen(weights_url) as file:
                 weights_size = file.length
 
@@ -905,7 +914,11 @@ def start_training():
         # visualize train batch
         batch = f"train_batch{x}.jpg"
         local_train_batches_path = os.path.join(local_artifacts_dir, batch)
-        if os.path.exists(local_train_batches_path) and batch not in plotted_train_batches and x < 10:
+        if (
+            os.path.exists(local_train_batches_path)
+            and batch not in plotted_train_batches
+            and x < 10
+        ):
             plotted_train_batches.append(batch)
             shutil.copy(local_train_batches_path, g.static_dir)
             # show images
@@ -943,13 +956,19 @@ def start_training():
     progress_bar_epochs.hide()
     watcher.running = False
 
-    # remove unnecessary files from local artifacts dir
-    weights_dir = os.path.join(local_artifacts_dir, "weights")
-    weights_files = sly.fs.list_files(weights_dir)
-    for filepath in weights_files:
-        filename = os.path.basename(filepath)
-        if filename not in ["best.pt", "last.pt"]:
-            sly.fs.silent_remove(filepath)
+    # rename best checkpoint file
+    results = pd.read_csv(watch_file)
+    results.columns = [col.replace(" ", "") for col in results.columns]
+    results["fitness"] = (0.1 * results["metrics/mAP50(B)"]) + (
+        0.9 * results["metrics/mAP50-95(B)"]
+    )
+    print("Final results:")
+    print(results)
+    best_epoch = results["fitness"].idxmax()
+    best_filename = f"best_{best_epoch}.pt"
+    current_best_filepath = os.path.join(local_artifacts_dir, "weights", "best.pt")
+    new_best_filepath = os.path.join(local_artifacts_dir, "weights", best_filename)
+    os.rename(current_best_filepath, new_best_filepath)
 
     # upload training artifacts to team files
     remote_artifacts_dir = os.path.join(
