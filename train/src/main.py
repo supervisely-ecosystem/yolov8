@@ -1024,6 +1024,12 @@ def start_training():
     new_best_filepath = os.path.join(local_artifacts_dir, "weights", best_filename)
     os.rename(current_best_filepath, new_best_filepath)
 
+    # save link to app ui
+    app_url = f"/apps/sessions/{g.app_session_id}"
+    app_link_path = os.path.join(local_artifacts_dir, "open_app.lnk")
+    with open(app_link_path, "w") as text_file:
+        print(app_url, file=text_file)
+
     # upload training artifacts to team files
     remote_artifacts_dir = os.path.join(
         "/yolov8_train", task_type_select.get_value(), project_info.name, str(g.app_session_id)
