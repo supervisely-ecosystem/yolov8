@@ -31,6 +31,7 @@ from supervisely.app.widgets import (
     FolderThumbnail,
     TrainValSplits,
     Flexbox,
+    Image,
 )
 from src.utils import get_train_val_sets, verify_train_val_sets
 from src.sly_to_yolov8 import transform
@@ -42,6 +43,7 @@ import pandas as pd
 from functools import partial
 from urllib.request import urlopen
 import math
+import shutil
 
 
 # function for updating global variables
@@ -69,6 +71,7 @@ load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 api = sly.Api()
 team_id = sly.env.team_id()
+sly.fs.mkdir(g.static_dir)
 
 # if app had started from context menu, one of this has to be set:
 project_id = sly.env.project_id(raise_not_found=False)
@@ -280,10 +283,6 @@ image_size_input = InputNumber(value=640, step=10)
 image_size_input_f = Field(content=image_size_input, title="Input image size")
 select_optimizer = SelectString(values=["AdamW", "Adam", "SGD", "RMSProp"])
 select_optimizer_f = Field(content=select_optimizer, title="Optimizer")
-save_period_input = InputNumber(value=5, min=1)
-save_period_input_f = Field(
-    content=save_period_input, title="Save period", description="Save checkpoint every n epochs"
-)
 save_best = Checkbox(content="save best checkpoint", checked=True)
 save_best.disable()
 save_last = Checkbox(content="save last checkpoint", checked=True)
@@ -325,7 +324,6 @@ train_params_content = Container(
         batch_size_input_f,
         image_size_input_f,
         select_optimizer_f,
-        save_period_input_f,
         save_checkpoints_content,
         n_workers_input_f,
         train_settings_editor_f,
@@ -351,6 +349,14 @@ progress_bar_download_project = Progress()
 progress_bar_convert_to_yolo = Progress()
 progress_bar_download_model = Progress()
 progress_bar_epochs = Progress()
+labels_image = Image()
+labels_correlogram = Image()
+labels_flexbox = Flexbox(
+    widgets=[labels_image, labels_correlogram],
+    center_content=False,
+)
+labels_flexbox_f = Field(labels_flexbox, "Labels statistics")
+labels_flexbox_f.hide()
 plot_titles = ["train", "val", "precision & recall"]
 grid_plot = GridPlot(data=plot_titles, columns=3, gap=20)
 grid_plot.hide()
@@ -369,6 +375,7 @@ train_progress_content = Container(
         progress_bar_convert_to_yolo,
         progress_bar_download_model,
         progress_bar_epochs,
+        labels_flexbox_f,
         grid_plot,
         plot_notification,
         progress_bar_upload_artifacts,
@@ -411,6 +418,7 @@ app = sly.Application(
             card_train_artifacts,
         ]
     ),
+    static_dir=g.static_dir,
 )
 
 
@@ -418,7 +426,7 @@ app = sly.Application(
 def on_dataset_selected(new_dataset_ids):
     if new_dataset_ids == []:
         select_data_button.hide()
-    elif new_dataset_ids != [] and select_data_button.is_hidden():
+    elif new_dataset_ids != [] and reselect_data_button.is_hidden():
         select_data_button.show()
     update_globals(new_dataset_ids)
 
@@ -633,7 +641,6 @@ def save_train_params():
     batch_size_input.disable()
     image_size_input.disable()
     select_optimizer.disable()
-    save_period_input.disable()
     n_workers_input.disable()
     train_settings_editor.readonly = True
     card_train_progress.unlock()
@@ -651,7 +658,6 @@ def change_train_params():
     batch_size_input.enable()
     image_size_input.enable()
     select_optimizer.enable()
-    save_period_input.enable()
     n_workers_input.enable()
     train_settings_editor.readonly = False
 
@@ -816,6 +822,9 @@ def start_training():
     additional_params = yaml.safe_load(additional_params)
     if task_type == "pose estimation":
         additional_params["fliplr"] = 0.0
+    # prepare visualizations
+    local_labels_image_path = os.path.join(local_artifacts_dir, "labels.jpg")
+    local_labels_correlogram_path = os.path.join(local_artifacts_dir, "labels_correlogram.jpg")
     # set up epoch progress bar and grid plot
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
@@ -832,9 +841,11 @@ def start_training():
             return False
 
     def on_results_file_changed(filepath, pbar):
+        # read results file
         results = pd.read_csv(filepath)
         results.columns = [col.replace(" ", "") for col in results.columns]
         print(results.tail(1))
+        # get losses values
         train_box_loss = results["train/box_loss"].iat[-1]
         train_cls_loss = results["train/cls_loss"].iat[-1]
         train_dfl_loss = results["train/dfl_loss"].iat[-1]
@@ -855,8 +866,21 @@ def start_training():
             val_kobj_loss = results["val/kobj_loss"].iat[-1]
         if "val/seg_loss" in results.columns:
             val_seg_loss = results["val/seg_loss"].iat[-1]
+        # update progress bar
         x = results["epoch"].iat[-1]
         pbar.update(int(x) + 1 - pbar.n)
+        # draw labels visualizations
+        if x == 0:
+            # copy necessary images to static dir
+            shutil.copy(local_labels_image_path, g.static_dir)
+            shutil.copy(local_labels_correlogram_path, g.static_dir)
+            # show images
+            static_labels_image_path = "/static/labels.jpg"
+            static_labels_correlogram_path = "/static/labels_correlogram.jpg"
+            labels_image.set(static_labels_image_path)
+            labels_correlogram.set(static_labels_correlogram_path)
+            labels_flexbox_f.show()
+        # add new points to plots
         if check_number(float(train_box_loss)):
             grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
         if check_number(float(train_cls_loss)):
@@ -912,7 +936,7 @@ def start_training():
         patience=patience_input.get_value(),
         batch=batch_size_input.get_value(),
         imgsz=image_size_input.get_value(),
-        save_period=save_period_input.get_value(),
+        save_period=1000,
         device=device,
         workers=n_workers_input.get_value(),
         optimizer=select_optimizer.get_value(),
