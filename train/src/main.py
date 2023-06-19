@@ -371,6 +371,12 @@ val_batches_gallery = GridGallery(
 )
 val_batches_gallery_f = Field(val_batches_gallery, "Model predictions visualization")
 val_batches_gallery_f.hide()
+additional_gallery = GridGallery(
+    columns_number=3,
+    show_opacity_slider=False,
+)
+additional_gallery_f = Field(additional_gallery, "Additional training results visualization")
+additional_gallery_f.hide()
 progress_bar_upload_artifacts = Progress()
 train_done = DoneLabel("Training completed. Training artifacts were uploaded to Team Files")
 train_done.hide()
@@ -385,6 +391,7 @@ train_progress_content = Container(
         plot_notification,
         train_batches_gallery_f,
         val_batches_gallery_f,
+        additional_gallery_f,
         progress_bar_upload_artifacts,
         train_done,
     ]
@@ -714,15 +721,10 @@ def start_training():
     # remove classes with unnecessary shapes
     unnecessary_classes = []
     for cls in project_meta.obj_classes:
-        if (
-            cls.name in selected_classes
-            and cls.geometry_type.geometry_name() not in necessary_geometries
-        ):
+        if cls.name in selected_classes and cls.geometry_type.geometry_name() not in necessary_geometries:
             unnecessary_classes.append(cls.name)
     if len(unnecessary_classes) > 0:
-        sly.Project.remove_classes(
-            g.project_dir, classes_to_remove=unnecessary_classes, inplace=True
-        )
+        sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
     # remove unlabeled images if such option was selected by user
     if unlabeled_images_select.get_value() == "ignore unlabeled images":
         n_images_before = n_images
@@ -741,9 +743,7 @@ def start_training():
                     description="Val split length is 0 after ignoring images. Please check your data",
                     status="error",
                 )
-                raise ValueError(
-                    "Val split length is 0 after ignoring images. Please check your data"
-                )
+                raise ValueError("Val split length is 0 after ignoring images. Please check your data")
     # split the data
     train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
     verify_train_val_sets(train_set, val_set)
@@ -777,9 +777,7 @@ def start_training():
             model_filename = selected_model.lower() + ".pt"
             pretrained = True
             weights_dst_path = os.path.join(g.app_data_dir, model_filename)
-            weights_url = (
-                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
-            )
+            weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
             with urlopen(weights_url) as file:
                 weights_size = file.length
 
@@ -921,11 +919,7 @@ def start_training():
         # visualize train batch
         batch = f"train_batch{x}.jpg"
         local_train_batches_path = os.path.join(local_artifacts_dir, batch)
-        if (
-            os.path.exists(local_train_batches_path)
-            and batch not in plotted_train_batches
-            and x < 10
-        ):
+        if os.path.exists(local_train_batches_path) and batch not in plotted_train_batches and x < 10:
             plotted_train_batches.append(batch)
             shutil.copy(local_train_batches_path, g.static_dir)
             # show images
@@ -985,12 +979,43 @@ def start_training():
         if i == 0:
             val_batches_gallery_f.show()
 
+    # visualize additional training results
+    confusion_matrix_path = os.path.join(local_artifacts_dir, "confusion_matrix_normalized.png")
+    if os.path.exists(confusion_matrix_path):
+        shutil.copy(confusion_matrix_path, g.static_dir)
+        static_confusion_matrix_path = "/static/confusion_matrix_normalized.png"
+        additional_gallery.append(static_confusion_matrix_path)
+        additional_gallery_f.show()
+    pr_curve_path = os.path.join(local_artifacts_dir, "PR_curve.png")
+    if os.path.exists(pr_curve_path):
+        shutil.copy(pr_curve_path, g.static_dir)
+        static_pr_curve_path = "/static/PR_curve.png"
+        additional_gallery.append(static_pr_curve_path)
+    f1_curve_path = os.path.join(local_artifacts_dir, "F1_curve.png")
+    if os.path.exists(f1_curve_path):
+        shutil.copy(f1_curve_path, g.static_dir)
+        static_f1_curve_path = "/static/F1_curve.png"
+        additional_gallery.append(static_f1_curve_path)
+    box_f1_curve_path = os.path.join(local_artifacts_dir, "BoxF1_curve.png")
+    if os.path.exists(box_f1_curve_path):
+        shutil.copy(box_f1_curve_path, g.static_dir)
+        static_box_f1_curve_path = "/static/BoxF1_curve.png"
+        additional_gallery.append(static_box_f1_curve_path, title="box f1-curve")
+    pose_f1_curve_path = os.path.join(local_artifacts_dir, "PoseF1_curve.png")
+    if os.path.exists(pose_f1_curve_path):
+        shutil.copy(pose_f1_curve_path, g.static_dir)
+        pose_static_f1_curve_path = "/static/PoseF1_curve.png"
+        additional_gallery.append(pose_static_f1_curve_path, title="pose f1-curve")
+    mask_f1_curve_path = os.path.join(local_artifacts_dir, "MaskF1_curve.png")
+    if os.path.exists(mask_f1_curve_path):
+        shutil.copy(mask_f1_curve_path, g.static_dir)
+        static_mask_f1_curve_path = "/static/MaskF1_curve.png"
+        additional_gallery.append(static_mask_f1_curve_path, title="mask f1-curve")
+
     # rename best checkpoint file
     results = pd.read_csv(watch_file)
     results.columns = [col.replace(" ", "") for col in results.columns]
-    results["fitness"] = (0.1 * results["metrics/mAP50(B)"]) + (
-        0.9 * results["metrics/mAP50-95(B)"]
-    )
+    results["fitness"] = (0.1 * results["metrics/mAP50(B)"]) + (0.9 * results["metrics/mAP50-95(B)"])
     print("Final results:")
     print(results)
     best_epoch = results["fitness"].idxmax()
