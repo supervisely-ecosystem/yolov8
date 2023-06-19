@@ -32,6 +32,7 @@ from supervisely.app.widgets import (
     TrainValSplits,
     Flexbox,
     Image,
+    GridGallery,
 )
 from src.utils import get_train_val_sets, verify_train_val_sets
 from src.sly_to_yolov8 import transform
@@ -349,22 +350,21 @@ progress_bar_download_project = Progress()
 progress_bar_convert_to_yolo = Progress()
 progress_bar_download_model = Progress()
 progress_bar_epochs = Progress()
-labels_image = Image()
-labels_correlogram = Image()
-labels_flexbox = Flexbox(
-    widgets=[labels_image, labels_correlogram],
-    center_content=False,
-)
-labels_flexbox_f = Field(labels_flexbox, "Labels statistics")
-labels_flexbox_f.hide()
 plot_titles = ["train", "val", "precision & recall"]
 grid_plot = GridPlot(data=plot_titles, columns=3, gap=20)
-grid_plot.hide()
+grid_plot_f = Field(grid_plot, "Training and validation metrics")
+grid_plot_f.hide()
 plot_notification = NotificationBox(
     title="Some metrics can have unserializable values",
     description="During training process model performance metrics can have NaN / Inf values on some epochs and may not be displayed on the plots",
 )
 plot_notification.hide()
+train_batches_gallery = GridGallery(
+    columns_number=3,
+    show_opacity_slider=False,
+)
+train_batches_gallery_f = Field(train_batches_gallery, "Train batches visualization")
+train_batches_gallery_f.hide()
 progress_bar_upload_artifacts = Progress()
 train_done = DoneLabel("Training completed. Training artifacts were uploaded to Team Files")
 train_done.hide()
@@ -375,9 +375,9 @@ train_progress_content = Container(
         progress_bar_convert_to_yolo,
         progress_bar_download_model,
         progress_bar_epochs,
-        labels_flexbox_f,
-        grid_plot,
+        grid_plot_f,
         plot_notification,
+        train_batches_gallery_f,
         progress_bar_upload_artifacts,
         train_done,
     ]
@@ -822,16 +822,14 @@ def start_training():
     additional_params = yaml.safe_load(additional_params)
     if task_type == "pose estimation":
         additional_params["fliplr"] = 0.0
-    # prepare visualizations
-    local_labels_image_path = os.path.join(local_artifacts_dir, "labels.jpg")
-    local_labels_correlogram_path = os.path.join(local_artifacts_dir, "labels_correlogram.jpg")
     # set up epoch progress bar and grid plot
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
     pd.set_option("display.max_colwidth", None)
-    grid_plot.show()
+    grid_plot_f.show()
     plot_notification.show()
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
+    plotted_train_batches = []
 
     def check_number(value):
         # if value is not str, NaN, infinity or negative infinity
@@ -869,17 +867,6 @@ def start_training():
         # update progress bar
         x = results["epoch"].iat[-1]
         pbar.update(int(x) + 1 - pbar.n)
-        # draw labels visualizations
-        if x == 0:
-            # copy necessary images to static dir
-            shutil.copy(local_labels_image_path, g.static_dir)
-            shutil.copy(local_labels_correlogram_path, g.static_dir)
-            # show images
-            static_labels_image_path = "/static/labels.jpg"
-            static_labels_correlogram_path = "/static/labels_correlogram.jpg"
-            labels_image.set(static_labels_image_path)
-            labels_correlogram.set(static_labels_correlogram_path)
-            labels_flexbox_f.show()
         # add new points to plots
         if check_number(float(train_box_loss)):
             grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
@@ -915,6 +902,16 @@ def start_training():
         if "val/seg_loss" in results.columns:
             if check_number(float(val_seg_loss)):
                 grid_plot.add_scalar("val/seg loss", float(val_seg_loss), int(x))
+        # visualize train batch
+        batch = f"train_batch{x}.jpg"
+        local_train_batches_path = os.path.join(local_artifacts_dir, batch)
+        if os.path.exists(local_train_batches_path) and batch not in plotted_train_batches and x < 10:
+            plotted_train_batches.append(batch)
+            shutil.copy(local_train_batches_path, g.static_dir)
+            # show images
+            static_train_batches_path = f"/static/train_batch{x}.jpg"
+            train_batches_gallery.append(static_train_batches_path)
+            train_batches_gallery_f.show()
 
     watcher = Watcher(
         watch_file,
