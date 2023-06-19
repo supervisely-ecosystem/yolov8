@@ -365,6 +365,12 @@ train_batches_gallery = GridGallery(
 )
 train_batches_gallery_f = Field(train_batches_gallery, "Train batches visualization")
 train_batches_gallery_f.hide()
+val_batches_gallery = GridGallery(
+    columns_number=4,
+    show_opacity_slider=False,
+)
+val_batches_gallery_f = Field(val_batches_gallery, "Model predictions visualization")
+val_batches_gallery_f.hide()
 progress_bar_upload_artifacts = Progress()
 train_done = DoneLabel("Training completed. Training artifacts were uploaded to Team Files")
 train_done.hide()
@@ -378,6 +384,7 @@ train_progress_content = Container(
         grid_plot_f,
         plot_notification,
         train_batches_gallery_f,
+        val_batches_gallery_f,
         progress_bar_upload_artifacts,
         train_done,
     ]
@@ -924,7 +931,8 @@ def start_training():
             # show images
             static_train_batches_path = f"/static/train_batch{x}.jpg"
             train_batches_gallery.append(static_train_batches_path)
-            train_batches_gallery_f.show()
+            if x == 0:
+                train_batches_gallery_f.show()
 
     watcher = Watcher(
         watch_file,
@@ -955,6 +963,27 @@ def start_training():
     )
     progress_bar_epochs.hide()
     watcher.running = False
+
+    # visualize model predictions
+    for i in range(4):
+        labels_path = os.path.join(local_artifacts_dir, f"val_batch{i}_labels.jpg")
+        if os.path.exists(labels_path):
+            shutil.copy(labels_path, g.static_dir)
+            static_val_batches_labels_path = f"/static/val_batch{i}_labels.jpg"
+            val_batches_gallery.append(
+                image_url=static_val_batches_labels_path,
+                title="labels",
+            )
+        preds_path = os.path.join(local_artifacts_dir, f"val_batch{i}_pred.jpg")
+        if os.path.exists(preds_path):
+            shutil.copy(preds_path, g.static_dir)
+            static_val_batches_pred_path = f"/static/val_batch{i}_pred.jpg"
+            val_batches_gallery.append(
+                image_url=static_val_batches_pred_path,
+                title="predictions",
+            )
+        if i == 0:
+            val_batches_gallery_f.show()
 
     # rename best checkpoint file
     results = pd.read_csv(watch_file)
