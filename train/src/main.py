@@ -506,25 +506,17 @@ def on_classes_selected(selected_classes):
 def select_task(task_type):
     project_shapes = [cls.geometry_type.geometry_name() for cls in project_meta.obj_classes]
     if task_type == "object detection":
-        if "rectangle" not in project_shapes:
-            sly.app.show_dialog(
-                title="There are no classes of shape rectangle in selected project",
-                description="Please, change task type or select another project with classes of shape rectangle",
-                status="warning",
-            )
-            select_classes_button.disable()
-        else:
-            select_classes_button.enable()
-            models_table_columns = [key for key in g.det_models_data[0].keys()]
-            models_table_subtitles = [None] * len(models_table_columns)
-            models_table_rows = []
-            for element in g.det_models_data:
-                models_table_rows.append(list(element.values()))
-            models_table.set_data(
-                columns=models_table_columns,
-                rows=models_table_rows,
-                subtitles=models_table_subtitles,
-            )
+        select_classes_button.enable()
+        models_table_columns = [key for key in g.det_models_data[0].keys()]
+        models_table_subtitles = [None] * len(models_table_columns)
+        models_table_rows = []
+        for element in g.det_models_data:
+            models_table_rows.append(list(element.values()))
+        models_table.set_data(
+            columns=models_table_columns,
+            rows=models_table_rows,
+            subtitles=models_table_subtitles,
+        )
     elif task_type == "instance segmentation":
         if "bitmap" not in project_shapes and "polygon" not in project_shapes:
             sly.app.show_dialog(
@@ -717,12 +709,16 @@ def start_training():
     selected_classes = classes_table.get_selected_classes()
     sly.Project.remove_classes_except(g.project_dir, classes_to_keep=selected_classes, inplace=True)
     # remove classes with unnecessary shapes
-    unnecessary_classes = []
-    for cls in project_meta.obj_classes:
-        if cls.name in selected_classes and cls.geometry_type.geometry_name() not in necessary_geometries:
-            unnecessary_classes.append(cls.name)
-    if len(unnecessary_classes) > 0:
-        sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
+    if task_type != "object detection":
+        unnecessary_classes = []
+        for cls in project_meta.obj_classes:
+            if cls.name in selected_classes and cls.geometry_type.geometry_name() not in necessary_geometries:
+                unnecessary_classes.append(cls.name)
+        if len(unnecessary_classes) > 0:
+            sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
+    # transfer project to detection task if necessary
+    if task_type == "object detection":
+        sly.Project.to_detection_task(g.project_dir, inplace=True)
     # remove unlabeled images if such option was selected by user
     if unlabeled_images_select.get_value() == "ignore unlabeled images":
         n_images_before = n_images
