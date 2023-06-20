@@ -10,7 +10,6 @@ app_root_directory = str(Path(__file__).parents[1])
 app_data_dir = os.path.join(app_root_directory, "tempfiles")
 project_dir = os.path.join(app_data_dir, "project_dir")
 yolov8_project_dir = os.path.join(app_data_dir, "yolov8_project_dir")
-static_dir = os.path.join(app_data_dir, "static")
 
 if sly.is_production():
     app_session_id = sly.io.env.task_id()

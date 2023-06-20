@@ -72,7 +72,6 @@ load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 api = sly.Api()
 team_id = sly.env.team_id()
-sly.fs.mkdir(g.static_dir)
 
 # if app had started from context menu, one of this has to be set:
 project_id = sly.env.project_id(raise_not_found=False)
@@ -432,7 +431,6 @@ app = sly.Application(
             card_train_artifacts,
         ]
     ),
-    static_dir=g.static_dir,
 )
 
 
@@ -844,7 +842,7 @@ def start_training():
     plot_notification.show()
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
     plotted_train_batches = []
-    remote_images_path = f"/yolov8_train/{task_type}/{project_info.name}/{g.app_session_id}/"
+    remote_images_path = f"/yolov8_train/{task_type}/{project_info.name}/images/{g.app_session_id}/"
 
     def check_number(value):
         # if value is not str, NaN, infinity or negative infinity
@@ -962,18 +960,18 @@ def start_training():
     for i in range(4):
         labels_path = os.path.join(local_artifacts_dir, f"val_batch{i}_labels.jpg")
         if os.path.exists(labels_path):
-            shutil.copy(labels_path, g.static_dir)
-            static_val_batches_labels_path = f"/static/val_batch{i}_labels.jpg"
+            remote_labels_path = os.path.join(remote_images_path, f"val_batch{i}_labels.jpg")
+            tf_labels_info = api.file.upload(team_id, labels_path, remote_labels_path)
             val_batches_gallery.append(
-                image_url=static_val_batches_labels_path,
+                image_url=tf_labels_info.full_storage_url,
                 title="labels",
             )
         preds_path = os.path.join(local_artifacts_dir, f"val_batch{i}_pred.jpg")
         if os.path.exists(preds_path):
-            shutil.copy(preds_path, g.static_dir)
-            static_val_batches_pred_path = f"/static/val_batch{i}_pred.jpg"
+            remote_preds_path = os.path.join(remote_images_path, f"val_batch{i}_pred.jpg")
+            tf_preds_info = api.file.upload(team_id, preds_path, remote_preds_path)
             val_batches_gallery.append(
-                image_url=static_val_batches_pred_path,
+                image_url=tf_preds_info.full_storage_url,
                 title="predictions",
             )
         if i == 0:
@@ -982,35 +980,35 @@ def start_training():
     # visualize additional training results
     confusion_matrix_path = os.path.join(local_artifacts_dir, "confusion_matrix_normalized.png")
     if os.path.exists(confusion_matrix_path):
-        shutil.copy(confusion_matrix_path, g.static_dir)
-        static_confusion_matrix_path = "/static/confusion_matrix_normalized.png"
-        additional_gallery.append(static_confusion_matrix_path)
+        remote_confusion_matrix_path = os.path.join(remote_images_path, "confusion_matrix_normalized.png")
+        tf_confusion_matrix_info = api.file.upload(team_id, confusion_matrix_path, remote_confusion_matrix_path)
+        additional_gallery.append(tf_confusion_matrix_info.full_storage_url)
         additional_gallery_f.show()
     pr_curve_path = os.path.join(local_artifacts_dir, "PR_curve.png")
     if os.path.exists(pr_curve_path):
-        shutil.copy(pr_curve_path, g.static_dir)
-        static_pr_curve_path = "/static/PR_curve.png"
-        additional_gallery.append(static_pr_curve_path)
+        remote_pr_curve_path = os.path.join(remote_images_path, "PR_curve.png")
+        tf_pr_curve_info = api.file.upload(team_id, pr_curve_path, remote_pr_curve_path)
+        additional_gallery.append(tf_pr_curve_info.full_storage_url)
     f1_curve_path = os.path.join(local_artifacts_dir, "F1_curve.png")
     if os.path.exists(f1_curve_path):
-        shutil.copy(f1_curve_path, g.static_dir)
-        static_f1_curve_path = "/static/F1_curve.png"
-        additional_gallery.append(static_f1_curve_path)
+        remote_f1_curve_path = os.path.join(remote_images_path, "F1_curve.png")
+        tf_f1_curve_info = api.file.upload(team_id, f1_curve_path, remote_f1_curve_path)
+        additional_gallery.append(tf_f1_curve_info.full_storage_url)
     box_f1_curve_path = os.path.join(local_artifacts_dir, "BoxF1_curve.png")
     if os.path.exists(box_f1_curve_path):
-        shutil.copy(box_f1_curve_path, g.static_dir)
-        static_box_f1_curve_path = "/static/BoxF1_curve.png"
-        additional_gallery.append(static_box_f1_curve_path, title="box f1-curve")
+        remote_box_f1_curve_path = os.path.join(remote_images_path, "BoxF1_curve.png")
+        tf_box_f1_curve_info = api.file.upload(team_id, box_f1_curve_path, remote_box_f1_curve_path)
+        additional_gallery.append(tf_box_f1_curve_info.full_storage_url)
     pose_f1_curve_path = os.path.join(local_artifacts_dir, "PoseF1_curve.png")
     if os.path.exists(pose_f1_curve_path):
-        shutil.copy(pose_f1_curve_path, g.static_dir)
-        pose_static_f1_curve_path = "/static/PoseF1_curve.png"
-        additional_gallery.append(pose_static_f1_curve_path, title="pose f1-curve")
+        remote_pose_f1_curve_path = os.path.join(remote_images_path, "PoseF1_curve.png")
+        tf_pose_f1_curve_info = api.file.upload(team_id, pose_f1_curve_path, remote_pose_f1_curve_path)
+        additional_gallery.append(tf_pose_f1_curve_info.full_storage_url)
     mask_f1_curve_path = os.path.join(local_artifacts_dir, "MaskF1_curve.png")
     if os.path.exists(mask_f1_curve_path):
-        shutil.copy(mask_f1_curve_path, g.static_dir)
-        static_mask_f1_curve_path = "/static/MaskF1_curve.png"
-        additional_gallery.append(static_mask_f1_curve_path, title="mask f1-curve")
+        remote_mask_f1_curve_path = os.path.join(remote_images_path, "MaskF1_curve.png")
+        tf_mask_f1_curve_info = api.file.upload(team_id, mask_f1_curve_path, remote_mask_f1_curve_path)
+        additional_gallery.append(tf_mask_f1_curve_info.full_storage_url)
 
     # rename best checkpoint file
     results = pd.read_csv(watch_file)
