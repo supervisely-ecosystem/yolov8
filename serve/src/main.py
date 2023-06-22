@@ -18,6 +18,8 @@ except ImportError:
     # for compatibility with python 3.7
     from typing_extensions import Literal
 from typing import List, Any, Dict, Union
+import numpy as np
+
 
 load_dotenv("serve/local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
@@ -195,7 +197,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if dto.score is not None:
                 tags.append(sly.Tag(self._get_confidence_tag_meta(), dto.score))
             label = sly.Label(geometry, obj_class, tags)
-            return label
         elif self.task_type == "instance segmentation":
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
@@ -224,12 +225,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 x, y = coordinate
                 nodes.append(sly.Node(label=label, row=y, col=x))
             label = sly.Label(sly.GraphNodes(nodes), obj_class)
-            return label
+        return label
 
     def predict(
         self, image_path: str, settings: Dict[str, Any]
     ) -> List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]:
         input_image = sly.image.read(image_path)
+        input_height, input_width = input_image.shape[:2]
         predictions = self.model(
             source=input_image,
             conf=settings["conf"],
@@ -266,9 +268,14 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     int(box[5]),
                 )
                 bbox = [top, left, bottom, right]
-                # results.append(PredictionBBox(self.class_names[cls_index], bbox, confidence))
+                mask = torch.unsqueeze(mask, 0)
+                mask = torch.unsqueeze(mask, 0)
+                mask = torch.nn.functional.interpolate(
+                    mask, (input_height, input_width), mode="nearest"
+                )
+                mask = mask.squeeze()
                 mask = mask.numpy()
-                results.append(PredictionMask(self.class_names[cls_index], mask))
+                results.append(PredictionMask(self.class_names[cls_index], mask, confidence))
         elif self.task_type == "pose estimation":
             keypoints = predictions[0].keypoints.data
         return results
