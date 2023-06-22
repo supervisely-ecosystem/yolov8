@@ -40,3 +40,21 @@ human_template.add_edge(src="left_eye", dst="left_ear")
 human_template.add_edge(src="right_eye", dst="right_ear")
 human_template.add_edge(src="left_ear", dst="left_shoulder")
 human_template.add_edge(src="right_ear", dst="right_shoulder")
+
+
+def dict_to_template(geometry_config):
+    template = KeypointsTemplate()
+    id_to_label = {}
+    for key, value in geometry_config["nodes"].items():
+        id_to_label[key] = value["label"]
+        template.add_point(
+            label=value["label"],
+            row=value["loc"][0],
+            col=value["loc"][1],
+        )
+    for edge in geometry_config["edges"]:
+        template.add_edge(
+            src=id_to_label[edge["src"]],
+            dst=id_to_label[edge["dst"]],
+        )
+    return template

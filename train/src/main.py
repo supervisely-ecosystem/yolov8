@@ -1018,6 +1018,16 @@ def start_training():
     new_best_filepath = os.path.join(local_artifacts_dir, "weights", best_filename)
     os.rename(current_best_filepath, new_best_filepath)
 
+    # add geometry config to saved weights for pose estimation task
+    for obj_class in project_meta.obj_classes:
+        if obj_class.geometry_type.geometry_name() == "graph" and obj_class.name in selected_classes:
+            geometry_config = obj_class.geometry_config
+            break
+    weights_filepath = os.path.join(local_artifacts_dir, "weights", best_filename)
+    weights_dict = torch.load(weights_filepath)
+    weights_dict["geometry_config"] = geometry_config
+    torch.save(weights_dict, weights_filepath)
+
     # save link to app ui
     app_url = f"/apps/sessions/{g.app_session_id}"
     app_link_path = os.path.join(local_artifacts_dir, "open_app.lnk")

@@ -10,7 +10,7 @@ import os
 from dotenv import load_dotenv
 from pathlib import Path
 
-from src.keypoints_template import human_template
+from src.keypoints_template import human_template, dict_to_template
 
 try:
     from typing import Literal
@@ -146,6 +146,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         if self.task_type == "pose estimation":
             if model_source == "Pretrained models":
                 self.keypoints_template = human_template
+            elif model_source == "Custom models":
+                weights_dict = torch.load(weights_dst_path)
+                geometry_config = weights_dict["geometry_config"]
+                self.keypoints_template = dict_to_template(geometry_config)
         print(f"✅ Model has been successfully loaded on {device.upper()} device")
 
     def get_info(self):
@@ -292,11 +296,16 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     int(box[5]),
                 )
                 included_labels, included_point_coordinates = [], []
-                point_coordinates, point_scores = keypoints[:, :2], keypoints[:, 2]
-                for j, (point_coordinate, point_score) in enumerate(
-                    zip(point_coordinates, point_scores)
-                ):
-                    if point_score >= point_threshold:
+                if keypoints_data.shape[-1] == 3:
+                    point_coordinates, point_scores = keypoints[:, :2], keypoints[:, 2]
+                    for j, (point_coordinate, point_score) in enumerate(
+                        zip(point_coordinates, point_scores)
+                    ):
+                        if point_score >= point_threshold:
+                            included_labels.append(point_labels[j])
+                            included_point_coordinates.append(point_coordinate.cpu().numpy())
+                elif keypoints_data.shape[-1] == 2:
+                    for j, point_coordinate in enumerate(keypoints):
                         included_labels.append(point_labels[j])
                         included_point_coordinates.append(point_coordinate.cpu().numpy())
                 if len(included_labels) > 1:
