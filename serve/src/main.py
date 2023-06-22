@@ -274,7 +274,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     mask, (input_height, input_width), mode="nearest"
                 )
                 mask = mask.squeeze()
-                mask = mask.numpy()
+                mask = mask.cpu().numpy()
                 results.append(PredictionMask(self.class_names[cls_index], mask, confidence))
         elif self.task_type == "pose estimation":
             keypoints = predictions[0].keypoints.data
