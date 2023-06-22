@@ -177,7 +177,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     classes.append(
                         ObjClass(
                             name,
-                            self._get_obj_class_shape(),
+                            sly.GraphNodes,
                             geometry_config=self.keypoints_template,
                         )
                     )
@@ -267,7 +267,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     float(box[4]),
                     int(box[5]),
                 )
-                bbox = [top, left, bottom, right]
                 mask = torch.unsqueeze(mask, 0)
                 mask = torch.unsqueeze(mask, 0)
                 mask = torch.nn.functional.interpolate(
@@ -277,7 +276,33 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 mask = mask.cpu().numpy()
                 results.append(PredictionMask(self.class_names[cls_index], mask, confidence))
         elif self.task_type == "pose estimation":
-            keypoints = predictions[0].keypoints.data
+            boxes_data = predictions[0].boxes.data
+            keypoints_data = predictions[0].keypoints.data
+            point_labels = self.keypoints_template.point_names
+            point_threshold = settings.get("point_threshold", 0.1)
+            for box, keypoints in zip(boxes_data, keypoints_data):
+                left, top, right, bottom, confidence, cls_index = (
+                    int(box[0]),
+                    int(box[1]),
+                    int(box[2]),
+                    int(box[3]),
+                    float(box[4]),
+                    int(box[5]),
+                )
+                included_labels, included_point_coordinates = [], []
+                point_coordinates, point_scores = keypoints[:, :2], keypoints[:, 2]
+                for j, (point_coordinate, point_score) in enumerate(
+                    zip(point_coordinates, point_scores)
+                ):
+                    if point_score >= point_threshold:
+                        included_labels.append(point_labels[j])
+                        included_point_coordinates.append(point_coordinate.cpu().numpy())
+                if len(included_labels) > 1:
+                    results.append(
+                        sly.nn.PredictionKeypoints(
+                            self.class_names[cls_index], included_labels, included_point_coordinates
+                        )
+                    )
         return results
 
 
