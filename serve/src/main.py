@@ -12,6 +12,9 @@ from pathlib import Path
 
 from src.keypoints_template import human_template, dict_to_template
 
+# for local inference
+# from keypoints_template import human_template, dict_to_template
+
 try:
     from typing import Literal
 except ImportError:
@@ -21,7 +24,7 @@ from typing import List, Any, Dict, Union
 import numpy as np
 
 
-load_dotenv("serve/local.env")
+load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 root_source_path = str(Path(__file__).parents[2])
 det_models_data_path = os.path.join(root_source_path, "models", "det_models_data.json")
@@ -155,7 +158,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def get_info(self):
         info = super().get_info()
         info["task type"] = self.task_type
-        info["videos_support"] = False
+        info["videos_support"] = True
         info["async_video_inference_support"] = False
         if self.task_type == "pose estimation":
             info["detector_included"] = True
@@ -329,7 +332,14 @@ else:
     print("Using device:", device)
     m.load_on_device(m.model_dir, device)
     image_path = "./demo_data/image_01.jpg"
-    results = m.predict(image_path, settings={})
+    settings = {
+        "conf": 0.25,
+        "iou": 0.7,
+        "half": False,
+        "max_det": 300,
+        "agnostic_nms": False,
+    }
+    results = m.predict(image_path, settings=settings)
     vis_path = "./demo_data/image_01_prediction.jpg"
-    m.visualize(results, image_path, vis_path, thickness=0)
+    m.visualize(results, image_path, vis_path, thickness=5)
     print(f"predictions and visualization have been saved: {vis_path}")
