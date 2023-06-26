@@ -159,7 +159,8 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         info = super().get_info()
         info["task type"] = self.task_type
         info["videos_support"] = True
-        info["async_video_inference_support"] = False
+        info["async_video_inference_support"] = True
+        info["tracking_on_videos_support"] = True
         if self.task_type == "pose estimation":
             info["detector_included"] = True
         return info
