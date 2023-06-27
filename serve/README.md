@@ -32,11 +32,11 @@ This app allows to apply YOLOv8 models to images and videos. App supports both m
 
 **Step 1.** Select task type, pretrained model architecture and press the **Serve** button. Please, note that list of models in the table below depends on selected task type
 
-![yolov8_pretrained_models](https://github.com/supervisely-ecosystem/yolov8/assets/91027877/2a15502d-8fb6-4059-afac-808ad938dd61)
+![yolov8_pretrained_models](https://user-images.githubusercontent.com/91027877/249001243-2a15502d-8fb6-4059-afac-808ad938dd61.png)
 
 **Step 2.** Wait for the model to deploy
 
-![yolov8_deployed](https://github.com/supervisely-ecosystem/yolov8/assets/91027877/da175901-2667-4d4c-a8dd-5b0d94c4919b)
+![yolov8_deployed](https://user-images.githubusercontent.com/91027877/249001614-da175901-2667-4d4c-a8dd-5b0d94c4919b.png)
 
 ## Custom models
 
