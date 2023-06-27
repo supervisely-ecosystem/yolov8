@@ -42,17 +42,17 @@ This app allows to apply YOLOv8 models to images and videos. App supports to use
 
 Copy model file path from Team Files and select task type:
 
-https://github.com/supervisely-ecosystem/yolov8/assets/91027877/d92ac00e-bfa7-448d-bfd5-599b4ca3e415
+https://user-images.githubusercontent.com/91027877/249001911-d92ac00e-bfa7-448d-bfd5-599b4ca3e415.mp4
 
 # Example: apply YOLOv8 to image in labeling tool
 
 Run **NN Image Labeling** app, connect to YOLOv8 app session, and click on "Apply model to image", or if you want to apply model only to the region within the bounding box, select the bbox and click on "Apply model to ROI":
 
-https://github.com/supervisely-ecosystem/yolov8/assets/91027877/a1c0e6bb-8783-448f-86c0-0d8a4eccfae0
+https://user-images.githubusercontent.com/91027877/249003695-a1c0e6bb-8783-448f-86c0-0d8a4eccfae0.mp4
 
 If you want to change model specific inference settings while working with the model in image labeling interface, go to **inference** tab in the settings section of **Apps** window, and change the parameters:
 
-https://github.com/supervisely-ecosystem/yolov8/assets/91027877/e8a4758b-0356-4efc-a6cf-da146e0d3266
+https://user-images.githubusercontent.com/91027877/249004380-e8a4758b-0356-4efc-a6cf-da146e0d3266.mp4
 
 # Related apps
 
