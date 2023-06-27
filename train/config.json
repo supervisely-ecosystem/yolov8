@@ -17,7 +17,9 @@
   "task_location": "workspace_tasks",
   "need_gpu": true,
   "isolate": true,
+  "icon": "https://github-production-user-asset-6210df.s3.amazonaws.com/12828725/248305685-8e9903d3-aa29-4172-bf58-5dbc12a9b6a4.png",
   "icon_cover": true,
+  "poster": "https://github-production-user-asset-6210df.s3.amazonaws.com/12828725/248298526-2849410e-4922-4d23-93a7-2385d6d75426.png",
   "context_menu": {
     "target": [
       "images_project"

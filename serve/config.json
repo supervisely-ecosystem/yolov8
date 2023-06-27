@@ -11,7 +11,9 @@
     "instance segmentation",
     "serve"
   ],
+  "icon": "https://github-production-user-asset-6210df.s3.amazonaws.com/12828725/248305683-9342e4f8-a308-4f9d-b97f-6f8257b259a8.png",
   "icon_cover": true,
+  "poster": "https://github-production-user-asset-6210df.s3.amazonaws.com/12828725/248300130-3593ebe9-cdd8-4265-8217-f5781b6fb860.png",
   "need_gpu": true,
   "session_tags": [
     "deployed_nn"
