@@ -27,3 +27,4 @@ if sly.is_production():
     train_params_filepath = "train/training_params.yaml"
 else:
     train_params_filepath = "training_params.yaml"  # for debug
+train_counter, val_counter = 0, 0
