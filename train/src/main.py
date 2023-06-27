@@ -1106,4 +1106,7 @@ def start_training():
     card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
+    # set task output
+    sly.output.set_directory(remote_artifacts_dir)
+    # stop app
     app.stop()
