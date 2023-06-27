@@ -44,6 +44,25 @@ Copy model file path from Team Files and select task type:
 
 https://github.com/supervisely-ecosystem/yolov8/assets/91027877/d92ac00e-bfa7-448d-bfd5-599b4ca3e415
 
+# Example: apply YOLOv8 to image in labeling tool
+
+Run **NN Image Labeling** app, connect to YOLOv8 app session, and click on "Apply model to image", or if you want to apply model only to the region within the bounding box, select the bbox and click on "Apply model to ROI":
+
+https://github.com/supervisely-ecosystem/yolov8/assets/91027877/a1c0e6bb-8783-448f-86c0-0d8a4eccfae0
+
+If you want to change model specific inference settings while working with the model in image labeling interface, go to **inference** tab in the settings section of **Apps** window, and change the parameters:
+
+https://github.com/supervisely-ecosystem/yolov8/assets/91027877/e8a4758b-0356-4efc-a6cf-da146e0d3266
+
+# Related apps
+
+- [NN Image Labeling](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%252Fnn-image-labeling%252Fannotation-tool) - integrate any deployed NN to Supervisely Image Labeling UI. Configure inference settings and model output classes. Press `Apply` button (or use hotkey) and detections with their confidences will immediately appear on the image.   
+    <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/nn-image-labeling/annotation-tool" src="https://i.imgur.com/hYEucNt.png" height="70px" margin-bottom="20px"/>
+
+- [Apply NN to Videos Project](https://ecosystem.supervise.ly/apps/apply-nn-to-videos-project) - app allows to label your videos using served Supervisely models.  
+  <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/apply-nn-to-videos-project" src="https://imgur.com/LDo8K1A.png" height="70px" margin-bottom="20px" />
+
+
 
 
 
