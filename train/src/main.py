@@ -36,7 +36,7 @@ from supervisely.app.widgets import (
 )
 from src.utils import get_train_val_sets, verify_train_val_sets
 from src.sly_to_yolov8 import transform
-from src.callbacks import on_train_batch_end, on_val_batch_end
+from src.callbacks import on_train_batch_end
 from ultralytics import YOLO
 import torch
 from src.metrics_watcher import Watcher
@@ -715,15 +715,10 @@ def start_training():
     if task_type != "object detection":
         unnecessary_classes = []
         for cls in project_meta.obj_classes:
-            if (
-                cls.name in selected_classes
-                and cls.geometry_type.geometry_name() not in necessary_geometries
-            ):
+            if cls.name in selected_classes and cls.geometry_type.geometry_name() not in necessary_geometries:
                 unnecessary_classes.append(cls.name)
         if len(unnecessary_classes) > 0:
-            sly.Project.remove_classes(
-                g.project_dir, classes_to_remove=unnecessary_classes, inplace=True
-            )
+            sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
     # transfer project to detection task if necessary
     if task_type == "object detection":
         sly.Project.to_detection_task(g.project_dir, inplace=True)
@@ -745,9 +740,7 @@ def start_training():
                     description="Val split length is 0 after ignoring images. Please check your data",
                     status="error",
                 )
-                raise ValueError(
-                    "Val split length is 0 after ignoring images. Please check your data"
-                )
+                raise ValueError("Val split length is 0 after ignoring images. Please check your data")
     # split the data
     train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
     verify_train_val_sets(train_set, val_set)
@@ -781,9 +774,7 @@ def start_training():
             model_filename = selected_model.lower() + ".pt"
             pretrained = True
             weights_dst_path = os.path.join(g.app_data_dir, model_filename)
-            weights_url = (
-                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
-            )
+            weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
             with urlopen(weights_url) as file:
                 weights_size = file.length
 
@@ -839,7 +830,6 @@ def start_training():
 
     # add callbacks to model
     model.add_callback("on_train_batch_end", on_train_batch_end)
-    model.add_callback("on_val_batch_end", on_val_batch_end)
 
     progress_bar_download_model.hide()
     # get additional training params
@@ -931,41 +921,18 @@ def start_training():
         # visualize train batch
         batch = f"train_batch{x}.jpg"
         local_train_batches_path = os.path.join(local_artifacts_dir, batch)
-        if (
-            os.path.exists(local_train_batches_path)
-            and batch not in plotted_train_batches
-            and x < 10
-        ):
+        if os.path.exists(local_train_batches_path) and batch not in plotted_train_batches and x < 10:
             plotted_train_batches.append(batch)
             remote_train_batches_path = os.path.join(remote_images_path, batch)
-            tf_train_batches_info = api.file.upload(
-                team_id, local_train_batches_path, remote_train_batches_path
-            )
+            tf_train_batches_info = api.file.upload(team_id, local_train_batches_path, remote_train_batches_path)
             train_batches_gallery.append(tf_train_batches_info.full_storage_url)
             if x == 0:
                 train_batches_gallery_f.show()
-
-    n_train_batches = math.ceil(len(train_set) / batch_size_input.get_value())
-    n_val_batches = math.ceil(len(val_set) / batch_size_input.get_value())
-    train_batches_filepath = "train_batches.txt"
-
-    def on_train_batches_file_changed(filepath, pbar):
-        g.train_counter += 1
-        if g.train_counter % n_train_batches == 0:
-            g.train_counter = 0
-            pbar.reset()
-        else:
-            pbar.update(g.train_counter % n_train_batches - pbar.n)
 
     watcher = Watcher(
         watch_file,
         on_results_file_changed,
         progress_bar_epochs(message="Epochs:", total=n_epochs_input.get_value()),
-    )
-    train_batch_watcher = Watcher(
-        train_batches_filepath,
-        on_train_batches_file_changed,
-        progress_bar_iters(message="Training batches:", total=n_train_batches),
     )
     # train model and upload best checkpoints to team files
     device = 0 if torch.cuda.is_available() else "cpu"
@@ -975,11 +942,30 @@ def start_training():
     def watcher_func():
         watcher.watch()
 
-    def train_batch_watcher_func():
-        train_batch_watcher.watch()
-
     threading.Thread(target=watcher_func, daemon=True).start()
-    threading.Thread(target=train_batch_watcher_func, daemon=True).start()
+    if len(train_set) > 200:
+        n_train_batches = math.ceil(len(train_set) / batch_size_input.get_value())
+        train_batches_filepath = "train_batches.txt"
+
+        def on_train_batches_file_changed(filepath, pbar):
+            g.train_counter += 1
+            if g.train_counter % n_train_batches == 0:
+                g.train_counter = 0
+                pbar.reset()
+            else:
+                pbar.update(g.train_counter % n_train_batches - pbar.n)
+
+        train_batch_watcher = Watcher(
+            train_batches_filepath,
+            on_train_batches_file_changed,
+            progress_bar_iters(message="Training batches:", total=n_train_batches),
+        )
+
+        def train_batch_watcher_func():
+            train_batch_watcher.watch()
+
+        threading.Thread(target=train_batch_watcher_func, daemon=True).start()
+
     model.train(
         data=data_path,
         epochs=n_epochs_input.get_value(),
@@ -993,8 +979,8 @@ def start_training():
         pretrained=pretrained,
         **additional_params,
     )
-    progress_bar_epochs.hide()
     progress_bar_iters.hide()
+    progress_bar_epochs.hide()
     watcher.running = False
 
     # visualize model predictions
@@ -1021,12 +1007,8 @@ def start_training():
     # visualize additional training results
     confusion_matrix_path = os.path.join(local_artifacts_dir, "confusion_matrix_normalized.png")
     if os.path.exists(confusion_matrix_path):
-        remote_confusion_matrix_path = os.path.join(
-            remote_images_path, "confusion_matrix_normalized.png"
-        )
-        tf_confusion_matrix_info = api.file.upload(
-            team_id, confusion_matrix_path, remote_confusion_matrix_path
-        )
+        remote_confusion_matrix_path = os.path.join(remote_images_path, "confusion_matrix_normalized.png")
+        tf_confusion_matrix_info = api.file.upload(team_id, confusion_matrix_path, remote_confusion_matrix_path)
         additional_gallery.append(tf_confusion_matrix_info.full_storage_url)
         additional_gallery_f.show()
     pr_curve_path = os.path.join(local_artifacts_dir, "PR_curve.png")
@@ -1047,24 +1029,18 @@ def start_training():
     pose_f1_curve_path = os.path.join(local_artifacts_dir, "PoseF1_curve.png")
     if os.path.exists(pose_f1_curve_path):
         remote_pose_f1_curve_path = os.path.join(remote_images_path, "PoseF1_curve.png")
-        tf_pose_f1_curve_info = api.file.upload(
-            team_id, pose_f1_curve_path, remote_pose_f1_curve_path
-        )
+        tf_pose_f1_curve_info = api.file.upload(team_id, pose_f1_curve_path, remote_pose_f1_curve_path)
         additional_gallery.append(tf_pose_f1_curve_info.full_storage_url)
     mask_f1_curve_path = os.path.join(local_artifacts_dir, "MaskF1_curve.png")
     if os.path.exists(mask_f1_curve_path):
         remote_mask_f1_curve_path = os.path.join(remote_images_path, "MaskF1_curve.png")
-        tf_mask_f1_curve_info = api.file.upload(
-            team_id, mask_f1_curve_path, remote_mask_f1_curve_path
-        )
+        tf_mask_f1_curve_info = api.file.upload(team_id, mask_f1_curve_path, remote_mask_f1_curve_path)
         additional_gallery.append(tf_mask_f1_curve_info.full_storage_url)
 
     # rename best checkpoint file
     results = pd.read_csv(watch_file)
     results.columns = [col.replace(" ", "") for col in results.columns]
-    results["fitness"] = (0.1 * results["metrics/mAP50(B)"]) + (
-        0.9 * results["metrics/mAP50-95(B)"]
-    )
+    results["fitness"] = (0.1 * results["metrics/mAP50(B)"]) + (0.9 * results["metrics/mAP50-95(B)"])
     print("Final results:")
     print(results)
     best_epoch = results["fitness"].idxmax()
@@ -1076,10 +1052,7 @@ def start_training():
     # add geometry config to saved weights for pose estimation task
     if task_type == "pose estimation":
         for obj_class in project_meta.obj_classes:
-            if (
-                obj_class.geometry_type.geometry_name() == "graph"
-                and obj_class.name in selected_classes
-            ):
+            if obj_class.geometry_type.geometry_name() == "graph" and obj_class.name in selected_classes:
                 geometry_config = obj_class.geometry_config
                 break
         weights_filepath = os.path.join(local_artifacts_dir, "weights", best_filename)
@@ -1136,6 +1109,7 @@ def start_training():
     card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
+    sly.fs.silent_remove("train_batches.txt")
     # set task output
     sly.output.set_directory(remote_artifacts_dir)
     # stop app
