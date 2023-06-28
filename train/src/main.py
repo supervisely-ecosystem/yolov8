@@ -1047,7 +1047,7 @@ def start_training():
         watcher.watch()
 
     threading.Thread(target=watcher_func, daemon=True).start()
-    if len(train_set) > 200:
+    if len(train_set) > 10:
         n_train_batches = math.ceil(len(train_set) / batch_size_input.get_value())
         train_batches_filepath = "train_batches.txt"
 
@@ -1055,7 +1055,6 @@ def start_training():
             g.train_counter += 1
             if g.train_counter % n_train_batches == 0:
                 g.train_counter = 0
-                pbar.update(1000)
                 pbar.reset()
             else:
                 pbar.update(g.train_counter % n_train_batches - pbar.n)
