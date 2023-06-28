@@ -36,6 +36,7 @@ from supervisely.app.widgets import (
 )
 from src.utils import get_train_val_sets, verify_train_val_sets
 from src.sly_to_yolov8 import transform
+from src.callbacks import on_train_batch_end
 from ultralytics import YOLO
 import torch
 from src.metrics_watcher import Watcher
@@ -44,7 +45,7 @@ import pandas as pd
 from functools import partial
 from urllib.request import urlopen
 import math
-import shutil
+import ruamel.yaml
 
 
 # function for updating global variables
@@ -297,6 +298,27 @@ n_workers_input_f = Field(
     title="Number of workers",
     description="Number of worker threads for data loading",
 )
+additional_config_items = [
+    RadioGroup.Item(value="custom"),
+    RadioGroup.Item(value="import template from Team Files"),
+]
+additional_config_radio = RadioGroup(additional_config_items, direction="horizontal")
+additional_config_radio_f = Field(
+    content=additional_config_radio,
+    title="Define way of passing additional parameters",
+    description="Create custom config or import template from Team Files",
+)
+additional_config_template_select = SelectString(values=["No data"])
+additional_config_template_select_f = Field(
+    content=additional_config_template_select,
+    title="Select template",
+)
+additional_config_template_select_f.hide()
+no_templates_notification = NotificationBox(
+    title="No templates found",
+    description="There are no templates for this task type in Team Files. You can create custom config and save it as a template to Team Files - you will be able to reuse it in your future experiments",
+)
+no_templates_notification.hide()
 train_settings_editor = Editor(language_mode="yaml", height_lines=50)
 with open(g.train_params_filepath, "r") as f:
     train_params = f.read()
@@ -307,6 +329,14 @@ train_settings_editor_f = Field(
     description="Tune learning rate, augmentations and other parameters",
 )
 save_train_params_button = Button("Save training hyperparameters")
+save_template_button = Button(
+    text="Save template to Team Files",
+    icon="zmdi zmdi-cloud-upload",
+)
+save_params_flexbox = Flexbox(
+    widgets=[save_train_params_button, save_template_button],
+    gap=20,
+)
 reselect_train_params_button = Button(
     '<i style="margin-right: 5px" class="zmdi zmdi-rotate-left"></i>Change training hyperparameters',
     button_type="warning",
@@ -316,6 +346,8 @@ reselect_train_params_button = Button(
 reselect_train_params_button.hide()
 train_params_done = DoneLabel("Successfully saved training hyperparameters")
 train_params_done.hide()
+save_template_done = DoneLabel("Successfully uploaded template to Team Files")
+save_template_done.hide()
 train_params_content = Container(
     [
         select_train_mode_f,
@@ -326,10 +358,14 @@ train_params_content = Container(
         select_optimizer_f,
         save_checkpoints_content,
         n_workers_input_f,
+        additional_config_radio_f,
+        additional_config_template_select_f,
+        no_templates_notification,
         train_settings_editor_f,
-        save_train_params_button,
+        save_params_flexbox,
         reselect_train_params_button,
         train_params_done,
+        save_template_done,
     ]
 )
 card_train_params = Card(
@@ -349,6 +385,7 @@ progress_bar_download_project = Progress()
 progress_bar_convert_to_yolo = Progress()
 progress_bar_download_model = Progress()
 progress_bar_epochs = Progress()
+progress_bar_iters = Progress(hide_on_finish=False)
 plot_titles = ["train", "val", "precision & recall"]
 grid_plot = GridPlot(data=plot_titles, columns=3, gap=20)
 grid_plot_f = Field(grid_plot, "Training and validation metrics")
@@ -386,6 +423,7 @@ train_progress_content = Container(
         progress_bar_convert_to_yolo,
         progress_bar_download_model,
         progress_bar_epochs,
+        progress_bar_iters,
         grid_plot_f,
         plot_notification,
         train_batches_gallery_f,
@@ -634,6 +672,58 @@ def change_file_preview(value):
     model_file_thumbnail.set(file_info)
 
 
+@additional_config_radio.value_changed
+def change_radio(value):
+    if value == "import template from Team Files":
+        remote_templates_dir = os.path.join(
+            "/yolov8_train", task_type_select.get_value(), "param_templates"
+        )
+        templates = api.file.list(team_id, remote_templates_dir)
+        if len(templates) == 0:
+            no_templates_notification.show()
+        else:
+            template_names = [template["name"] for template in templates]
+            additional_config_template_select.set(template_names)
+            additional_config_template_select_f.show()
+    else:
+        additional_config_template_select_f.hide()
+
+
+@additional_config_template_select.value_changed
+def change_template(template):
+    remote_templates_dir = os.path.join(
+        "/yolov8_train", task_type_select.get_value(), "param_templates"
+    )
+    remote_template_path = os.path.join(remote_templates_dir, template)
+    local_template_path = os.path.join(g.app_data_dir, template)
+    api.file.download(team_id, remote_template_path, local_template_path)
+    with open(local_template_path, "r") as f:
+        train_params = f.read()
+    train_settings_editor.set_text(train_params)
+
+
+@save_template_button.click
+def upload_template():
+    save_template_button.loading = True
+    remote_templates_dir = os.path.join(
+        "/yolov8_train", task_type_select.get_value(), "param_templates"
+    )
+    additional_params = train_settings_editor.get_text()
+    ryaml = ruamel.yaml.YAML()
+    additional_params = ryaml.load(additional_params)
+    # additional_params = yaml.safe_load(additional_params)
+    filename = project_info.name.replace(" ", "_") + "_param_template.yml"
+    with open(filename, "w") as outfile:
+        # yaml.dump(additional_params, outfile, default_flow_style=False)
+        ryaml.dump(additional_params, outfile)
+    remote_filepath = os.path.join(remote_templates_dir, filename)
+    api.file.upload(team_id, filename, api.file.get_free_name(team_id, remote_filepath))
+    sly.fs.silent_remove(filename)
+    save_template_button.loading = False
+    save_template_button.hide()
+    save_template_done.show()
+
+
 @save_train_params_button.click
 def save_train_params():
     save_train_params_button.hide()
@@ -664,6 +754,8 @@ def change_train_params():
     select_optimizer.enable()
     n_workers_input.enable()
     train_settings_editor.readonly = False
+    save_template_button.show()
+    save_template_done.hide()
 
 
 @start_training_button.click
@@ -833,6 +925,10 @@ def start_training():
             )
         pretrained = True
         model = YOLO(weights_dst_path)
+
+    # add callbacks to model
+    model.add_callback("on_train_batch_end", on_train_batch_end)
+
     progress_bar_download_model.hide()
     # get additional training params
     additional_params = train_settings_editor.get_text()
@@ -951,6 +1047,29 @@ def start_training():
         watcher.watch()
 
     threading.Thread(target=watcher_func, daemon=True).start()
+    if len(train_set) > 300:
+        n_train_batches = math.ceil(len(train_set) / batch_size_input.get_value())
+        train_batches_filepath = "train_batches.txt"
+
+        def on_train_batches_file_changed(filepath, pbar):
+            g.train_counter += 1
+            if g.train_counter % n_train_batches == 0:
+                g.train_counter = 0
+                pbar.reset()
+            else:
+                pbar.update(g.train_counter % n_train_batches - pbar.n)
+
+        train_batch_watcher = Watcher(
+            train_batches_filepath,
+            on_train_batches_file_changed,
+            progress_bar_iters(message="Training batches:", total=n_train_batches),
+        )
+
+        def train_batch_watcher_func():
+            train_batch_watcher.watch()
+
+        threading.Thread(target=train_batch_watcher_func, daemon=True).start()
+
     model.train(
         data=data_path,
         epochs=n_epochs_input.get_value(),
@@ -964,6 +1083,7 @@ def start_training():
         pretrained=pretrained,
         **additional_params,
     )
+    progress_bar_iters.hide()
     progress_bar_epochs.hide()
     watcher.running = False
 
@@ -1106,6 +1226,7 @@ def start_training():
     card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
+    sly.fs.silent_remove("train_batches.txt")
     # set task output
     sly.output.set_directory(remote_artifacts_dir)
     # stop app
