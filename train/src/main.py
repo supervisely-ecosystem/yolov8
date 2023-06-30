@@ -1076,7 +1076,7 @@ def start_training():
         patience=patience_input.get_value(),
         batch=batch_size_input.get_value(),
         imgsz=image_size_input.get_value(),
-        save_period=1000,
+        save_period=10,
         device=device,
         workers=n_workers_input.get_value(),
         optimizer=select_optimizer.get_value(),
