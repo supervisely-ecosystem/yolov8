@@ -241,6 +241,8 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self, image_path: str, settings: Dict[str, Any]
     ) -> List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]:
         input_image = sly.image.read(image_path)
+        # RGB to BGR
+        input_image = input_image[:, :, ::-1]
         input_height, input_width = input_image.shape[:2]
         predictions = self.model(
             source=input_image,
