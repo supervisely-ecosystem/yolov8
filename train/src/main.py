@@ -1302,4 +1302,4 @@ def start_training():
     # set task output
     sly.output.set_directory(remote_artifacts_dir)
     # stop app
-    app.stop()
+    # app.stop()
