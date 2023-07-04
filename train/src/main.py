@@ -408,12 +408,15 @@ plot_notification.hide()
 train_batches_gallery = GridGallery(
     columns_number=3,
     show_opacity_slider=False,
+    enable_zoom=True,
 )
 train_batches_gallery_f = Field(train_batches_gallery, "Train batches visualization")
 train_batches_gallery_f.hide()
 val_batches_gallery = GridGallery(
     columns_number=2,
     show_opacity_slider=False,
+    enable_zoom=True,
+    sync_views=True,
 )
 val_batches_gallery_f = Field(val_batches_gallery, "Model predictions visualization")
 val_batches_gallery_f.hide()
@@ -1130,11 +1133,12 @@ def start_training():
 
     # visualize model predictions
     for i in range(4):
+        val_batch_labels_id, val_batch_preds_id = None, None
         labels_path = os.path.join(local_artifacts_dir, f"val_batch{i}_labels.jpg")
         if os.path.exists(labels_path):
             remote_labels_path = os.path.join(remote_images_path, f"val_batch{i}_labels.jpg")
             tf_labels_info = api.file.upload(team_id, labels_path, remote_labels_path)
-            val_batches_gallery.append(
+            val_batch_labels_id = val_batches_gallery.append(
                 image_url=tf_labels_info.full_storage_url,
                 title="labels",
             )
@@ -1142,10 +1146,12 @@ def start_training():
         if os.path.exists(preds_path):
             remote_preds_path = os.path.join(remote_images_path, f"val_batch{i}_pred.jpg")
             tf_preds_info = api.file.upload(team_id, preds_path, remote_preds_path)
-            val_batches_gallery.append(
+            val_batch_preds_id = val_batches_gallery.append(
                 image_url=tf_preds_info.full_storage_url,
                 title="predictions",
             )
+        if val_batch_labels_id and val_batch_preds_id:
+            val_batches_gallery.sync_images([[val_batch_labels_id, val_batch_preds_id]])
         if i == 0:
             val_batches_gallery_f.show()
 
