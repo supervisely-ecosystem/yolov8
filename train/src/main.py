@@ -34,6 +34,7 @@ from supervisely.app.widgets import (
     Image,
     GridGallery,
     TaskLogs,
+    Stepper,
 )
 from src.utils import get_train_val_sets, verify_train_val_sets
 from src.sly_to_yolov8 import transform
@@ -269,7 +270,7 @@ select_train_mode = SelectString(values=["Finetune mode", "Scratch mode"])
 select_train_mode_f = Field(
     content=select_train_mode,
     title="Select training mode",
-    description="Choose whether to finetune pretrained model or train model from scratch",
+    description="Finetune mode - .pt file with pretrained model weights will be downloaded, Scratch mode - model weights will be initialized randomly",
 )
 n_epochs_input = InputNumber(value=100, min=1)
 n_epochs_input_f = Field(content=n_epochs_input, title="Number of epochs")
@@ -411,7 +412,7 @@ train_batches_gallery = GridGallery(
 train_batches_gallery_f = Field(train_batches_gallery, "Train batches visualization")
 train_batches_gallery_f.hide()
 val_batches_gallery = GridGallery(
-    columns_number=4,
+    columns_number=2,
     show_opacity_slider=False,
 )
 val_batches_gallery_f = Field(val_batches_gallery, "Model predictions visualization")
@@ -468,16 +469,23 @@ card_train_artifacts.collapse()
 card_train_artifacts.lock()
 
 
+stepper = Stepper(
+    widgets=[
+        card_project_settings,
+        card_classes,
+        card_train_val_split,
+        card_model_selection,
+        card_train_params,
+        card_train_progress,
+        card_train_artifacts,
+    ]
+)
+
+
 app = sly.Application(
     layout=Container(
         widgets=[
-            card_project_settings,
-            card_classes,
-            card_train_val_split,
-            card_model_selection,
-            card_train_params,
-            card_train_progress,
-            card_train_artifacts,
+            stepper,
         ]
     ),
 )
@@ -526,6 +534,9 @@ def select_input_data():
     select_data_button.hide()
     select_done.show()
     reselect_data_button.show()
+    curr_step = stepper.get_active_step()
+    curr_step += 1
+    stepper.set_active_step(curr_step)
     card_classes.unlock()
     card_classes.uncollapse()
 
@@ -536,6 +547,9 @@ def reselect_input_data():
     reselect_data_button.hide()
     select_done.hide()
     dataset_selector.enable()
+    curr_step = stepper.get_active_step()
+    curr_step -= 1
+    stepper.set_active_step(curr_step)
 
 
 @classes_table.value_changed
@@ -620,6 +634,9 @@ def select_classes():
     select_other_classes_button.show()
     classes_table.disable()
     task_type_select.disable()
+    curr_step = stepper.get_active_step()
+    curr_step += 1
+    stepper.set_active_step(curr_step)
     card_train_val_split.unlock()
     card_train_val_split.uncollapse()
 
@@ -631,6 +648,9 @@ def select_other_classes():
     select_other_classes_button.hide()
     classes_done.hide()
     select_classes_button.show()
+    curr_step = stepper.get_active_step()
+    curr_step -= 1
+    stepper.set_active_step(curr_step)
 
 
 @split_data_button.click
@@ -640,6 +660,9 @@ def split_data():
     split_data_button.hide()
     split_done.show()
     resplit_data_button.show()
+    curr_step = stepper.get_active_step()
+    curr_step += 1
+    stepper.set_active_step(curr_step)
     card_model_selection.unlock()
     card_model_selection.uncollapse()
 
@@ -651,6 +674,9 @@ def resplit_data():
     split_data_button.show()
     split_done.hide()
     resplit_data_button.hide()
+    curr_step = stepper.get_active_step()
+    curr_step -= 1
+    stepper.set_active_step(curr_step)
 
 
 @select_model_button.click
@@ -661,6 +687,9 @@ def select_model():
     models_table.disable()
     model_path_input.disable()
     reselect_model_button.show()
+    curr_step = stepper.get_active_step()
+    curr_step += 1
+    stepper.set_active_step(curr_step)
     card_train_params.unlock()
     card_train_params.uncollapse()
 
@@ -673,6 +702,9 @@ def reselect_model():
     models_table.enable()
     model_path_input.enable()
     reselect_model_button.hide()
+    curr_step = stepper.get_active_step()
+    curr_step -= 1
+    stepper.set_active_step(curr_step)
 
 
 @model_path_input.value_changed
@@ -696,6 +728,7 @@ def change_radio(value):
             additional_config_template_select_f.show()
     else:
         additional_config_template_select_f.hide()
+        no_templates_notification.hide()
 
 
 @additional_config_template_select.value_changed
@@ -742,6 +775,9 @@ def save_train_params():
     select_optimizer.disable()
     n_workers_input.disable()
     train_settings_editor.readonly = True
+    curr_step = stepper.get_active_step()
+    curr_step += 1
+    stepper.set_active_step(curr_step)
     card_train_progress.unlock()
     card_train_progress.uncollapse()
 
@@ -761,6 +797,9 @@ def change_train_params():
     train_settings_editor.readonly = False
     save_template_button.show()
     save_template_done.hide()
+    curr_step = stepper.get_active_step()
+    curr_step -= 1
+    stepper.set_active_step(curr_step)
 
 
 @logs_button.click
@@ -1212,6 +1251,9 @@ def start_training():
     start_training_button.disable()
     logs_button.disable()
     train_done.show()
+    curr_step = stepper.get_active_step()
+    curr_step += 1
+    stepper.set_active_step(curr_step)
     card_train_artifacts.unlock()
     card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed

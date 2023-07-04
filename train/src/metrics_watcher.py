@@ -22,7 +22,7 @@ class Watcher(object):
         if stamp != self._cached_stamp:
             self._cached_stamp = stamp
             # File has changed, so do something...
-            print("File changed")
+            # print("File changed")
             if self.call_func_on_change is not None:
                 self.call_func_on_change(self.filename, *self.args, **self.kwargs)
 
