@@ -408,7 +408,6 @@ plot_notification.hide()
 train_batches_gallery = GridGallery(
     columns_number=3,
     show_opacity_slider=False,
-    enable_zoom=True,
 )
 train_batches_gallery_f = Field(train_batches_gallery, "Train batches visualization")
 train_batches_gallery_f.hide()
@@ -1173,7 +1172,7 @@ def start_training():
                 title="predictions",
             )
         if val_batch_labels_id and val_batch_preds_id:
-            val_batches_gallery.sync_images([[val_batch_labels_id, val_batch_preds_id]])
+            val_batches_gallery.sync_images([val_batch_labels_id, val_batch_preds_id])
         if i == 0:
             val_batches_gallery_f.show()
 
