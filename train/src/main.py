@@ -414,12 +414,15 @@ train_batches_gallery_f.hide()
 val_batches_gallery = GridGallery(
     columns_number=2,
     show_opacity_slider=False,
+    enable_zoom=True,
+    sync_views=True,
 )
 val_batches_gallery_f = Field(val_batches_gallery, "Model predictions visualization")
 val_batches_gallery_f.hide()
 additional_gallery = GridGallery(
     columns_number=3,
     show_opacity_slider=False,
+    enable_zoom=True,
 )
 additional_gallery_f = Field(additional_gallery, "Additional training results visualization")
 additional_gallery_f.hide()
@@ -529,7 +532,7 @@ def select_input_data():
         )
     select_data_button.loading = True
     dataset_selector.disable()
-    classes_table.read_meta(project_meta)
+    classes_table.read_project_from_id(project_id)
     select_data_button.loading = False
     select_data_button.hide()
     select_done.show()
@@ -1130,11 +1133,12 @@ def start_training():
 
     # visualize model predictions
     for i in range(4):
+        val_batch_labels_id, val_batch_preds_id = None, None
         labels_path = os.path.join(local_artifacts_dir, f"val_batch{i}_labels.jpg")
         if os.path.exists(labels_path):
             remote_labels_path = os.path.join(remote_images_path, f"val_batch{i}_labels.jpg")
             tf_labels_info = api.file.upload(team_id, labels_path, remote_labels_path)
-            val_batches_gallery.append(
+            val_batch_labels_id = val_batches_gallery.append(
                 image_url=tf_labels_info.full_storage_url,
                 title="labels",
             )
@@ -1142,10 +1146,12 @@ def start_training():
         if os.path.exists(preds_path):
             remote_preds_path = os.path.join(remote_images_path, f"val_batch{i}_pred.jpg")
             tf_preds_info = api.file.upload(team_id, preds_path, remote_preds_path)
-            val_batches_gallery.append(
+            val_batch_preds_id = val_batches_gallery.append(
                 image_url=tf_preds_info.full_storage_url,
                 title="predictions",
             )
+        if val_batch_labels_id and val_batch_preds_id:
+            val_batches_gallery.sync_images([val_batch_labels_id, val_batch_preds_id])
         if i == 0:
             val_batches_gallery_f.show()
 
