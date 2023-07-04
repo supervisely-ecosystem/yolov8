@@ -24,7 +24,8 @@
     "target": [
       "images_project"
     ],
-    "context_root": "Neural Networks"
+    "context_root": "Neural Networks",
+    "context_category": "YOLO"
   },
   "community_agent": false,
   "license": {
