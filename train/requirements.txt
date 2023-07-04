@@ -1,4 +1,4 @@
-git+https://github.com/supervisely/supervisely.git@grid-gallery-improvements
+supervisely==6.72.60
 ultralytics==8.0.112
 --extra-index-url https://download.pytorch.org/whl/cu113
 torch==1.10.1+cu113
