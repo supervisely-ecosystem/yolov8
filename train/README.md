@@ -33,7 +33,7 @@ https://user-images.githubusercontent.com/91027877/249008934-293b3176-d5f3-4edb-
 
 # Screenshot
 
-![train_yolov8_screen](https://user-images.githubusercontent.com/91027877/249011925-4c4cb749-a04d-4613-bdf5-8ab26ec4efaa.png)
+![train_yolov8_full_screen](https://user-images.githubusercontent.com/91027877/250972249-7d27d601-3aa8-4614-bf11-d4d71a425602.png)
 
 
 # Acknowledgment
