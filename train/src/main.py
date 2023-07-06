@@ -49,6 +49,13 @@ from functools import partial
 from urllib.request import urlopen
 import math
 import ruamel.yaml
+import logging
+
+
+uvicorn_error = logging.getLogger("uvicorn.error")
+uvicorn_error.disabled = True
+uvicorn_access = logging.getLogger("uvicorn.access")
+uvicorn_access.disabled = True
 
 
 # function for updating global variables
