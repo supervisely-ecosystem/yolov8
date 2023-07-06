@@ -1130,7 +1130,7 @@ def start_training():
     # train model and upload best checkpoints to team files
     devices = select_gpus.get_value()
     if len(devices) == 1:
-        device = device[0]
+        device = devices[0]
     else:
         device = ",".join(str(el) for el in devices)
 
