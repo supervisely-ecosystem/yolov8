@@ -849,6 +849,7 @@ def change_logs_visibility():
 
 @start_training_button.click
 def start_training():
+    os.environ["LOGLEVEL"] = "INFO"
     task_type = task_type_select.get_value()
     if sly.is_production():
         local_dir = g.root_source_path
