@@ -1132,7 +1132,7 @@ def start_training():
     if len(devices) == 1:
         device = device[0]
     else:
-        device = devices
+        device = ",".join(str(el) for el in devices)
 
     # for debug only
     print("--------------Devices:--------------")
