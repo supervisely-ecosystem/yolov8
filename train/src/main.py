@@ -35,6 +35,7 @@ from supervisely.app.widgets import (
     GridGallery,
     TaskLogs,
     Stepper,
+    Select,
 )
 from src.utils import get_train_val_sets, verify_train_val_sets
 from src.sly_to_yolov8 import transform
@@ -266,6 +267,28 @@ card_model_selection.lock()
 
 
 ### 5. Training hyperparameters
+device_count = torch.cuda.device_count()
+if device_count > 0:
+    devices = []
+    for i in range(device_count):
+        devices.append(Select.Item(i, torch.cuda.get_device_properties(i).name))
+else:
+    devices = [Select.Item("cpu", "cpu")]
+
+select_gpus = Select(
+    items=devices,
+    multiple=True,
+    # placeholder=''
+)
+select_gpus_f = Field(content=select_gpus, title="Select GPUs")
+
+if device_count > 0:
+    select_gpus.set_value([0])
+else:
+    select_gpus.set_value(["cpu"])
+    select_gpus.disable()
+
+
 select_train_mode = SelectString(values=["Finetune mode", "Scratch mode"])
 select_train_mode_f = Field(
     content=select_train_mode,
@@ -352,6 +375,7 @@ save_template_done = DoneLabel("Successfully uploaded template to Team Files")
 save_template_done.hide()
 train_params_content = Container(
     [
+        select_gpus_f,
         select_train_mode_f,
         n_epochs_input_f,
         patience_input_f,
@@ -1083,7 +1107,13 @@ def start_training():
         progress_bar_epochs(message="Epochs:", total=n_epochs_input.get_value()),
     )
     # train model and upload best checkpoints to team files
-    device = 0 if torch.cuda.is_available() else "cpu"
+    devices = select_gpus.get_value()
+    if len(devices) == 1:
+        device = device[0]
+    else:
+        device = devices
+
+    # device = 0 if torch.cuda.is_available() else "cpu"
     data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
     sly.logger.info(f"Using device: {device}")
 
@@ -1122,6 +1152,7 @@ def start_training():
         imgsz=image_size_input.get_value(),
         save_period=1000,
         device=device,
+        # device=[0,1],
         workers=n_workers_input.get_value(),
         optimizer=select_optimizer.get_value(),
         pretrained=pretrained,
