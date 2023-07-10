@@ -1275,9 +1275,9 @@ def start_training():
 
 @server.post("/auto_train")
 def auto_train(response: Response, request: Request):
-    # data = request.get("project_id")
-    project_id = int(request.get("project_id"))
-    task_type = request.get("task_type")
+    data = request.get("data")
+    project_id = data.get("project_id")
+    task_type = data.get("task_type")
 
     if task_type == "instance segmentation":
         models_table_columns = [key for key in g.seg_models_data[0].keys()]
