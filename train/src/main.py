@@ -1388,9 +1388,8 @@ def auto_train(request: Request):
     # start_training_button.loading = True
     # get number of images in selected datasets
     n_images = 0
-    dataset_ids = api.dataset.get_list(project_id)
-    for dataset_id in dataset_ids:
-        dataset_info = api.dataset.get_info_by_id(int(dataset_id))
+    dataset_infos = api.dataset.get_list(project_id)
+    for dataset_info in dataset_infos:
         n_images += dataset_info.images_count
     # download dataset
     if os.path.exists(g.project_dir):
