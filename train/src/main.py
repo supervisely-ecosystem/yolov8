@@ -1280,7 +1280,7 @@ def auto_train(request: Request):
     print("success")
     state = request.state.state
     print(state)
-    project_id = request.get("project_id")
+    project_id = int(request.get("project_id"))
     task_type = request.get("task_type")
 
     if task_type == "instance segmentation":
