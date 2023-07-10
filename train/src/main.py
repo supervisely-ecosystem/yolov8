@@ -48,7 +48,7 @@ from functools import partial
 from urllib.request import urlopen
 import math
 import ruamel.yaml
-from fastapi import Response, Request
+from fastapi import Body
 
 
 # function for updating global variables
@@ -1274,11 +1274,9 @@ def start_training():
 
 
 @server.post("/auto_train")
-def auto_train(args, kwargs):
-    print(args)
-    print(kwargs)
-    
-    data = request.get("data")
+def auto_train(data: dict = Body()):
+    print("______________")
+    print(f"Body I get: {data}")
     project_id = data.get("project_id")
     task_type = data.get("task_type")
 
