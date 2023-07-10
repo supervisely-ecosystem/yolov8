@@ -1274,7 +1274,10 @@ def start_training():
 
 
 @server.post("/auto_train")
-def auto_train(response: Response, request: Request):
+def auto_train(args, kwargs):
+    print(args)
+    print(kwargs)
+    
     data = request.get("data")
     project_id = data.get("project_id")
     task_type = data.get("task_type")
