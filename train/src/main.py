@@ -1305,67 +1305,67 @@ def auto_train(request: Request):
             rows=models_table_rows,
             subtitles=models_table_subtitles,
         )
-    dataset_selector.disable()
+    # dataset_selector.disable()
     # classes_table.read_project_from_id(project_id)
-    select_data_button.hide()
-    select_done.show()
-    reselect_data_button.show()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_classes.unlock()
-    card_classes.uncollapse()
+    # select_data_button.hide()
+    # select_done.show()
+    # reselect_data_button.show()
+    # curr_step = stepper.get_active_step()
+    # curr_step += 1
+    # stepper.set_active_step(curr_step)
+    # card_classes.unlock()
+    # card_classes.uncollapse()
 
-    select_classes_button.hide()
-    classes_done.show()
-    select_other_classes_button.show()
-    classes_table.disable()
-    task_type_select.disable()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_val_split.unlock()
-    card_train_val_split.uncollapse()
+    # select_classes_button.hide()
+    # classes_done.show()
+    # select_other_classes_button.show()
+    # classes_table.disable()
+    # task_type_select.disable()
+    # curr_step = stepper.get_active_step()
+    # curr_step += 1
+    # stepper.set_active_step(curr_step)
+    # card_train_val_split.unlock()
+    # card_train_val_split.uncollapse()
     
-    train_val_split.disable()
-    unlabeled_images_select.disable()
-    split_data_button.hide()
-    split_done.show()
-    resplit_data_button.show()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_model_selection.unlock()
-    card_model_selection.uncollapse()
+    # train_val_split.disable()
+    # unlabeled_images_select.disable()
+    # split_data_button.hide()
+    # split_done.show()
+    # resplit_data_button.show()
+    # curr_step = stepper.get_active_step()
+    # curr_step += 1
+    # stepper.set_active_step(curr_step)
+    # card_model_selection.unlock()
+    # card_model_selection.uncollapse()
 
-    select_model_button.hide()
-    model_select_done.show()
-    model_tabs.disable()
-    models_table.disable()
-    model_path_input.disable()
-    reselect_model_button.show()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_params.unlock()
-    card_train_params.uncollapse()
+    # select_model_button.hide()
+    # model_select_done.show()
+    # model_tabs.disable()
+    # models_table.disable()
+    # model_path_input.disable()
+    # reselect_model_button.show()
+    # curr_step = stepper.get_active_step()
+    # curr_step += 1
+    # stepper.set_active_step(curr_step)
+    # card_train_params.unlock()
+    # card_train_params.uncollapse()
 
-    save_train_params_button.hide()
-    train_params_done.show()
-    reselect_train_params_button.show()
-    select_train_mode.disable()
-    n_epochs_input.disable()
-    patience_input.disable()
-    batch_size_input.disable()
-    image_size_input.disable()
-    select_optimizer.disable()
-    n_workers_input.disable()
-    train_settings_editor.readonly = True
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_progress.unlock()
-    card_train_progress.uncollapse()
+    # save_train_params_button.hide()
+    # train_params_done.show()
+    # reselect_train_params_button.show()
+    # select_train_mode.disable()
+    # n_epochs_input.disable()
+    # patience_input.disable()
+    # batch_size_input.disable()
+    # image_size_input.disable()
+    # select_optimizer.disable()
+    # n_workers_input.disable()
+    # train_settings_editor.readonly = True
+    # curr_step = stepper.get_active_step()
+    # curr_step += 1
+    # stepper.set_active_step(curr_step)
+    # card_train_progress.unlock()
+    # card_train_progress.uncollapse()
 
     if sly.is_production():
         local_dir = g.root_source_path
@@ -1385,7 +1385,7 @@ def auto_train(request: Request):
 
     if os.path.exists(local_artifacts_dir):
         sly.fs.remove_dir(local_artifacts_dir)
-    start_training_button.loading = True
+    # start_training_button.loading = True
     # get number of images in selected datasets
     n_images = 0
     dataset_ids = api.dataset.get_list(project_id)
@@ -1748,15 +1748,15 @@ def auto_train(request: Request):
     file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
     train_artifacts_folder.set(file_info)
     # finish training
-    start_training_button.loading = False
-    start_training_button.disable()
-    logs_button.disable()
-    train_done.show()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_artifacts.unlock()
-    card_train_artifacts.uncollapse()
+    # start_training_button.loading = False
+    # start_training_button.disable()
+    # logs_button.disable()
+    # train_done.show()
+    # curr_step = stepper.get_active_step()
+    # curr_step += 1
+    # stepper.set_active_step(curr_step)
+    # card_train_artifacts.unlock()
+    # card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
     sly.fs.silent_remove("train_batches.txt")
