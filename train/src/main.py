@@ -1277,11 +1277,11 @@ def start_training():
 
 @server.post("/auto_train")
 def auto_train(request: Request):
-    print("success")
+    print("successfully started auto train")
     state = request.state.state
     print(state)
-    project_id = int(request.get("project_id"))
-    task_type = request.get("task_type")
+    project_id = state["project_id"]
+    task_type = state["task_type"]
 
     if task_type == "instance segmentation":
         models_table_columns = [key for key in g.seg_models_data[0].keys()]
