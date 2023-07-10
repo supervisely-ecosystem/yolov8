@@ -1710,7 +1710,7 @@ def auto_train(response: Response, request: Request):
 
     # upload training artifacts to team files
     remote_artifacts_dir = os.path.join(
-        "/yolov8_train", task_type_select.get_value(), project_info.name, str(g.app_session_id)
+        "/yolov8_train", task_type, project_info.name, str(g.app_session_id)
     )
 
     def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
