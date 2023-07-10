@@ -1306,7 +1306,7 @@ def auto_train(request: Request):
             subtitles=models_table_subtitles,
         )
     dataset_selector.disable()
-    classes_table.read_project_from_id(project_id)
+    # classes_table.read_project_from_id(project_id)
     select_data_button.hide()
     select_done.show()
     reselect_data_button.show()
