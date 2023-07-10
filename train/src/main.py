@@ -1390,7 +1390,7 @@ def auto_train(request: Request):
     n_images = 0
     dataset_ids = api.dataset.get_list(project_id)
     for dataset_id in dataset_ids:
-        dataset_info = api.dataset.get_info_by_id(dataset_id)
+        dataset_info = api.dataset.get_info_by_id(int(dataset_id))
         n_images += dataset_info.images_count
     # download dataset
     if os.path.exists(g.project_dir):
