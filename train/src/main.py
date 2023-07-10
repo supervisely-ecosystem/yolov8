@@ -48,7 +48,8 @@ from functools import partial
 from urllib.request import urlopen
 import math
 import ruamel.yaml
-from fastapi import Body
+from fastapi import Response, Request
+from supervisely.app.fastapi.subapp import _MainServer
 
 
 # function for updating global variables
@@ -493,7 +494,8 @@ app = sly.Application(
         ]
     ),
 )
-server = app.get_server()
+# server = app.get_server()
+server = _MainServer().get_server()
 
 
 @dataset_selector.value_changed
@@ -1274,11 +1276,12 @@ def start_training():
 
 
 @server.post("/auto_train")
-def auto_train(data: dict = Body()):
-    print("______________")
-    print(f"Body I get: {data}")
-    project_id = data.get("project_id")
-    task_type = data.get("task_type")
+def auto_train(request: Request):
+    print("success")
+    state = request.state.state
+    print(state)
+    project_id = request.get("project_id")
+    task_type = request.get("task_type")
 
     if task_type == "instance segmentation":
         models_table_columns = [key for key in g.seg_models_data[0].keys()]

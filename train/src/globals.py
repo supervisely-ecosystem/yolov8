@@ -11,10 +11,11 @@ app_data_dir = os.path.join(app_root_directory, "tempfiles")
 project_dir = os.path.join(app_data_dir, "project_dir")
 yolov8_project_dir = os.path.join(app_data_dir, "yolov8_project_dir")
 
-if sly.is_production():
-    app_session_id = sly.io.env.task_id()
-else:
-    app_session_id = 777  # for debug
+# if sly.is_production():
+#     app_session_id = sly.io.env.task_id()
+# else:
+#     app_session_id = 777  # for debug
+app_session_id = sly.io.env.task_id()
 
 det_models_data_path = os.path.join(root_source_path, "models", "det_models_data.json")
 seg_models_data_path = os.path.join(root_source_path, "models", "seg_models_data.json")
