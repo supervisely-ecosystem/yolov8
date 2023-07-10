@@ -48,6 +48,7 @@ from functools import partial
 from urllib.request import urlopen
 import math
 import ruamel.yaml
+from fastapi import Response, Request
 
 
 # function for updating global variables
@@ -492,6 +493,7 @@ app = sly.Application(
         ]
     ),
 )
+server = app.get_server()
 
 
 @dataset_selector.value_changed
@@ -1269,3 +1271,21 @@ def start_training():
     sly.output.set_directory(remote_artifacts_dir)
     # stop app
     app.stop()
+
+
+@server.post("/auto_train")
+def auto_train(response: Response, request: Request):
+    data = request.data
+    project_id = data["project_id"]
+    task_type = data["task_type"]
+
+    dataset_selector.disable()
+    classes_table.read_project_from_id(project_id)
+    select_data_button.hide()
+    select_done.show()
+    reselect_data_button.show()
+    curr_step = stepper.get_active_step()
+    curr_step += 1
+    stepper.set_active_step(curr_step)
+    card_classes.unlock()
+    card_classes.uncollapse()
