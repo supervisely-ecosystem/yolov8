@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 from time import sleep
 
 import supervisely as sly
-# from serve.src.main import YOLOv8Model
 
 
 load_dotenv("local.env")
@@ -17,7 +16,7 @@ DATASET_ID = sly.env.dataset_id()
 TEAM_ID = sly.env.team_id()
 WORKSPACE_ID = sly.env.workspace_id()
 TASK_TYPE = "object detection"
-custom_inference_settings = (Path(".") / "serve" / "custom_settings.yaml").absolute()
+
 
 DEBUG_SESSION = True
 if DEBUG_SESSION:
@@ -44,7 +43,7 @@ def train_model(api: sly.Api) -> Path:
         module_id=module_id,
         workspace_id=WORKSPACE_ID,
         description=f"AutoTrain session for {module_info.name}",
-        task_name="AutoTrain",
+        task_name="AutoTrain/train",
         params=params,
         app_version=APP_VERSION,
         is_branch=BRANCH,
@@ -53,6 +52,7 @@ def train_model(api: sly.Api) -> Path:
 
     task_id = session.task_id
 
+    # TODO: дождаться запуска
     sleep(10)
     sly.logger.info(f"Session started: #{task_id}")
 
@@ -85,32 +85,48 @@ def train_model(api: sly.Api) -> Path:
 
 
 def serve_model(api: sly.Api, best_weights: Path, session_id: int):
-    global custom_inference_settings
+    serve_app_name = "supervisely-ecosystem/yolov8/serve"
 
-    model_checkpoint_name = best_weights.name
-    model_checkpoints = Path(".") / "auto_train_weights" / str(session_id)
+    module_id = api.app.get_ecosystem_module_id(serve_app_name)
+    module_info = api.app.get_ecosystem_module_info(module_id)
+    project_name = api.project.get_info_by_id(PROJECT_ID).name
 
-    f"./auto_train_weights/{session_id}"
-    api.file.download(
-        TEAM_ID,
-        str(best_weights),
-        str(model_checkpoints),
+    sly.logger.info(f"Starting AutoTrain for application {module_info.name}")
+
+    params = module_info.get_arguments()
+
+    session = api.app.start(
+        agent_id=AGENT_ID,
+        module_id=module_id,
+        workspace_id=WORKSPACE_ID,
+        description=f"AutoTrain session for {module_info.name}",
+        task_name="AutoTrain/serve",
+        params=params,
     )
-    model = YOLOv8Model(
-        str(model_checkpoints / model_checkpoint_name),
-        custom_inference_settings,
-    )
-    model.load_on_device(model.model_dir, "cuda:0")
-    settings = {
-        "conf": 0.25,
-        "iou": 0.7,
-        "half": False,
-        "max_det": 300,
-        "agnostic_nms": False,
-    }
-    model.predict("", settings)
+
+    # model_checkpoint_name = best_weights.name
+    # model_checkpoints = Path(".") / "auto_train_weights" / str(session_id)
+
+    # f"./auto_train_weights/{session_id}"
+    # api.file.download(
+    #     TEAM_ID,
+    #     str(best_weights),
+    #     str(model_checkpoints),
+    # )
+    
+    # settings = {
+    #     "conf": 0.25,
+    #     "iou": 0.7,
+    #     "half": False,
+    #     "max_det": 300,
+    #     "agnostic_nms": False,
+    # }
+
+
+
 
 if __name__ == "__main__":
     api = sly.Api()
     best_path, task_id = train_model(api)
     print(best_path, task_id)
+    # serve_model(api, "", "")
