@@ -75,6 +75,7 @@ load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 api = sly.Api()
 team_id = sly.env.team_id()
+os.environ["CUDA_VISIBLE_DEVICES"] = 0
 
 # if app had started from context menu, one of this has to be set:
 project_id = sly.env.project_id(raise_not_found=False)
