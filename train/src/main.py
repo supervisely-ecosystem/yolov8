@@ -1,4 +1,5 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 from pathlib import Path
 import numpy as np
 import yaml
