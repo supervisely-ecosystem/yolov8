@@ -50,7 +50,6 @@ import math
 import ruamel.yaml
 from fastapi import Response, Request
 from supervisely.app.fastapi.subapp import _MainServer
-import time
 
 
 # function for updating global variables
@@ -1389,14 +1388,15 @@ def auto_train(request: Request):
     # start_training_button.loading = True
     # get number of images in selected datasets
     n_images = 0
+    dataset_ids = []
     dataset_infos = api.dataset.get_list(project_id)
     for dataset_info in dataset_infos:
         n_images += dataset_info.images_count
+        dataset_ids.append(dataset_info.id)
     # download dataset
     if os.path.exists(g.project_dir):
         sly.fs.clean_dir(g.project_dir)
     with progress_bar_download_project(message="Downloading input data...", total=n_images) as pbar:
-        print("downloading project...")
         sly.download(
             api=api,
             project_id=project_id,
@@ -1405,8 +1405,6 @@ def auto_train(request: Request):
             log_progress=True,
             progress_cb=pbar.update,
         )
-        time.sleep(20)
-        print("downloaded project")
     project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
     selected_classes = [cls.name for cls in project_meta.obj_classes]
     # remove classes with unnecessary shapes

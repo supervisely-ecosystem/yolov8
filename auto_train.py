@@ -46,7 +46,7 @@ def train_model(api: sly.Api) -> Path:
     # )
 
 
-    task_id = 38252
+    task_id = 38253
 
     # TODO: дождаться запуска
     sleep(10)
