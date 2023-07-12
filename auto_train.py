@@ -28,7 +28,7 @@ def train_model(api: sly.Api) -> Path:
 
     module_id = api.app.get_ecosystem_module_id(train_app_name)
     module_info = api.app.get_ecosystem_module_info(module_id)
-    # project_name = api.project.get_info_by_id(PROJECT_ID).name
+    project_name = api.project.get_info_by_id(PROJECT_ID).name
 
     sly.logger.info(f"Starting AutoTrain for application {module_info.name}")
 
@@ -46,7 +46,7 @@ def train_model(api: sly.Api) -> Path:
     # )
 
 
-    task_id = 38258
+    task_id = 38353
 
     # TODO: дождаться запуска
     sleep(10)
@@ -58,7 +58,8 @@ def train_model(api: sly.Api) -> Path:
         data={
             "project_id": PROJECT_ID,
             "task_type": TASK_TYPE,
-        }
+        },
+        timeout=10e6,
     )
 
 
@@ -69,7 +70,7 @@ def train_model(api: sly.Api) -> Path:
     while not best_founded:
         sleep(GLOBAL_TIMEOUT)
         if api.file.dir_exists(TEAM_ID, str(weights)):
-            for filename in api.file.listdir(TEAM_ID, str(best)):
+            for filename in api.file.listdir(TEAM_ID, str(weights)):
                 if filename.startswith("best"):
                     best_founded = True
                     best = weights / filename
@@ -80,49 +81,7 @@ def train_model(api: sly.Api) -> Path:
     return best, task_id
 
 
-def serve_model(api: sly.Api, best_weights: Path, session_id: int):
-    serve_app_name = "supervisely-ecosystem/yolov8/serve"
-
-    module_id = api.app.get_ecosystem_module_id(serve_app_name)
-    module_info = api.app.get_ecosystem_module_info(module_id)
-    project_name = api.project.get_info_by_id(PROJECT_ID).name
-
-    sly.logger.info(f"Starting AutoTrain for application {module_info.name}")
-
-    params = module_info.get_arguments()
-
-    session = api.app.start(
-        agent_id=AGENT_ID,
-        module_id=module_id,
-        workspace_id=WORKSPACE_ID,
-        description=f"AutoTrain session for {module_info.name}",
-        task_name="AutoTrain/serve",
-        params=params,
-    )
-
-    # model_checkpoint_name = best_weights.name
-    # model_checkpoints = Path(".") / "auto_train_weights" / str(session_id)
-
-    # f"./auto_train_weights/{session_id}"
-    # api.file.download(
-    #     TEAM_ID,
-    #     str(best_weights),
-    #     str(model_checkpoints),
-    # )
-    
-    # settings = {
-    #     "conf": 0.25,
-    #     "iou": 0.7,
-    #     "half": False,
-    #     "max_det": 300,
-    #     "agnostic_nms": False,
-    # }
-
-
-
-
 if __name__ == "__main__":
     api = sly.Api()
     best_path, task_id = train_model(api)
     print(best_path, task_id)
-    # serve_model(api, "", "")

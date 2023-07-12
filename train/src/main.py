@@ -1612,7 +1612,7 @@ def auto_train(request: Request):
     model.train(
         data=data_path,
         epochs=n_epochs_input.get_value(),
-        patience=patience_input.get_value(),
+        patience=101,
         batch=batch_size_input.get_value(),
         imgsz=image_size_input.get_value(),
         save_period=1000,
