@@ -7,6 +7,7 @@ import supervisely as sly
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 GLOBAL_TIMEOUT = 1  # seconds
+AGENT_ID = 230  # A5000
 PROJECT_ID = 20739
 TEAM_ID = 438
 WORKSPACE_ID = 657
@@ -31,21 +32,22 @@ def train_model(api: sly.Api) -> Path:
 
     sly.logger.info(f"Starting AutoTrain for application {module_info.name}")
 
-    # params = module_info.get_arguments(images_project=PROJECT_ID)
+    params = module_info.get_arguments(images_project=PROJECT_ID)
 
-    # session = api.app.start(
-    #     agent_id=AGENT_ID,
-    #     module_id=module_id,
-    #     workspace_id=WORKSPACE_ID,
-    #     description=f"AutoTrain session for {module_info.name}",
-    #     task_name="AutoTrain/train",
-    #     params=params,
-    #     app_version=APP_VERSION,
-    #     is_branch=BRANCH,
-    # )
+    session = api.app.start(
+        agent_id=AGENT_ID,
+        module_id=module_id,
+        workspace_id=WORKSPACE_ID,
+        description=f"AutoTrain session for {module_info.name}",
+        task_name="AutoTrain/train",
+        params=params,
+        app_version=APP_VERSION,
+        is_branch=BRANCH,
+    )
 
 
-    task_id = 38356
+    # task_id = 38357
+    task_id = session.task_id
 
     # TODO: wait for app start
     sleep(10)
