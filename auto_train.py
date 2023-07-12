@@ -46,22 +46,24 @@ def train_model(api: sly.Api) -> Path:
     # )
 
 
-    task_id = 38353
+    task_id = 38355
 
-    # TODO: дождаться запуска
+    # TODO: wait for app start
     sleep(10)
     sly.logger.info(f"Session started: #{task_id}")
 
-    api.task.send_request(
-        task_id,
-        "auto_train",
-        data={
-            "project_id": PROJECT_ID,
-            "task_type": TASK_TYPE,
-        },
-        timeout=10e6,
-    )
-
+    try:
+        api.task.send_request(
+            task_id,
+            "auto_train",
+            data={
+                "project_id": PROJECT_ID,
+                "task_type": TASK_TYPE,
+            },
+            timeout=10e6,
+        )
+    except Exception:
+        pass
 
     team_files_folder = Path("/yolov8_train") / TASK_TYPE / project_name / str(task_id)
     weights = Path(team_files_folder) / "weights"
@@ -71,17 +73,19 @@ def train_model(api: sly.Api) -> Path:
         sleep(GLOBAL_TIMEOUT)
         if api.file.dir_exists(TEAM_ID, str(weights)):
             for filename in api.file.listdir(TEAM_ID, str(weights)):
-                if filename.startswith("best"):
+                if os.path.basename(filename).startswith("best"):
                     best_founded = True
                     best = weights / filename
                     sly.logger.info(
                         f"Checkpoint founded : {str(best)}"
                     )
 
-    return best, task_id
+    return team_files_folder
 
 
 if __name__ == "__main__":
     api = sly.Api()
-    best_path, task_id = train_model(api)
-    print(best_path, task_id)
+    result_folder = train_model(api)
+    print("Training completed")
+    print("The weights of trained model, predictions visualization and other training artifacts can be found in the following Team Files folder:")
+    print(result_folder)

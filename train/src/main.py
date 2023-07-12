@@ -1764,4 +1764,3 @@ def auto_train(request: Request):
     sly.output.set_directory(remote_artifacts_dir)
     # stop app
     app.stop()
-    return {"result": "auto train session finished successfully"}
