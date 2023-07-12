@@ -1762,5 +1762,4 @@ def auto_train(request: Request):
     sly.fs.silent_remove("train_batches.txt")
     # set task output
     sly.output.set_directory(remote_artifacts_dir)
-    # stop app
-    app.stop()
+    return {"result": "successfully finished automatic training session"}

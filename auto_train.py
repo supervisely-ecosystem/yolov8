@@ -2,7 +2,6 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from time import sleep
-
 import supervisely as sly
 
 load_dotenv(os.path.expanduser("~/supervisely.env"))
@@ -46,24 +45,21 @@ def train_model(api: sly.Api) -> Path:
     # )
 
 
-    task_id = 38355
+    task_id = 38356
 
     # TODO: wait for app start
     sleep(10)
     sly.logger.info(f"Session started: #{task_id}")
 
-    try:
-        api.task.send_request(
-            task_id,
-            "auto_train",
-            data={
-                "project_id": PROJECT_ID,
-                "task_type": TASK_TYPE,
-            },
-            timeout=10e6,
-        )
-    except Exception:
-        pass
+    api.task.send_request(
+        task_id,
+        "auto_train",
+        data={
+            "project_id": PROJECT_ID,
+            "task_type": TASK_TYPE,
+        },
+        timeout=10e6,
+    )
 
     team_files_folder = Path("/yolov8_train") / TASK_TYPE / project_name / str(task_id)
     weights = Path(team_files_folder) / "weights"
@@ -79,6 +75,8 @@ def train_model(api: sly.Api) -> Path:
                     sly.logger.info(
                         f"Checkpoint founded : {str(best)}"
                     )
+
+    api.app.stop(task_id)
 
     return team_files_folder
 
