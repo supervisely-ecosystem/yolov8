@@ -5,16 +5,12 @@ from time import sleep
 
 import supervisely as sly
 
-
-load_dotenv("local.env")
+load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 GLOBAL_TIMEOUT = 1  # seconds
-
-AGENT_ID = 230  # A5000
-PROJECT_ID = sly.env.project_id()
-DATASET_ID = sly.env.dataset_id()
-TEAM_ID = sly.env.team_id()
-WORKSPACE_ID = sly.env.workspace_id()
+PROJECT_ID = 20739
+TEAM_ID = 438
+WORKSPACE_ID = 657
 TASK_TYPE = "object detection"
 
 
@@ -32,25 +28,25 @@ def train_model(api: sly.Api) -> Path:
 
     module_id = api.app.get_ecosystem_module_id(train_app_name)
     module_info = api.app.get_ecosystem_module_info(module_id)
-    project_name = api.project.get_info_by_id(PROJECT_ID).name
+    # project_name = api.project.get_info_by_id(PROJECT_ID).name
 
     sly.logger.info(f"Starting AutoTrain for application {module_info.name}")
 
-    params = module_info.get_arguments(images_project=PROJECT_ID)
+    # params = module_info.get_arguments(images_project=PROJECT_ID)
 
-    session = api.app.start(
-        agent_id=AGENT_ID,
-        module_id=module_id,
-        workspace_id=WORKSPACE_ID,
-        description=f"AutoTrain session for {module_info.name}",
-        task_name="AutoTrain/train",
-        params=params,
-        app_version=APP_VERSION,
-        is_branch=BRANCH,
-    )
+    # session = api.app.start(
+    #     agent_id=AGENT_ID,
+    #     module_id=module_id,
+    #     workspace_id=WORKSPACE_ID,
+    #     description=f"AutoTrain session for {module_info.name}",
+    #     task_name="AutoTrain/train",
+    #     params=params,
+    #     app_version=APP_VERSION,
+    #     is_branch=BRANCH,
+    # )
 
 
-    task_id = session.task_id
+    task_id = 38252
 
     # TODO: дождаться запуска
     sleep(10)
