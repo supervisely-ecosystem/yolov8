@@ -50,6 +50,7 @@ import math
 import ruamel.yaml
 from fastapi import Response, Request
 from supervisely.app.fastapi.subapp import _MainServer
+from supervisely.app.content import StateJson
 
 
 # function for updating global variables
@@ -496,6 +497,10 @@ app = sly.Application(
 )
 # server = app.get_server()
 server = _MainServer().get_server()
+print("state after initialization:")
+print(StateJson())
+print("radio tabs state after initialization:")
+print(train_val_split.get_json_state())
 
 
 @dataset_selector.value_changed
@@ -1282,6 +1287,8 @@ def auto_train(request: Request):
     print(state)
     project_id = state["project_id"]
     task_type = state["task_type"]
+    print("state after starting auto train:")
+    print(StateJson())
 
     if task_type == "instance segmentation":
         models_table_columns = [key for key in g.seg_models_data[0].keys()]
@@ -1419,6 +1426,8 @@ def auto_train(request: Request):
     if task_type == "object detection":
         sly.Project.to_detection_task(g.project_dir, inplace=True)
     # split the data
+    print("radio tabs state after auto train:")
+    print(train_val_split.get_json_state())
     train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
     verify_train_val_sets(train_set, val_set)
     # convert dataset from supervisely to yolo format
