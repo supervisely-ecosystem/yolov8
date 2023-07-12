@@ -50,7 +50,7 @@ def train_model(api: sly.Api) -> Path:
     task_id = session.task_id
 
     # TODO: wait for app start
-    sleep(10)
+    sleep(20)
     sly.logger.info(f"Session started: #{task_id}")
 
     api.task.send_request(
