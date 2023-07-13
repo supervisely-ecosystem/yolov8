@@ -5,12 +5,13 @@ from time import sleep
 import supervisely as sly
 
 load_dotenv(os.path.expanduser("~/supervisely.env"))
+load_dotenv("local.env")
 
 GLOBAL_TIMEOUT = 1  # seconds
 AGENT_ID = 230  # A5000
-PROJECT_ID = 20739
-TEAM_ID = 438
-WORKSPACE_ID = 657
+PROJECT_ID = sly.env.project_id()
+TEAM_ID = sly.env.team_id()
+WORKSPACE_ID = sly.env.workspace_id()
 TASK_TYPE = "object detection"
 
 
@@ -49,8 +50,9 @@ def train_model(api: sly.Api) -> Path:
     # task_id = 38357
     task_id = session.task_id
 
-    # TODO: wait for app start
-    sleep(20)
+    while not api.task.get_status(task_id) is api.task.Status.STARTED:
+        sleep(GLOBAL_TIMEOUT)
+
     sly.logger.info(f"Session started: #{task_id}")
 
     api.task.send_request(
