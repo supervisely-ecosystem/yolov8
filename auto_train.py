@@ -1,4 +1,5 @@
 import os
+import requests
 from pathlib import Path
 from dotenv import load_dotenv
 from time import sleep
@@ -45,13 +46,17 @@ def train_model(api: sly.Api) -> Path:
         app_version=APP_VERSION,
         is_branch=BRANCH,
     )
-
-
+    
     # task_id = 38357
     task_id = session.task_id
+    domain = sly.env.server_address()
+    token = api.task.get_info_by_id(task_id)['meta']['sessionToken']
+    post_shutdown = f"{domain}/net/{token}/sly/shutdown"
 
     while not api.task.get_status(task_id) is api.task.Status.STARTED:
         sleep(GLOBAL_TIMEOUT)
+    else:
+        sleep(10) # still need a time after status changed 
 
     sly.logger.info(f"Session started: #{task_id}")
 
@@ -80,7 +85,7 @@ def train_model(api: sly.Api) -> Path:
                         f"Checkpoint founded : {str(best)}"
                     )
 
-    api.app.stop(task_id)
+    requests.post(post_shutdown)
 
     return team_files_folder
 
@@ -88,6 +93,6 @@ def train_model(api: sly.Api) -> Path:
 if __name__ == "__main__":
     api = sly.Api()
     result_folder = train_model(api)
-    print("Training completed")
-    print("The weights of trained model, predictions visualization and other training artifacts can be found in the following Team Files folder:")
-    print(result_folder)
+    sly.logger.info("Training completed")
+    sly.logger.info("The weights of trained model, predictions visualization and other training artifacts can be found in the following Team Files folder:")
+    sly.logger.info(result_folder)
