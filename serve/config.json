@@ -15,6 +15,7 @@
   "icon_cover": true,
   "poster": "https://github.com/supervisely-ecosystem/yolov8/assets/12828725/3593ebe9-cdd8-4265-8217-f5781b6fb860",
   "need_gpu": true,
+  "gpu": "preferred",
   "session_tags": [
     "deployed_nn"
   ],
