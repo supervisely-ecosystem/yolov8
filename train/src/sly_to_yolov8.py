@@ -118,6 +118,7 @@ def _transform_set(set_name, data_yaml, project_meta, items, progress_cb, task_t
     with progress_cb(message=f"Converting {set_name} set to YOLOv8 format...", total=len(items)) as pbar:
         for batch in sly.batched(items, batch_size=max(int(len(items) / 50), 10)):
             for item in batch:
+                sly.logger.debug(f"Converting image located at {item.img_path} to supervisely format...")
                 ann = sly.Annotation.load_json_file(item.ann_path, project_meta)
                 _item_name = sly._utils.generate_free_name(used_names, sly.fs.get_file_name(item.name))
                 used_names.add(_item_name)
