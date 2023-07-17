@@ -15,7 +15,7 @@
   "instance_version": "6.7.16",
   "entrypoint": "python -m uvicorn src.main:app --app-dir ./train --host 0.0.0.0 --port 8000 --ws websockets",
   "task_location": "workspace_tasks",
-  "need_gpu": true,
+  "need_gpu": false,
   "gpu": "preferred",
   "isolate": true,
   "icon": "https://github-production-user-asset-6210df.s3.amazonaws.com/12828725/248305685-8e9903d3-aa29-4172-bf58-5dbc12a9b6a4.png",
