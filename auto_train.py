@@ -18,7 +18,7 @@ TASK_TYPE = "object detection"
 
 DEBUG_SESSION = True
 if DEBUG_SESSION:
-    APP_VERSION = 'auto-train'
+    APP_VERSION = "auto-train"
     BRANCH=True
 else:
     APP_VERSION = None
@@ -65,7 +65,37 @@ def train_model(api: sly.Api) -> Path:
         "auto_train",
         data={
             "project_id": PROJECT_ID,
+            "dataset_ids": [64611],
             "task_type": TASK_TYPE,
+            "model": "YOLOv8n-det",
+            "train_mode": "finetune", # finetune / scratch
+            "n_epochs": 100,
+            "patience": 50,
+            "batch_size": 16,
+            "input_image_size": 640,
+            "optimizer": "AdamW", # AdamW, Adam, SGD, RMSProp
+            "n_workers": 8,
+            "lr0": 0.01,
+            "lrf": 0.01,
+            "momentum": 0.937,
+            "weight_decay": 0.0005,
+            "warmup_epochs": 3.0,
+            "warmup_momentum": 0.8,
+            "warmup_bias_lr": 0.1,
+            "amp": True,
+            "hsv_h": 0.015,
+            "hsv_s": 0.7,
+            "hsv_v": 0.4,
+            "degrees": 0.0,
+            "translate": 0.1,
+            "scale": 0.5,
+            "shear": 0.0,
+            "perspective": 0.0,
+            "flipud": 0.0,
+            "fliplr": 0.5,
+            "mosaic": 0.0,
+            "mixup": 0.0,
+            "copy_paste": 0.0,
         },
         timeout=10e6,
     )

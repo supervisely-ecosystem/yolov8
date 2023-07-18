@@ -1384,12 +1384,15 @@ def auto_train(request: Request):
         sly.fs.remove_dir(local_artifacts_dir)
     # start_training_button.loading = True
     # get number of images in selected datasets
-    n_images = 0
-    dataset_ids = []
-    dataset_infos = api.dataset.get_list(project_id)
-    for dataset_info in dataset_infos:
-        n_images += dataset_info.images_count
-        dataset_ids.append(dataset_info.id)
+    if "dataset_ids" not in state:
+        n_images = 0
+        dataset_ids = []
+        dataset_infos = api.dataset.get_list(project_id)
+        for dataset_info in dataset_infos:
+            n_images += dataset_info.images_count
+            dataset_ids.append(dataset_info.id)
+    else:
+        dataset_ids = state["dataset_ids"]
     # download dataset
     if os.path.exists(g.project_dir):
         sly.fs.clean_dir(g.project_dir)
@@ -1416,8 +1419,6 @@ def auto_train(request: Request):
     if task_type == "object detection":
         sly.Project.to_detection_task(g.project_dir, inplace=True)
     # split the data
-    print("radio tabs state after auto train:")
-    print(train_val_split.get_json_state())
     train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
     verify_train_val_sets(train_set, val_set)
     # convert dataset from supervisely to yolo format
@@ -1432,7 +1433,6 @@ def auto_train(request: Request):
         task_type,
     )
     # download model
-
     def download_monitor(monitor, api: sly.Api, progress: sly.Progress):
         value = monitor
         if progress.total == 0:
@@ -1441,35 +1441,43 @@ def auto_train(request: Request):
             progress.set_current_value(value, report=False)
         weights_pbar.update(progress.current)
 
-    selected_model = models_table.get_selected_row()[0]
+    if "model" not in state:
+        selected_model = models_table.get_selected_row()[0]
+    else:
+        selected_model = state["model"]
     if selected_model.endswith("det"):
         selected_model = selected_model[:-4]
-    model_filename = selected_model.lower() + ".pt"
-    pretrained = True
-    weights_dst_path = os.path.join(g.app_data_dir, model_filename)
-    weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
-    with urlopen(weights_url) as file:
-        weights_size = file.length
+    if "train_mode" in state and state["train_mode"] == "scratch":
+        model_filename = selected_model.lower() + ".yaml"
+        pretrained = False
+        model = YOLO(model_filename)
+    else:
+        model_filename = selected_model.lower() + ".pt"
+        pretrained = True
+        weights_dst_path = os.path.join(g.app_data_dir, model_filename)
+        weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
+        with urlopen(weights_url) as file:
+            weights_size = file.length
 
-    progress = sly.Progress(
-        message="",
-        total_cnt=weights_size,
-        is_size=True,
-    )
-    progress_cb = partial(download_monitor, api=api, progress=progress)
-
-    with progress_bar_download_model(
-        message="Downloading model weights...",
-        total=weights_size,
-        unit="bytes",
-        unit_scale=True,
-    ) as weights_pbar:
-        sly.fs.download(
-            url=weights_url,
-            save_path=weights_dst_path,
-            progress=progress_cb,
+        progress = sly.Progress(
+            message="",
+            total_cnt=weights_size,
+            is_size=True,
         )
-    model = YOLO(weights_dst_path)
+        progress_cb = partial(download_monitor, api=api, progress=progress)
+
+        with progress_bar_download_model(
+            message="Downloading model weights...",
+            total=weights_size,
+            unit="bytes",
+            unit_scale=True,
+        ) as weights_pbar:
+            sly.fs.download(
+                url=weights_url,
+                save_path=weights_dst_path,
+                progress=progress_cb,
+            )
+        model = YOLO(weights_dst_path)
 
     # add callbacks to model
     model.add_callback("on_train_batch_end", on_train_batch_end)
@@ -1480,6 +1488,8 @@ def auto_train(request: Request):
     additional_params = yaml.safe_load(additional_params)
     if task_type == "pose estimation":
         additional_params["fliplr"] = 0.0
+        if "fliplr" in state:
+            state["fliplr"] = 0.0
     # set up epoch progress bar and grid plot
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
@@ -1611,16 +1621,36 @@ def auto_train(request: Request):
 
     model.train(
         data=data_path,
-        epochs=n_epochs_input.get_value(),
-        patience=101,
-        batch=batch_size_input.get_value(),
-        imgsz=image_size_input.get_value(),
+        epochs=state.get("n_epochs", n_epochs_input.get_value()),
+        patience=state.get("patience", patience_input.get_value()),
+        batch=state.get("batch_size", batch_size_input.get_value()),
+        imgsz=state.get("input_image_size", image_size_input.get_value()),
         save_period=1000,
         device=device,
-        workers=n_workers_input.get_value(),
-        optimizer=select_optimizer.get_value(),
+        workers=state.get("n_workers", n_workers_input.get_value()),
+        optimizer=state.get("optimizer", select_optimizer.get_value()),
         pretrained=pretrained,
-        **additional_params,
+        lr0=state.get("lr0", additional_params["lr0"]),
+        lrf=state.get("lrf", additional_params["lr0"]),
+        momentum=state.get("momentum", additional_params["momentum"]),
+        weight_decay=state.get("weight_decay", additional_params["weight_decay"]),
+        warmup_epochs=state.get("warmup_epochs", additional_params["warmup_epochs"]),
+        warmup_momentum=state.get("warmup_momentum", additional_params["warmup_momentum"]),
+        warmup_bias_lr=state.get("warmup_bias_lr", additional_params["warmup_bias_lr"]),
+        amp=state.get("amp", additional_params["amp"]),
+        hsv_h=state.get("hsv_h", additional_params["hsv_h"]),
+        hsv_s=state.get("hsv_s", additional_params["hsv_s"]),
+        hsv_v=state.get("hsv_v", additional_params["hsv_v"]),
+        degrees=state.get("degrees", additional_params["degrees"]),
+        translate=state.get("translate", additional_params["translate"]),
+        scale=state.get("scale", additional_params["scale"]),
+        shear=state.get("shear", additional_params["shear"]),
+        perspective=state.get("perspective", additional_params["perspective"]),
+        flipud=state.get("flipud", additional_params["flipud"]),
+        fliplr=state.get("fliplr", additional_params["fliplr"]),
+        mosaic=state.get("mosaic", additional_params["mosaic"]),
+        mixup=state.get("mixup", additional_params["mixup"]),
+        copy_paste=state.get("copy_paste", additional_params["copy_paste"]),
     )
     progress_bar_iters.hide()
     progress_bar_epochs.hide()
