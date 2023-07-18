@@ -6,7 +6,7 @@ from time import sleep
 import supervisely as sly
 
 load_dotenv(os.path.expanduser("~/supervisely.env"))
-load_dotenv("local.env")
+load_dotenv("scripts/local.env")
 
 GLOBAL_TIMEOUT = 1  # seconds
 AGENT_ID = 230
@@ -16,13 +16,13 @@ WORKSPACE_ID = sly.env.workspace_id()
 TASK_TYPE = "object detection"
 
 
-DEBUG_SESSION = True
+DEBUG_SESSION = False
 if DEBUG_SESSION:
     APP_VERSION = "auto-train"
     BRANCH=True
 else:
     APP_VERSION = None
-    BRANCH=False
+    BRANCH = False
 
 
 def train_model(api: sly.Api) -> Path:
@@ -110,7 +110,7 @@ def train_model(api: sly.Api) -> Path:
                 if os.path.basename(filename).startswith("best"):
                     best_founded = True
                     best = weights / filename
-                    print(f"Checkpoint founded : {str(best)}")
+                    print(f"Checkpoint found: {str(best)}")
 
     requests.post(post_shutdown)
 
