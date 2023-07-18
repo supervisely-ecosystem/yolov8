@@ -9,7 +9,7 @@ load_dotenv(os.path.expanduser("~/supervisely.env"))
 load_dotenv("local.env")
 
 GLOBAL_TIMEOUT = 1  # seconds
-AGENT_ID = 230  # A5000
+AGENT_ID = 230
 PROJECT_ID = sly.env.project_id()
 TEAM_ID = sly.env.team_id()
 WORKSPACE_ID = sly.env.workspace_id()
@@ -47,7 +47,6 @@ def train_model(api: sly.Api) -> Path:
         is_branch=BRANCH,
     )
     
-    # task_id = 38357
     task_id = session.task_id
     domain = sly.env.server_address()
     token = api.task.get_info_by_id(task_id)['meta']['sessionToken']
@@ -111,9 +110,7 @@ def train_model(api: sly.Api) -> Path:
                 if os.path.basename(filename).startswith("best"):
                     best_founded = True
                     best = weights / filename
-                    sly.logger.info(
-                        f"Checkpoint founded : {str(best)}"
-                    )
+                    print(f"Checkpoint founded : {str(best)}")
 
     requests.post(post_shutdown)
 
@@ -123,6 +120,6 @@ def train_model(api: sly.Api) -> Path:
 if __name__ == "__main__":
     api = sly.Api()
     result_folder = train_model(api)
-    sly.logger.info("Training completed")
-    sly.logger.info("The weights of trained model, predictions visualization and other training artifacts can be found in the following Team Files folder:")
-    sly.logger.info(result_folder)
+    print("Training completed")
+    print("The weights of trained model, predictions visualization and other training artifacts can be found in the following Team Files folder:")
+    print(result_folder)

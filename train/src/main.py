@@ -1393,7 +1393,6 @@ def auto_train(request: Request):
             dataset_ids.append(dataset_info.id)
     else:
         dataset_ids = state["dataset_ids"]
-        print(f"Dataset ids: {dataset_ids}")
         n_images = 0
         for dataset_id in dataset_ids:
             dataset_info = api.dataset.get_info_by_id(dataset_id)
