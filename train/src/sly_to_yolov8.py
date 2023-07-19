@@ -34,6 +34,8 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type):
         if type(label.geometry) is sly.Bitmap:
             new_obj_class = sly.ObjClass(label.obj_class.name, sly.Polygon)
             labels = label.convert(new_obj_class)
+            if len(labels) == 0:
+                return None
             for i, label in enumerate(labels):
                 if i == 0:
                     points = label.geometry.exterior_np
@@ -99,7 +101,9 @@ def _transform_annotation(ann, class_names, save_path, task_type):
     yolov8_ann = []
     for label in ann.labels:
         if label.obj_class.name in class_names:
-            yolov8_ann.append(_transform_label(class_names, ann.img_size, label, task_type))
+            transformed_label = _transform_label(class_names, ann.img_size, label, task_type)
+            if transformed_label:
+                yolov8_ann.append(transformed_label)
 
     with open(save_path, "w") as file:
         file.write("\n".join(yolov8_ann))
