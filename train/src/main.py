@@ -1178,7 +1178,7 @@ def start_training():
         imgsz=image_size_input.get_value(),
         save_period=1000,
         # device=device,
-        device=[0, 1],
+        device=[0, 1, 2, 3],
         workers=n_workers_input.get_value(),
         optimizer=select_optimizer.get_value(),
         pretrained=pretrained,
