@@ -25,6 +25,10 @@ YOLOv8 is a powerful neural network architecture which provides both decent accu
 
 This app allows to train YOLOv8 model on selected dataset. You can define model checkpoint, data split method, training hyperparameters, data augmentation and many other features related to model training. App supports both models pretrained on COCO and models trained on custom datasets. Supported task types are object detection, instance segmentation and pose estimation.
 
+🔥🔥🔥 Check out our [youtube tutorial](https://youtu.be/Rsr8xWJ6s9I) and the [complete guide in our blog](https://supervisely.com/blog/train-yolov8-on-custom-data-no-code/):   
+
+![YouTube tutorial](https://github.com/supervisely-ecosystem/yolov8/assets/12828725/beb89aaf-94cb-4044-84f1-33f2f17bbe7e)
+
 # How To Run
 
 Select images project, select GPU device in "Agent" field, click on RUN button:
