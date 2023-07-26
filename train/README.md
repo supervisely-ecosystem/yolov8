@@ -7,6 +7,7 @@
 <p align="center">
   <a href="#Overview">Overview</a> •
   <a href="#How-To-Run">How To Run</a> •
+  <a href="#Related-apps">Related apps</a> •
   <a href="#Screenshot">Screenshot</a> •
   <a href="#Acknowledgment">Acknowledgment</a>
 </p>
@@ -35,6 +36,14 @@ Select images project, select GPU device in "Agent" field, click on RUN button:
 
 https://user-images.githubusercontent.com/91027877/249008934-293b3176-d5f3-4edb-9816-15bffd3bb869.mp4
 
+# Related apps
+
+- [Export to YOLOv8 format](https://ecosystem.supervise.ly/apps/export-to-yolov8) - app allows to transform data from Supervisely format to YOLOv8 format.   
+    <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/export-to-yolov8" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/01d6658f-11c3-40a3-8ff5-100a27fa1480" height="70px" margin-bottom="20px"/>  
+
+- [Serve YOLOv8](https://ecosystem.supervise.ly/apps/yolov8/serve) - app allows to deploy YOLOv8 model as REST API service.   
+    <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/yolov8/serve" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/721f5344-013c-4466-bc05-88cc3efef5ca" height="70px" margin-bottom="20px"/>
+  
 # Screenshot
 
 ![train_yolov8_full_screen](https://user-images.githubusercontent.com/91027877/250972249-7d27d601-3aa8-4614-bf11-d4d71a425602.png)
