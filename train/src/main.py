@@ -37,7 +37,7 @@ from supervisely.app.widgets import (
     TaskLogs,
     Stepper,
 )
-from src.utils import get_train_val_sets, verify_train_val_sets
+from src.utils import verify_train_val_sets
 from src.sly_to_yolov8 import transform
 from src.callbacks import on_train_batch_end
 from ultralytics import YOLO
@@ -880,10 +880,9 @@ def start_training():
         project = sly.Project(g.project_dir, sly.OpenMode.READ)
         n_images_after = project.total_items
         if n_images_before != n_images_after:
-            random_content = train_val_split._get_random_content()
-            random_split_table = random_content._widgets[0]
-            split_counts = random_split_table.get_splits_counts()
-            val_part = split_counts["val"] / split_counts["total"]
+            train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+            train_set, val_set = train_val_split.get_splits()
+            val_part = len(val_set) / (len(train_set) + len(val_set))
             new_val_count = round(n_images_after * val_part)
             if new_val_count < 1:
                 sly.app.show_dialog(
@@ -893,7 +892,8 @@ def start_training():
                 )
                 raise ValueError("Val split length is 0 after ignoring images. Please check your data")
     # split the data
-    train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
+    train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+    train_set, val_set = train_val_split.get_splits()
     verify_train_val_sets(train_set, val_set)
     # convert dataset from supervisely to yolo format
     if os.path.exists(g.yolov8_project_dir):
@@ -1424,7 +1424,8 @@ def auto_train(request: Request):
     if task_type == "object detection":
         sly.Project.to_detection_task(g.project_dir, inplace=True)
     # split the data
-    train_set, val_set = get_train_val_sets(g.project_dir, train_val_split, api, project_id)
+    train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+    train_set, val_set = train_val_split.get_splits()
     verify_train_val_sets(train_set, val_set)
     # convert dataset from supervisely to yolo format
     if os.path.exists(g.yolov8_project_dir):
