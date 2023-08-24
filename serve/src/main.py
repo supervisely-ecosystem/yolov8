@@ -12,9 +12,6 @@ from pathlib import Path
 
 from src.keypoints_template import human_template, dict_to_template
 
-# for local inference
-# from keypoints_template import human_template, dict_to_template
-
 try:
     from typing import Literal
 except ImportError:
@@ -153,8 +150,15 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 weights_dict = torch.load(weights_dst_path)
                 geometry_config = weights_dict["geometry_config"]
                 self.keypoints_template = dict_to_template(geometry_config)
-        print(f"✅ Model has been successfully loaded on {device.upper()} device")
-
+        if self.task_type == "object detection":
+            obj_classes = [sly.ObjClass(name, sly.Rectangle) for name in self.class_names]
+        elif self.task_type == "instance segmentation":
+            obj_classes = [sly.ObjClass(name, sly.Bitmap) for name in self.class_names]
+        elif self.task_type == "pose estimation":
+            obj_classes = [sly.ObjClass(name, sly.GraphNodes, geometry_config=self.keypoints_template) for name in self.class_names]
+        self._model_meta = sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
+        self._get_confidence_tag_meta()
+        
     def get_info(self):
         info = super().get_info()
         info["task type"] = self.task_type
@@ -167,33 +171,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
     def get_classes(self) -> List[str]:
         return self.class_names
-
-    @property
-    def model_meta(self) -> ProjectMeta:
-        if self._model_meta is None:
-            if self.task_type in ["object detection", "instance segmentation"]:
-                colors = get_predefined_colors(len(self.get_classes()))
-                classes = []
-                for name, rgb in zip(self.get_classes(), colors):
-                    if self.task_type == "object detection":
-                        classes.append(ObjClass(name, sly.Rectangle, rgb))
-                    else:
-                        classes.append(ObjClass(name, sly.Bitmap, rgb))
-                self._model_meta = ProjectMeta(classes)
-                self._get_confidence_tag_meta()
-            elif self.task_type == "pose estimation":
-                classes = []
-                for name in self.get_classes():
-                    classes.append(
-                        ObjClass(
-                            name,
-                            sly.GraphNodes,
-                            geometry_config=self.keypoints_template,
-                        )
-                    )
-                self._model_meta = ProjectMeta(classes)
-                self._get_confidence_tag_meta()
-        return self._model_meta
 
     def _create_label(self, dto: Union[PredictionMask, PredictionBBox, PredictionKeypoints]):
         if self.task_type == "object detection":
