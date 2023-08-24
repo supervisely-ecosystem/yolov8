@@ -1,4 +1,4 @@
-supervisely==6.72.68
+supervisely==6.72.112
 ultralytics==8.0.112
 --extra-index-url https://download.pytorch.org/whl/cu113
 torch==1.10.1+cu113
