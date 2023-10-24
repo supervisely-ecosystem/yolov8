@@ -614,6 +614,13 @@ def select_task(task_type):
                 status="warning",
             )
             select_classes_button.disable()
+        elif "rectangle" not in project_shapes:
+            sly.app.show_dialog(
+                title="There are no classes of shape rectangle in selected project (bounding boxes are required for pose estimation)",
+                description="Please, change task type or select another project with classes of shape rectangle",
+                status="warning",
+            )
+            select_classes_button.disable()
         else:
             select_classes_button.enable()
             models_table_columns = [key for key in g.pose_models_data[0].keys()]
@@ -630,21 +637,31 @@ def select_task(task_type):
 
 @select_classes_button.click
 def select_classes():
-    n_classes = len(classes_table.get_selected_classes())
-    if n_classes > 1:
-        classes_done.text = f"{n_classes} classes were selected successfully"
+    selected_classes = classes_table.get_selected_classes()
+    selected_shapes = [cls.geometry_type.geometry_name() for cls in project_meta.obj_classes if cls.name in selected_classes]
+    task_type = task_type_select.get_value()
+    if task_type == "pose estimation" and ("graph" not in selected_shapes or "rectangle" not in selected_shapes):
+        sly.app.show_dialog(
+            title="Pose estimation task requires input project to have at least one class of shape graph and one class of shape rectangle",
+            description="Please, select both classes of shape rectangle and graph or change task type",
+            status="warning",
+        )
     else:
-        classes_done.text = f"{n_classes} class was selected successfully"
-    select_classes_button.hide()
-    classes_done.show()
-    select_other_classes_button.show()
-    classes_table.disable()
-    task_type_select.disable()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_val_split.unlock()
-    card_train_val_split.uncollapse()
+        n_classes = len(classes_table.get_selected_classes())
+        if n_classes > 1:
+            classes_done.text = f"{n_classes} classes were selected successfully"
+        else:
+            classes_done.text = f"{n_classes} class was selected successfully"
+        select_classes_button.hide()
+        classes_done.show()
+        select_other_classes_button.show()
+        classes_table.disable()
+        task_type_select.disable()
+        curr_step = stepper.get_active_step()
+        curr_step += 1
+        stepper.set_active_step(curr_step)
+        card_train_val_split.unlock()
+        card_train_val_split.uncollapse()
 
 
 @select_other_classes_button.click
@@ -831,7 +848,7 @@ def start_training():
         necessary_geometries = ["rectangle"]
         local_artifacts_dir = os.path.join(local_dir, "runs", "detect", "train")
     elif task_type == "pose estimation":
-        necessary_geometries = ["graph"]
+        necessary_geometries = ["graph", "rectangle"]
         local_artifacts_dir = os.path.join(local_dir, "runs", "pose", "train")
     elif task_type == "instance segmentation":
         necessary_geometries = ["bitmap", "polygon"]
@@ -1373,7 +1390,7 @@ def auto_train(request: Request):
         necessary_geometries = ["rectangle"]
         local_artifacts_dir = os.path.join(local_dir, "runs", "detect", "train")
     elif task_type == "pose estimation":
-        necessary_geometries = ["graph"]
+        necessary_geometries = ["graph", "rectangle"]
         local_artifacts_dir = os.path.join(local_dir, "runs", "pose", "train")
     elif task_type == "instance segmentation":
         necessary_geometries = ["bitmap", "polygon"]
