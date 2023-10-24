@@ -28,3 +28,5 @@ if sly.is_production():
 else:
     train_params_filepath = "training_params.yml"  # for debug
 train_counter, val_counter = 0, 0
+center_matches = {}
+keypoints_template = None
