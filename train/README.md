@@ -7,6 +7,7 @@
 <p align="center">
   <a href="#Overview">Overview</a> •
   <a href="#How-To-Run">How To Run</a> •
+  <a href="#App-Specifications">App Specifications</a> •
   <a href="#Related-apps">Related apps</a> •
   <a href="#Screenshot">Screenshot</a> •
   <a href="#Acknowledgment">Acknowledgment</a>
@@ -35,6 +36,10 @@ This app allows to train YOLOv8 model on selected dataset. You can define model 
 Select images project, select GPU device in "Agent" field, click on RUN button:
 
 https://user-images.githubusercontent.com/91027877/249008934-293b3176-d5f3-4edb-9816-15bffd3bb869.mp4
+
+# App Specifications
+
+Please, remember that pose estimation task requires target object to be labeled by both graphs (keypoints) and bounding boxes (rectangles). For better experience, please, use [object binding](https://developer.supervisely.com/advanced-user-guide/objects-binding) to speed up the process of matching graphs and bounding boxes. If there are no binding keys in annotations, approach based on euclidian distance between centers of graphs and boxes will be used to match them with each other.
 
 # Related apps
 
