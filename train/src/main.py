@@ -1140,6 +1140,11 @@ def start_training():
         def train_batch_watcher_func():
             train_batch_watcher.watch()
 
+        def train_batch_watcher_disable():
+            train_batch_watcher.running = False
+
+        app.call_before_shutdown(train_batch_watcher_disable)
+
         threading.Thread(target=train_batch_watcher_func, daemon=True).start()
 
     model.train(
