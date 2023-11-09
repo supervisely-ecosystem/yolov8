@@ -1167,12 +1167,12 @@ def start_training():
 
     def stop_on_batch_end_if_needed(*args, **kwargs):
         if app.app_is_stopped():
-            raise app.StopAppError("This error is expected.")
+            raise app.StopApp("This error is expected.")
 
     model.add_callback("on_train_batch_end", stop_on_batch_end_if_needed)
     model.add_callback("on_val_batch_end", stop_on_batch_end_if_needed)
 
-    with app.run_with_stop_app_error_suppression():
+    with app.run_with_stop_app_suppression():
         model.train(
             data=data_path,
             epochs=n_epochs_input.get_value(),
