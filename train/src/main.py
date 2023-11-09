@@ -108,7 +108,9 @@ project_settings_content = Container(
         reselect_data_button,
     ]
 )
-card_project_settings = Card(title="Dataset selection", content=project_settings_content)
+card_project_settings = Card(
+    title="Dataset selection", content=project_settings_content
+)
 
 
 ### 2. Project classes
@@ -145,7 +147,10 @@ classes_content = Container(
 )
 card_classes = Card(
     title="Task type & training classes",
-    description="Select task type and classes, that should be used for training. Supported shapes include rectangle, bitmap, polygon and graph",
+    description=(
+        "Select task type and classes, that should be used for training. "
+        "Supported shapes include rectangle, bitmap, polygon and graph"
+    ),
     content=classes_content,
     collapsable=True,
     lock_message="Complete the previous step to unlock",
@@ -160,7 +165,10 @@ unlabeled_images_select = SelectString(values=["keep unlabeled images", "ignore 
 unlabeled_images_select_f = Field(
     content=unlabeled_images_select,
     title="What to do with unlabeled images",
-    description="Sometimes unlabeled images can be used to reduce noise in predictions, sometimes it is a mistake in training data",
+    description=(
+        "Sometimes unlabeled images can be used to reduce noise in predictions, "
+        "sometimes it is a mistake in training data"
+    ),
 )
 split_data_button = Button("Split data")
 resplit_data_button = Button(
@@ -195,7 +203,10 @@ card_train_val_split.lock()
 ### 4. Model selection
 models_table_notification = NotificationBox(
     title="List of models in the table below depends on selected task type",
-    description="If you want to see list of available models for another computer vision task, please, go back to task type & training classes step and change task type",
+    description=(
+        "If you want to see list of available models for another computer vision task, "
+        "please, go back to task type & training classes step and change task type"
+    ),
 )
 model_tabs_titles = ["Pretrained models", "Custom models"]
 model_tabs_descriptions = [
@@ -273,7 +284,10 @@ select_train_mode = SelectString(values=["Finetune mode", "Scratch mode"])
 select_train_mode_f = Field(
     content=select_train_mode,
     title="Select training mode",
-    description="Finetune mode - .pt file with pretrained model weights will be downloaded, Scratch mode - model weights will be initialized randomly",
+    description=(
+        "Finetune mode - .pt file with pretrained model weights will be downloaded, "
+        "Scratch mode - model weights will be initialized randomly"
+    ),
 )
 n_epochs_input = InputNumber(value=100, min=1)
 n_epochs_input_f = Field(content=n_epochs_input, title="Number of epochs")
@@ -321,7 +335,11 @@ additional_config_template_select_f = Field(
 additional_config_template_select_f.hide()
 no_templates_notification = NotificationBox(
     title="No templates found",
-    description="There are no templates for this task type in Team Files. You can create custom config and save it as a template to Team Files - you will be able to reuse it in your future experiments",
+    description=(
+        "There are no templates for this task type in Team Files. "
+        "You can create custom config and save it as a template to "
+        "Team Files - you will be able to reuse it in your future experiments"
+    ),
 )
 no_templates_notification.hide()
 train_settings_editor = Editor(language_mode="yaml", height_lines=50)
