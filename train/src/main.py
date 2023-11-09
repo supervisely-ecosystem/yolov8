@@ -1147,34 +1147,27 @@ def start_training():
 
         threading.Thread(target=train_batch_watcher_func, daemon=True).start()
 
-    _params = {
-        "data": data_path,
-        "epochs": n_epochs_input.get_value(),
-        "patience": patience_input.get_value(),
-        "batch": batch_size_input.get_value(),
-        "imgsz": image_size_input.get_value(),
-        "save_period": 1000,
-        "device": device,
-        "workers": n_workers_input.get_value(),
-        "optimizer": select_optimizer.get_value(),
-        "pretrained": pretrained,
-    }
-    _params.update(additional_params)
-    app.abandoned_if_app_stopped(model.train, _params)
+    def stop_on_train_batch_end_if_needed(*args, **kwargs):
+        if app.app_is_stopped():
+            raise app.StopAppError("This error is expected.")
 
-    # model.train(
-    #     data=data_path,
-    #     epochs=n_epochs_input.get_value(),
-    #     patience=patience_input.get_value(),
-    #     batch=batch_size_input.get_value(),
-    #     imgsz=image_size_input.get_value(),
-    #     save_period=1000,
-    #     device=device,
-    #     workers=n_workers_input.get_value(),
-    #     optimizer=select_optimizer.get_value(),
-    #     pretrained=pretrained,
-    #     **additional_params,
-    # )
+    model.add_callback("on_train_batch_end", stop_on_train_batch_end_if_needed)
+
+    with app.run_with_stop_app_error_suppression():
+        model.train(
+            data=data_path,
+            epochs=n_epochs_input.get_value(),
+            patience=patience_input.get_value(),
+            batch=batch_size_input.get_value(),
+            imgsz=image_size_input.get_value(),
+            save_period=1000,
+            device=device,
+            workers=n_workers_input.get_value(),
+            optimizer=select_optimizer.get_value(),
+            pretrained=pretrained,
+            **additional_params,
+        )
+
     progress_bar_iters.hide()
     progress_bar_epochs.hide()
     watcher.running = False
