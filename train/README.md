@@ -8,6 +8,7 @@
   <a href="#Overview">Overview</a> •
   <a href="#How-To-Run">How To Run</a> •
   <a href="#App-Specifications">App Specifications</a> •
+  <a href="#How-To-Use-Your-Trained-Model-Outside-Supervisely">How To Use Your Trained Model Outside Supervisely</a> •
   <a href="#Related-apps">Related apps</a> •
   <a href="#Screenshot">Screenshot</a> •
   <a href="#Acknowledgment">Acknowledgment</a>
@@ -40,6 +41,10 @@ https://user-images.githubusercontent.com/91027877/249008934-293b3176-d5f3-4edb-
 # App Specifications
 
 Please, remember that pose estimation task requires target object to be labeled by both graphs (keypoints) and bounding boxes (rectangles). For better experience, please, use [object binding](https://developer.supervisely.com/advanced-user-guide/objects-binding) to speed up the process of matching graphs and bounding boxes. If there are no binding keys in annotations, approach based on euclidian distance between centers of graphs and boxes will be used to match them with each other.
+
+# How To Use Your Trained Model Outside Supervisely
+
+You can use your trained models outside Supervisely platform without any dependencies on Supervisely SDK. See this [Jupyter Notebook](https://github.com/supervisely-ecosystem/yolov8/blob/master/outside_supervisely/inference_outside_supervisely.ipynb) for details.
 
 # Related apps
 
