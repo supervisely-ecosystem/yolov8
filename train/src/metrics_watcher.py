@@ -3,6 +3,7 @@ import sys
 
 # import time
 import traceback
+import supervisely as sly
 
 
 class Watcher(object):
@@ -40,3 +41,5 @@ class Watcher(object):
             except Exception as e:
                 print("Unhandled error:")
                 print(traceback.format_exc())
+        else:
+            sly.logger.debug("Watcher is stopped")

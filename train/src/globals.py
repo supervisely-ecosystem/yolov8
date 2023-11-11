@@ -13,8 +13,11 @@ yolov8_project_dir = os.path.join(app_data_dir, "yolov8_project_dir")
 
 if sly.is_production():
     app_session_id = sly.io.env.task_id()
+    root_model_checkpoint_dir = sly.app.get_synced_data_dir()
 else:
     app_session_id = 777  # for debug
+    root_model_checkpoint_dir = os.path.join(app_root_directory, "runs")
+
 
 det_models_data_path = os.path.join(root_source_path, "models", "det_models_data.json")
 seg_models_data_path = os.path.join(root_source_path, "models", "seg_models_data.json")
