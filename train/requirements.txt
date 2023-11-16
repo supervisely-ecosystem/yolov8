@@ -1,5 +1,5 @@
-supervisely==6.72.182
-# git+https://github.com/supervisely/supervisely.git@v2-stop
+# supervisely==6.72.182
+git+https://github.com/supervisely/supervisely.git@v2-stop-rename
 ultralytics==8.0.112
 --extra-index-url https://download.pytorch.org/whl/cu113
 torch==1.10.1+cu113
