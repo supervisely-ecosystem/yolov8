@@ -110,33 +110,57 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self,
         model_dir,
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
+        started_via_api: bool = False,
+        deploy_params: Dict[str, Any] = None,
     ):
-        model_source = self.gui.get_model_source()
-        if model_source == "Pretrained models":
-            self.task_type = self.task_type_select.get_value()
-            selected_model = self.gui.get_checkpoint_info()["Model"]
-            if selected_model.endswith("det"):
-                selected_model = selected_model[:-4]
-            model_filename = selected_model.lower() + ".pt"
-            weights_url = (
-                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
-            )
-            weights_dst_path = os.path.join(model_dir, model_filename)
-            if not sly.fs.file_exists(weights_dst_path):
-                self.download(
-                    src_path=weights_url,
-                    dst_path=weights_dst_path,
-                )
-        elif model_source == "Custom models":
-            self.task_type = self.custom_task_type_select.get_value()
-            custom_link = self.gui.get_custom_link()
-            weights_file_name = os.path.basename(custom_link)
+        if not started_via_api:
+            model_source = self.gui.get_model_source()
+            if model_source == "Pretrained models":
+                self.task_type = self.task_type_select.get_value()
+                selected_model = self.gui.get_checkpoint_info()["Model"]
+                if selected_model.endswith("det"):
+                    selected_model = selected_model[:-4]
+                model_filename = selected_model.lower() + ".pt"
+                weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
+                weights_dst_path = os.path.join(model_dir, model_filename)
+                if not sly.fs.file_exists(weights_dst_path):
+                    self.download(
+                        src_path=weights_url,
+                        dst_path=weights_dst_path,
+                    )
+            elif model_source == "Custom models":
+                self.task_type = self.custom_task_type_select.get_value()
+                custom_link = self.gui.get_custom_link()
+                weights_file_name = os.path.basename(custom_link)
+                weights_dst_path = os.path.join(model_dir, weights_file_name)
+                if not sly.fs.file_exists(weights_dst_path):
+                    self.download(
+                        src_path=custom_link,
+                        dst_path=weights_dst_path,
+                    )
+        else:
+        # ------------------------ #
+            model_source = deploy_params["model_source"]  # Pretrained models or Custom models
+            self.task_type = deploy_params["task_type"]
+            weights_file_name = deploy_params["weights_name"]
             weights_dst_path = os.path.join(model_dir, weights_file_name)
+            
+            if model_source == "Pretrained models":
+                weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{weights_file_name}"
+                if not sly.fs.file_exists(weights_dst_path):
+                    self.download(
+                        src_path=weights_url,
+                        dst_path=weights_dst_path,
+                    )
+            
             if not sly.fs.file_exists(weights_dst_path):
+                custom_weights_path = deploy_params["custom_weights_path"]
                 self.download(
-                    src_path=custom_link,
+                    src_path=custom_weights_path,
                     dst_path=weights_dst_path,
                 )
+        # ------------------------ #
+
         self.model = YOLO(weights_dst_path)
         self.class_names = list(self.model.names.values())
         if device.startswith("cuda"):
