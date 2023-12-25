@@ -140,6 +140,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     )
         else:
             # ------------------------ #
+            sly.logger.info(deploy_params)
             model_source = deploy_params["model_source"]  # "pretrained" / "custom"
             self.task_type = deploy_params["task_type"]
             weights_file_name = deploy_params["weights_name"]
