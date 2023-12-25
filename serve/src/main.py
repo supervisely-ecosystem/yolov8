@@ -143,7 +143,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             model_source = deploy_params["model_source"]  # "pretrained" / "custom"
             self.task_type = deploy_params["task_type"]
             weights_file_name = deploy_params["weights_name"]
-            weights_dst_path = os.path.join(model_dir, weights_file_name)
 
             if model_source == "Pretrained models":
                 if weights_file_name.endswith("det"):
@@ -151,12 +150,14 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 weights_file_name = weights_file_name.lower() + ".pt"
                 weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{weights_file_name}"
                 if not sly.fs.file_exists(weights_dst_path):
+                    weights_dst_path = os.path.join(model_dir, weights_file_name)
                     self.download(
                         src_path=weights_url,
                         dst_path=weights_dst_path,
                     )
 
             elif model_source == "Custom models":
+                weights_dst_path = os.path.join(model_dir, weights_file_name)
                 if not sly.fs.file_exists(weights_dst_path):
                     custom_weights_path = deploy_params["custom_weights_path"]
                     self.download(
