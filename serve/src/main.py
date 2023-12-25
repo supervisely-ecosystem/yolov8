@@ -146,6 +146,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             weights_dst_path = os.path.join(model_dir, weights_file_name)
 
             if model_source == "Pretrained models":
+                if weights_file_name.endswith("det"):
+                    weights_file_name = weights_file_name[:-4]
+                weights_file_name = weights_file_name.lower() + ".pt"
                 weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{weights_file_name}"
                 if not sly.fs.file_exists(weights_dst_path):
                     self.download(
