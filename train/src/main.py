@@ -57,7 +57,7 @@ from fastapi import Response, Request
 def update_globals(new_dataset_ids):
     global dataset_ids, project_id, workspace_id, project_info, project_meta
     dataset_ids = new_dataset_ids
-    if dataset_ids:
+    if dataset_ids and all(ds_id is not None for ds_id in dataset_ids):
         project_id = api.dataset.get_info_by_id(dataset_ids[0]).project_id
         workspace_id = api.project.get_info_by_id(project_id).workspace_id
         project_info = api.project.get_info_by_id(project_id)
