@@ -37,9 +37,13 @@ from supervisely.app.widgets import (
     GridGallery,
     TaskLogs,
     Stepper,
+    Text,
+    Collapse,
+    ImageSlider,
+    Dialog,
 )
 from src.utils import verify_train_val_sets
-from src.sly_to_yolov8 import transform
+from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.callbacks import on_train_batch_end
 from ultralytics import YOLO
 import torch
@@ -157,7 +161,7 @@ card_classes.collapse()
 card_classes.lock()
 
 
-### 3. Train / validation split
+### 3.1 Train / validation split
 train_val_split = TrainValSplits(project_id=project_id)
 unlabeled_images_select = SelectString(values=["keep unlabeled images", "ignore unlabeled images"])
 unlabeled_images_select_f = Field(
@@ -178,6 +182,36 @@ resplit_data_button = Button(
 resplit_data_button.hide()
 split_done = DoneLabel("Data was successfully splitted")
 split_done.hide()
+
+### 3.2 Check if there are images without bounding boxes (for pose estimation)
+bbox_miss_gallery = ImageSlider(previews=[], height=100, selectable=False)
+bbox_miss_collapse_item = Collapse.Item(
+    name="show_images",
+    title="Following images have no bounding boxes for graphs:",
+    content=bbox_miss_gallery,
+)
+bbox_miss_collapse = Collapse(items=[bbox_miss_collapse_item])
+bbox_miss_collapse.hide()
+bbox_miss_text = Text("Select options to handle them:")
+bbox_miss_manual_checkbox = Checkbox(
+    "Stop processing (I will add bounding boxes manually)", checked=True
+)
+bbox_miss_manual_checkbox.disable()
+bbox_miss_auto_checkbox = Checkbox(
+    "Continue processing (bounding boxes will be created automatically)"
+)
+bbox_miss_btn = Button("OK")
+bbox_miss_content = Container(
+    widgets=[
+        bbox_miss_collapse,
+        bbox_miss_text,
+        bbox_miss_manual_checkbox,
+        bbox_miss_auto_checkbox,
+        bbox_miss_btn,
+    ]
+)
+bbox_miss_dialog = Dialog(title="Images with no bounding boxes", content=bbox_miss_content)
+bbox_miss_check_progress = Progress()
 train_val_content = Container(
     [
         train_val_split,
@@ -185,6 +219,9 @@ train_val_content = Container(
         split_data_button,
         resplit_data_button,
         split_done,
+        bbox_miss_dialog,
+        bbox_miss_check_progress,
+        bbox_miss_collapse
     ]
 )
 card_train_val_split = Card(
@@ -701,10 +738,23 @@ def select_other_classes():
 
 @split_data_button.click
 def split_data():
+    split_data_button.loading = True
     train_val_split.disable()
     unlabeled_images_select.disable()
-    split_data_button.hide()
     split_done.show()
+    task_type = task_type_select.get_value()
+    if task_type == "pose estimation":
+        selected_classes = classes_table.get_selected_classes()
+        image_urls = check_bbox_exist_on_images(
+            api,selected_classes, dataset_ids, project_meta, bbox_miss_check_progress
+        )
+        if len(image_urls) > 0:
+            bbox_miss_gallery.set_data(previews=image_urls)
+            bbox_miss_dialog.show()
+            bbox_miss_collapse.show()
+    split_data_button.loading = False
+    split_data_button.hide()
+
     resplit_data_button.show()
     curr_step = stepper.get_active_step()
     curr_step += 1
@@ -723,6 +773,27 @@ def resplit_data():
     curr_step = stepper.get_active_step()
     curr_step -= 1
     stepper.set_active_step(curr_step)
+
+
+@bbox_miss_auto_checkbox.value_changed
+def on_auto_change(value):
+    if value:
+        bbox_miss_manual_checkbox.uncheck()
+    else:
+        bbox_miss_manual_checkbox.check()
+
+
+@bbox_miss_btn.click
+def close_dialog():
+    bbox_miss_dialog.hide()
+    if bbox_miss_manual_checkbox.is_checked():
+        bbox_miss_collapse.set_active_panel(bbox_miss_collapse_item.name)
+        msg = (
+            "Application will be stopped (corresponding option is selected). "
+            "Add bounding boxes to images with no bounding boxes and restart the app"
+        )
+        sly.app.show_dialog("Warning", msg, status="warning")
+        app.stop()
 
 
 @select_model_button.click

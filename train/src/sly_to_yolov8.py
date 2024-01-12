@@ -6,6 +6,28 @@ import numpy as np
 import math
 
 
+def check_bbox_exist_on_images(api, selected_classes, datasets, project_meta, progress):
+    bbox_miss_image_urls = []
+    all_images = [api.image.get_list(dataset_id) for dataset_id in datasets]
+    with progress(message="Checking if images contain bounding boxes...", total=len(all_images)) as pbar:
+        for batch in sly.batched(all_images):
+            dataset_id = batch[0].dataset_id
+            image_ids = [image_info.id for image_info in batch]
+            ann_jsons = api.annotation.download_json_batch(dataset_id, image_ids)
+            anns = [sly.Annotation.from_json(ann_json, project_meta) for ann_json in ann_jsons]
+            for img_info, ann in zip(batch, anns):
+                bbox_exist = False
+                for label in ann.labels:
+                    if label.obj_class.name in selected_classes:
+                        if label.geometry.geometry_name() == "rectangle":
+                            bbox_exist = True
+                            break
+                if not bbox_exist:
+                    bbox_miss_image_urls.append(img_info.preview_url)
+                    pbar.update()
+    return bbox_miss_image_urls
+    
+
 def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_list):
     if task_type == "object detection":
         class_number = class_names.index(label.obj_class.name)
