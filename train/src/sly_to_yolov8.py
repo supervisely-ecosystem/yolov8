@@ -188,7 +188,6 @@ def _create_data_config(output_dir, meta: sly.ProjectMeta, task_type):
 
 
 def _transform_annotation(ann, class_names, save_path, task_type):
-    g.center_matches = {}
     yolov8_ann = []
     for label in ann.labels:
         if label.obj_class.name in class_names:
