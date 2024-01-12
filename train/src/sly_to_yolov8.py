@@ -6,6 +6,30 @@ import numpy as np
 import math
 
 
+def check_bbox_exist_on_images(api, selected_classes, datasets, project_meta, progress):
+    bbox_miss_image_urls = []
+    all_images = []
+    for dataset_id in datasets:
+        all_images.extend(api.image.get_list(dataset_id))
+    with progress(message="Checking if images contain bounding boxes...", total=len(all_images)) as pbar:
+        for batch in sly.batched(all_images):
+            dataset_id = batch[0].dataset_id
+            image_ids = [image_info.id for image_info in batch]
+            ann_jsons = api.annotation.download_json_batch(dataset_id, image_ids)
+            anns = [sly.Annotation.from_json(ann_json, project_meta) for ann_json in ann_jsons]
+            for img_info, ann in zip(batch, anns):
+                bbox_exist = False
+                for label in ann.labels:
+                    if label.obj_class.name in selected_classes:
+                        if label.geometry.geometry_name() == "rectangle":
+                            bbox_exist = True
+                            break
+                if not bbox_exist:
+                    bbox_miss_image_urls.append(img_info.preview_url)
+                    pbar.update()
+    return bbox_miss_image_urls
+    
+
 def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_list):
     if task_type == "object detection":
         class_number = class_names.index(label.obj_class.name)
@@ -34,31 +58,11 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
             graph_center = label.geometry.to_bbox().center
             graph_center = [graph_center.col, graph_center.row]
             boxes_list = [label.geometry for label in labels_list if isinstance(label.geometry, sly.Rectangle)]
-            center2box = {}
-            for box in boxes_list:
-                center2box[f"{box.center.col} {box.center.row}"] = box
-            distance2center = {}
-            for center in center2box.keys():
-                cx, cy = center.split()
-                distance = math.dist(graph_center, [int(cx), int(cy)])
-                distance2center[distance] = center
-            min_distance = min(distance2center.keys())
-            box_center = distance2center[min_distance]
-            # corresponding bbox for graph is the one with the smallest distance to graph center
-            matched_box = center2box[box_center]
-            box_x, box_y = box_center.split()
-            box_x, box_y = int(box_x), int(box_y)
-            box_center = [box_x, box_y]
-            if box_center not in g.center_matches.values():
-                g.center_matches[f"{graph_center[0]} {graph_center[1]}"] = box_center
-                class_number = class_names.index(label.obj_class.name)
-                x_center = round(box_center[0] / img_size[1], 6)
-                y_center = round(box_center[1] / img_size[0], 6)
-                width = round(matched_box.width / img_size[1], 6)
-                height = round(matched_box.height / img_size[0], 6)
-            # if failed to match graphs and boxes, get box by transforming graph to box
-            else:
-                sly.logger.warn("Failed to match graphs and boxes, boxes will be created by transforming graphs to boxes")
+            if len(boxes_list) == 0:
+                sly.logger.warn(
+                    "Failed to find bounding boxes for graphs, "
+                    "boxes will be created by transforming graphs to boxes"
+                )
                 class_number = class_names.index(label.obj_class.name)
                 rect_geometry = label.geometry.to_bbox()
                 center = rect_geometry.center
@@ -66,6 +70,39 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
                 y_center = round(center.row / img_size[0], 6)
                 width = round(rect_geometry.width / img_size[1], 6)
                 height = round(rect_geometry.height / img_size[0], 6)
+            else:
+                center2box = {}
+                for box in boxes_list:
+                    center2box[f"{box.center.col} {box.center.row}"] = box
+                distance2center = {}
+                for center in center2box.keys():
+                    cx, cy = center.split()
+                    distance = math.dist(graph_center, [int(cx), int(cy)])
+                    distance2center[distance] = center
+                min_distance = min(distance2center.keys())
+                box_center = distance2center[min_distance]
+                # corresponding bbox for graph is the one with the smallest distance to graph center
+                matched_box = center2box[box_center]
+                box_x, box_y = box_center.split()
+                box_x, box_y = int(box_x), int(box_y)
+                box_center = [box_x, box_y]
+                if box_center not in g.center_matches.values():
+                    g.center_matches[f"{graph_center[0]} {graph_center[1]}"] = box_center
+                    class_number = class_names.index(label.obj_class.name)
+                    x_center = round(box_center[0] / img_size[1], 6)
+                    y_center = round(box_center[1] / img_size[0], 6)
+                    width = round(matched_box.width / img_size[1], 6)
+                    height = round(matched_box.height / img_size[0], 6)
+                # if failed to match graphs and boxes, get box by transforming graph to box
+                else:
+                    sly.logger.warn("Failed to match graphs and boxes, boxes will be created by transforming graphs to boxes")
+                    class_number = class_names.index(label.obj_class.name)
+                    rect_geometry = label.geometry.to_bbox()
+                    center = rect_geometry.center
+                    x_center = round(center.col / img_size[1], 6)
+                    y_center = round(center.row / img_size[0], 6)
+                    width = round(rect_geometry.width / img_size[1], 6)
+                    height = round(rect_geometry.height / img_size[0], 6)
         graph_nodes = label.geometry.nodes
         keypoints = []
         for node_id in g.keypoints_template["nodes"].keys():
