@@ -8,7 +8,9 @@ import math
 
 def check_bbox_exist_on_images(api, selected_classes, datasets, project_meta, progress):
     bbox_miss_image_urls = []
-    all_images = [api.image.get_list(dataset_id) for dataset_id in datasets]
+    all_images = []
+    for dataset_id in datasets:
+        all_images.extend(api.image.get_list(dataset_id))
     with progress(message="Checking if images contain bounding boxes...", total=len(all_images)) as pbar:
         for batch in sly.batched(all_images):
             dataset_id = batch[0].dataset_id
