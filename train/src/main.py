@@ -801,11 +801,15 @@ def close_dialog():
 
 @select_model_button.click
 def select_model():
-    custom_link = model_path_input.get_value()
-    file_exists = False
-    if custom_link != "":
-        file_exists = api.file.exists(sly.env.team_id(), custom_link)
-    if not file_exists:
+    weights_type = model_tabs.get_active_tab()
+    file_exists = True
+    if weights_type == "Custom models":
+        custom_link = model_path_input.get_value()
+        if custom_link != "":
+            file_exists = api.file.exists(sly.env.team_id(), custom_link)
+        else:
+            file_exists = False
+    if not file_exists and weights_type == "Custom models":
         model_not_found_text.show()
         model_select_done.hide()
     else:
