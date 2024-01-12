@@ -845,6 +845,7 @@ def change_file_preview(value):
     if file_info is None:
         model_not_found_text.show()
         model_select_done.hide()
+        model_file_thumbnail.set(None)
     else:
         model_not_found_text.hide()
         model_file_thumbnail.set(file_info)
