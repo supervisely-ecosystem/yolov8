@@ -799,6 +799,13 @@ def close_dialog():
         app.stop()
 
 
+@model_tabs.value_changed
+def model_tab_changed(value):
+    if value == "Pretrained models":
+        model_not_found_text.hide()
+        model_select_done.hide()
+
+
 @select_model_button.click
 def select_model():
     weights_type = model_tabs.get_active_tab()
