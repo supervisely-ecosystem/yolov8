@@ -293,6 +293,8 @@ reselect_model_button = Button(
     plain=True,
 )
 reselect_model_button.hide()
+model_not_found_text = Text("Custom model not found", status="error")
+model_not_found_text.hide()
 model_select_done = DoneLabel("Model was successfully selected")
 model_select_done.hide()
 model_selection_content = Container(
@@ -300,6 +302,7 @@ model_selection_content = Container(
         model_tabs,
         select_model_button,
         reselect_model_button,
+        model_not_found_text,
         model_select_done,
     ]
 )
@@ -798,22 +801,32 @@ def close_dialog():
 
 @select_model_button.click
 def select_model():
-    select_model_button.hide()
-    model_select_done.show()
-    model_tabs.disable()
-    models_table.disable()
-    model_path_input.disable()
-    reselect_model_button.show()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_params.unlock()
-    card_train_params.uncollapse()
+    custom_link = model_path_input.get_value()
+    file_exists = False
+    if custom_link != "":
+        file_exists = api.file.exists(sly.env.team_id(), custom_link)
+    if not file_exists:
+        model_not_found_text.show()
+        model_select_done.hide()
+    else:
+        model_select_done.show()
+        model_not_found_text.hide()
+        select_model_button.hide()
+        model_tabs.disable()
+        models_table.disable()
+        model_path_input.disable()
+        reselect_model_button.show()
+        curr_step = stepper.get_active_step()
+        curr_step += 1
+        stepper.set_active_step(curr_step)
+        card_train_params.unlock()
+        card_train_params.uncollapse()
 
 
 @reselect_model_button.click
 def reselect_model():
     select_model_button.show()
+    model_not_found_text.hide()
     model_select_done.hide()
     model_tabs.enable()
     models_table.enable()
@@ -829,7 +842,12 @@ def change_file_preview(value):
     file_info = None
     if value != "":
         file_info = api.file.get_info_by_path(sly.env.team_id(), value)
-    model_file_thumbnail.set(file_info)
+    if file_info is None:
+        model_not_found_text.show()
+        model_select_done.hide()
+    else:
+        model_not_found_text.hide()
+        model_file_thumbnail.set(file_info)
 
 
 @additional_config_radio.value_changed
@@ -1084,6 +1102,8 @@ def start_training():
         model_filename = "custom_model.pt"
         weights_dst_path = os.path.join(g.app_data_dir, model_filename)
         file_info = api.file.get_info_by_path(sly.env.team_id(), custom_link)
+        if file_info is None:
+            raise FileNotFoundError(f"Custon model file not found: {custom_link}")
         file_size = file_info.sizeb
         progress = sly.Progress(
             message="",
