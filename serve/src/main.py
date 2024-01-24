@@ -106,6 +106,85 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def get_models(self):
         return det_models_data
 
+    def get_params_from_ui(self) -> dict:
+        # "Pretrained models" | "Custom models"
+        model_source = self.gui.get_model_source()
+
+        # "object detection" | "instance segmentation" | "pose estimation"
+        self.task_type = self.task_type_select.get_value()
+        self.device = self.gui.get_device()
+
+        if model_source == "Pretrained models":
+            selected_model = self.gui.get_checkpoint_info()["Model"]
+            if selected_model.endswith("det"):
+                selected_model = selected_model[:-4]
+            model_filename = f"{selected_model.lower()}.pt"
+            weights_url = (
+                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
+            )
+        elif model_source == "Custom models":
+            weights_url = self.gui.get_custom_link()
+            model_filename = os.path.basename(weights_url)
+
+        deploy_params = {
+            "model_source": model_source,
+            "task_type": self.task_type,
+            "weights_name": model_filename,
+            "weights_url": weights_url,
+            "model_dir": self.model_dir,
+            "device": self.device,
+        }
+        return deploy_params
+
+    def download_weights(self, model_dir: str, model_filename: str, weights_url: str) -> str:
+        weights_dst_path = os.path.join(model_dir, model_filename)
+        if not sly.fs.file_exists(weights_dst_path):
+            self.download(
+                src_path=weights_url,
+                dst_path=weights_dst_path,
+            )
+        return weights_dst_path
+
+    def init_model_meta(self, model_source: str, weights_save_path: str):
+        self.class_names = list(self.model.names.values())
+        if self.task_type == "pose estimation":
+            if model_source == "Pretrained models":
+                self.keypoints_template = human_template
+            elif model_source == "Custom models":
+                weights_dict = torch.load(weights_save_path)
+                geometry_config = weights_dict["geometry_config"]
+                self.keypoints_template = dict_to_template(geometry_config)
+        if self.task_type == "object detection":
+            obj_classes = [sly.ObjClass(name, sly.Rectangle) for name in self.class_names]
+        elif self.task_type == "instance segmentation":
+            obj_classes = [sly.ObjClass(name, sly.Bitmap) for name in self.class_names]
+        elif self.task_type == "pose estimation":
+            obj_classes = [
+                sly.ObjClass(name, sly.GraphNodes, geometry_config=self.keypoints_template)
+                for name in self.class_names
+            ]
+        self._model_meta = sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
+        self._get_confidence_tag_meta()
+
+    def load_model(self, local_weights_path: str, device: str):
+        self.model = YOLO(local_weights_path)
+        if device.startswith("cuda"):
+            if device == "cuda":
+                self.device = 0
+            else:
+                self.device = int(device[-1])
+        else:
+            self.device = "cpu"
+        self.model.to(self.device)
+
+    def deploy(self, deploy_params: dict):
+        self.task_type = deploy_params["task_type"]
+        local_weights_path = self.download_weights(
+            self.model_dir, deploy_params["weights_name"], deploy_params["weights_url"]
+        )
+        self.load_model(local_weights_path, deploy_params["device"])
+        self.init_model_meta(deploy_params["model_source"], local_weights_path)
+
     def load_on_device(
         self,
         model_dir,
@@ -365,7 +444,9 @@ if sly.is_production():
 else:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
-    m.load_on_device(m.model_dir, device)
+    deploy_params = m.get_params_from_ui()
+    m.deploy(deploy_params)
+    # m.load_on_device(m.model_dir, device)
     image_path = "./demo_data/image_01.jpg"
     settings = {
         "conf": 0.25,
