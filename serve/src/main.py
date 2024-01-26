@@ -106,6 +106,18 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def get_models(self):
         return det_models_data
 
+    def get_layout(self):
+        self.model_source_select = RadioGroup(
+            items=[
+                RadioGroup.Item(value="Pretrained models"),
+                RadioGroup.Item(value="Custom models"),
+            ],
+            direction="horizontal",
+        )
+
+        layout = self.model_source_select
+        return layout
+
     def get_params_from_ui(self) -> dict:
         # "Pretrained models" | "Custom models"
         model_source = self.gui.get_model_source()
@@ -127,12 +139,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             model_filename = os.path.basename(weights_url)
 
         deploy_params = {
+            "device": self.device,
             "model_source": model_source,
             "task_type": self.task_type,
-            "weights_name": model_filename,
-            "weights_url": weights_url,
-            "model_dir": self.model_dir,
-            "device": self.device,
+            "model_name": model_filename,
+            "model_url": weights_url,
         }
         return deploy_params
 
@@ -145,7 +156,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             )
         return weights_dst_path
 
-    def init_model_meta(self, model_source: str, weights_save_path: str):
+    def prepare_model_files(self, model_name: str, model_url: str):
+        local_weights_path = self.download_weights(self.model_dir, model_name, model_url)
+        return local_weights_path
+
+    def load_model_meta(self, model_source: str, weights_save_path: str):
         self.class_names = list(self.model.names.values())
         if self.task_type == "pose estimation":
             if model_source == "Pretrained models":
@@ -166,7 +181,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self._model_meta = sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
         self._get_confidence_tag_meta()
 
-    def load_model(self, local_weights_path: str, device: str):
+    def load_model(
+        self, model_source: str, device: str, task_type: str, model_name: str, model_url: str
+    ):
+        self.task_type = task_type
+        local_weights_path = self.prepare_model_files(model_name, model_url)
         self.model = YOLO(local_weights_path)
         if device.startswith("cuda"):
             if device == "cuda":
@@ -176,14 +195,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         else:
             self.device = "cpu"
         self.model.to(self.device)
-
-    def deploy(self, deploy_params: dict):
-        self.task_type = deploy_params["task_type"]
-        local_weights_path = self.download_weights(
-            self.model_dir, deploy_params["weights_name"], deploy_params["weights_url"]
-        )
-        self.load_model(local_weights_path, deploy_params["device"])
-        self.init_model_meta(deploy_params["model_source"], local_weights_path)
+        self.load_model_meta(model_source, local_weights_path)
 
     def load_on_device(
         self,
@@ -445,7 +457,7 @@ else:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
     deploy_params = m.get_params_from_ui()
-    m.deploy(deploy_params)
+    m.load_model(**deploy_params)
     # m.load_on_device(m.model_dir, device)
     image_path = "./demo_data/image_01.jpg"
     settings = {
