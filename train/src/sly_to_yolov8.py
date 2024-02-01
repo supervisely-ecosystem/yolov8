@@ -5,27 +5,30 @@ import src.globals as g
 import numpy as np
 import math
 
-
 def check_bbox_exist_on_images(api, selected_classes, datasets, project_meta, progress):
     bbox_miss_image_urls = []
-    all_images = []
+    images_cnt = 0
+    all_images = {}
     for dataset_id in datasets:
-        all_images.extend(api.image.get_list(dataset_id))
-    with progress(message="Checking if images contain bounding boxes...", total=len(all_images)) as pbar:
-        for batch in sly.batched(all_images):
-            dataset_id = batch[0].dataset_id
-            image_ids = [image_info.id for image_info in batch]
-            ann_jsons = api.annotation.download_json_batch(dataset_id, image_ids)
-            anns = [sly.Annotation.from_json(ann_json, project_meta) for ann_json in ann_jsons]
-            for img_info, ann in zip(batch, anns):
-                bbox_exist = False
-                for label in ann.labels:
-                    if label.obj_class.name in selected_classes:
-                        if label.geometry.geometry_name() == "rectangle":
-                            bbox_exist = True
-                            break
-                if not bbox_exist:
-                    bbox_miss_image_urls.append(img_info.preview_url)
+        images = api.image.get_list(dataset_id)
+        all_images[dataset_id] = images
+        images_cnt += len(images)
+
+    with progress(message="Checking if images contain bounding boxes...", total=images_cnt) as pbar:
+        for dataset_id, images in all_images.items():
+            for batch in sly.batched(list(images)):
+                image_ids = [image_info.id for image_info in batch]
+                ann_jsons = api.annotation.download_json_batch(dataset_id, image_ids)
+                anns = [sly.Annotation.from_json(ann_json, project_meta) for ann_json in ann_jsons]
+                for img_info, ann in zip(batch, anns):
+                    bbox_exist = False
+                    for label in ann.labels:
+                        if label.obj_class.name in selected_classes:
+                            if label.geometry.geometry_name() == "rectangle":
+                                bbox_exist = True
+                                break
+                    if not bbox_exist:
+                        bbox_miss_image_urls.append(img_info.preview_url)
                     pbar.update()
     return bbox_miss_image_urls
     
@@ -41,19 +44,22 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
         height = round(rect_geometry.height / img_size[0], 6)
         result = "{} {} {} {} {}".format(class_number, x_center, y_center, width, height)
     elif task_type == "pose estimation":
+        bbox_found = False
         if label.binding_key:
             binding_key = label.binding_key
-            boxes_list = []
+            box = None
             for lbl in labels_list:
                 if isinstance(lbl.geometry, sly.Rectangle) and lbl.binding_key:
-                    boxes_list.append(lbl)
-            box = [element.geometry for element in boxes_list if element.binding_key == binding_key][0]
-            x_center = round(box.center.col / img_size[1], 6)
-            y_center = round(box.center.row / img_size[0], 6)
-            width = round(box.width / img_size[1], 6)
-            height = round(box.height / img_size[0], 6)
-            class_number = class_names.index(label.obj_class.name)
-        else:
+                    if lbl.binding_key == binding_key:
+                        box = lbl.geometry
+            if box is not None:
+                bbox_found = True
+                x_center = round(box.center.col / img_size[1], 6)
+                y_center = round(box.center.row / img_size[0], 6)
+                width = round(box.width / img_size[1], 6)
+                height = round(box.height / img_size[0], 6)
+                class_number = class_names.index(label.obj_class.name)
+        if not bbox_found:
             # find corresponding bbox for graph
             graph_center = label.geometry.to_bbox().center
             graph_center = [graph_center.col, graph_center.row]
