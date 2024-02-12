@@ -1,26 +1,26 @@
-import supervisely as sly
-from supervisely.nn.prediction_dto import (
-    PredictionMask,
-    PredictionBBox,
-    PredictionKeypoints,
-)
-from ultralytics import YOLO
-import torch
 import os
-from dotenv import load_dotenv
-from src.keypoints_template import human_template, dict_to_template
-from typing import List, Any, Dict, Union
-from supervisely.app.widgets import (
-    TrainedModelsSelector,
-    Container,
-    RadioTabs,
-    PretrainedModelsSelector,
-)
-from src.models import yolov8_models
+from pathlib import Path
+from typing import Any, Dict, List, Union, Literal
 
+import torch
+from dotenv import load_dotenv
+from ultralytics import YOLO
+
+import supervisely as sly
+from src.keypoints_template import dict_to_template, human_template
+from src.models import yolov8_models
+from supervisely.app.widgets import (
+    Container,
+    PretrainedModelsSelector,
+    RadioTabs,
+    TrainedModelsSelector,
+)
+from supervisely.nn.prediction_dto import PredictionBBox, PredictionKeypoints, PredictionMask
 
 load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
+
+root_source_path = str(Path(__file__).parents[2])
 
 api = sly.Api.from_env()
 team_id = sly.env.team_id()
@@ -28,15 +28,25 @@ team_id = sly.env.team_id()
 
 class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def init_gui(self):
+        """Create custom GUI layout for model selection. This method is called once when the application is started."""
         self.pretrained_models_table = PretrainedModelsSelector(yolov8_models)
         custom_models = sly.nn.checkpoints.yolov8.get_list(api, team_id)
-        self.custom_models_table = TrainedModelsSelector(team_id, custom_models)
+        self.custom_models_table = TrainedModelsSelector(
+            team_id,
+            custom_models,
+            show_custom_checkpoint_path=True,
+            custom_checkpoint_task_types=[
+                "object detection",
+                "instance segmentation",
+                "pose estimation",
+            ],
+        )
+
         self.model_tab_select = RadioTabs(
             titles=["Pretrained models", "Custom models"],
             descriptions=["Publicly available models", "Models trained by you in Supervisely"],
             contents=[self.pretrained_models_table, self.custom_models_table],
         )
-
         return Container([self.model_tab_select])
 
     def update_gui(self, is_model_deployed: bool):
@@ -50,25 +60,38 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             self.model_tab_select.enable()
 
     def set_params_to_ui(self, deploy_params):
+        """Method to set GUI from API"""
         model_tab = deploy_params["model_tab"]
         self.model_tab_select.set_active_tab(deploy_params["model_tab"])
         if model_tab == "Pretrained models":
             self.pretrained_models_table.set_active_task_type(deploy_params["task_type"])
             self.pretrained_models_table.set_active_row(deploy_params["model_id"])
         else:
-            self.custom_models_table.set_active_row(deploy_params["model_id"])
-            model_row = self.custom_models_table.get_selected_row()
-            model_row.checkpoints_selector.set_value(deploy_params["checkpoint_name"])
+            use_custom_path = deploy_params["use_custom_path"]
+            if not use_custom_path:
+                self.custom_models_table.custom_tab_widgets.hide()
+                self.custom_models_table.show_custom_checkpoint_path_checkbox.uncheck()
+                self.custom_models_table.set_active_row(deploy_params["model_id"])
+                model_row = self.custom_models_table.get_selected_row()
+                model_row.checkpoints_selector.set_value(deploy_params["checkpoint_name"])
+            else:
+                self.custom_models_table.show_custom_checkpoint_path_checkbox.check()
+                self.custom_models_table.set_custom_checkpoint_path(deploy_params["model_url"])
+                self.custom_models_table.set_custom_checkpoint_task_type(deploy_params["task_type"])
+                self.custom_models_table.set_custom_checkpoint_preview(
+                    api.file.get_info_by_path(sly.env.team_id(), deploy_params["model_url"])
+                )
+                self.custom_models_table.custom_tab_widgets.show()
 
     def get_params_from_ui(self) -> dict:
         # "Pretrained models" | "Custom models"
         model_tab = self.model_tab_select.get_active_tab()
 
         # "object detection" | "instance segmentation" | "pose estimation"
-        self.task_type = self.pretrained_models_table.get_selected_task_type()
         self.device = self.gui.get_device()
 
         if model_tab == "Pretrained models":
+            self.task_type = self.pretrained_models_table.get_selected_task_type()
             selected_model_id = self.pretrained_models_table.get_selected_row_index()
             selected_model = self.pretrained_models_table.get_selected_row()["Model"]
             if selected_model.endswith("det"):
@@ -78,10 +101,18 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
             )
         elif model_tab == "Custom models":
-            selected_model_id = self.custom_models_table.get_selected_row_index()
-            selected_model = self.custom_models_table.get_selected_row()
-            weights_url = selected_model.get_selected_checkpoint_path()
-            model_filename = selected_model.get_selected_checkpoint_name()
+            use_custom_path = self.custom_models_table.use_custom_checkpoint_path()
+            if not use_custom_path:
+                selected_model_id = self.custom_models_table.get_selected_row_index()
+                selected_model = self.custom_models_table.get_selected_row()
+                self.task_type = selected_model.task_type
+                weights_url = selected_model.get_selected_checkpoint_path()
+                model_filename = selected_model.get_selected_checkpoint_name()
+            else:
+                selected_model_id = None
+                self.task_type = self.custom_models_table.get_custom_checkpoint_task_type()
+                weights_url = self.custom_models_table.get_custom_checkpoint_path()
+                model_filename = self.custom_models_table.get_custom_checkpoint_name()
 
         deploy_params = {
             "device": self.device,
@@ -90,6 +121,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             "model_id": selected_model_id,
             "checkpoint_name": model_filename,
             "model_url": weights_url,
+            "use_custom_path": use_custom_path,
         }
         return deploy_params
 
@@ -125,13 +157,32 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
     def load_model(
         self,
-        model_tab: str,
-        device: str,
-        task_type: str,
-        model_id: int,  # used to set gui
+        model_tab: Literal["Pretrained models", "Custom models"],
+        device: Literal["cpu", "cuda:0"],
+        task_type: Literal["object detection", "instance segmentation", "pose estimation"],
+        model_id: int,  # used in endpoint to set model in gui
         checkpoint_name: str,
         model_url: str,
+        use_custom_path: bool,  # used in endpoint to set model in gui
     ):
+        """
+        Load model method is used to deploy model.
+
+        :param model_tab: Specifies whether the model is pretrained or custom.
+        :type model_tab: Literal["Pretrained models", "Custom models"]
+        :param device: The device on which the model will be deployed.
+        :type device: Literal["cpu", "cuda:0"]
+        :param task_type: The type of task the model is designed for.
+        :type task_type: Literal["object detection", "instance segmentation", "pose estimation"]
+        :param model_id: The id of the model in the model table. This is used in the endpoint to set the model in the GUI.
+        :type model_id: int
+        :param checkpoint_name: The name of the checkpoint from which the model is loaded.
+        :type checkpoint_name: str
+        :param model_url: The URL where the model can be downloaded.
+        :type model_url: str
+        :param use_custom_path: Flag to detect if the checkpoint file is not in the default location.
+        :type use_custom_path: bool
+        """
         self.task_type = task_type
         local_weights_path = self.download_weights(self.model_dir, checkpoint_name, model_url)
         self.model = YOLO(local_weights_path)
@@ -144,95 +195,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             self.device = "cpu"
         self.model.to(self.device)
         self.load_model_meta(model_tab, local_weights_path)
-
-    # def load_on_device(
-    #     self,
-    #     model_dir,
-    #     device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
-    #     started_via_api: bool = False,
-    #     deploy_params: Dict[str, Any] = None,
-    # ):
-    #     if not started_via_api:
-    #         model_tab = self.gui.get_model_tab()
-    #         if model_tab == "Pretrained models":
-    #             self.task_type = self.task_type_select.get_value()
-    #             selected_model = self.gui.get_checkpoint_info()["Model"]
-    #             if selected_model.endswith("det"):
-    #                 selected_model = selected_model[:-4]
-    #             model_filename = selected_model.lower() + ".pt"
-    #             weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
-    #             weights_dst_path = os.path.join(model_dir, model_filename)
-    #             if not sly.fs.file_exists(weights_dst_path):
-    #                 self.download(
-    #                     src_path=weights_url,
-    #                     dst_path=weights_dst_path,
-    #                 )
-    #         elif model_tab == "Custom models":
-    #             self.task_type = self.custom_task_type_select.get_value()
-    #             custom_link = self.gui.get_custom_link()
-    #             weights_file_name = os.path.basename(custom_link)
-    #             weights_dst_path = os.path.join(model_dir, weights_file_name)
-    #             if not sly.fs.file_exists(weights_dst_path):
-    #                 self.download(
-    #                     src_path=custom_link,
-    #                     dst_path=weights_dst_path,
-    #                 )
-    #     else:
-    #         # ------------------------ #
-    #         model_tab = deploy_params["model_tab"]  # "pretrained" / "custom"
-    #         self.task_type = deploy_params["task_type"]
-    #         weights_file_name = deploy_params["checkpoint_name"]
-
-    #         if model_tab == "Pretrained models":
-    #             if weights_file_name.endswith("det"):
-    #                 weights_file_name = weights_file_name[:-4]
-    #             weights_file_name = weights_file_name.lower() + ".pt"
-    #             weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{weights_file_name}"
-    #             weights_dst_path = os.path.join(model_dir, weights_file_name)
-    #             if not sly.fs.file_exists(weights_dst_path):
-    #                 self.download(
-    #                     src_path=weights_url,
-    #                     dst_path=weights_dst_path,
-    #                 )
-
-    #         elif model_tab == "Custom models":
-    #             weights_dst_path = os.path.join(model_dir, weights_file_name)
-    #             custom_weights_path = deploy_params["model_url"]
-    #             if not sly.fs.file_exists(weights_dst_path):
-    #                 self.download(
-    #                     src_path=custom_weights_path,
-    #                     dst_path=weights_dst_path,
-    #                 )
-    #     # ------------------------ #
-
-    #     self.model = YOLO(weights_dst_path)
-    #     self.class_names = list(self.model.names.values())
-    #     if device.startswith("cuda"):
-    #         if device == "cuda":
-    #             self.device = 0
-    #         else:
-    #             self.device = int(device[-1])
-    #     else:
-    #         self.device = "cpu"
-    #     self.model.to(self.device)
-    #     if self.task_type == "pose estimation":
-    #         if model_tab == "Pretrained models":
-    #             self.keypoints_template = human_template
-    #         elif model_tab == "Custom models":
-    #             weights_dict = torch.load(weights_dst_path)
-    #             geometry_config = weights_dict["geometry_config"]
-    #             self.keypoints_template = dict_to_template(geometry_config)
-    #     if self.task_type == "object detection":
-    #         obj_classes = [sly.ObjClass(name, sly.Rectangle) for name in self.class_names]
-    #     elif self.task_type == "instance segmentation":
-    #         obj_classes = [sly.ObjClass(name, sly.Bitmap) for name in self.class_names]
-    #     elif self.task_type == "pose estimation":
-    #         obj_classes = [
-    #             sly.ObjClass(name, sly.GraphNodes, geometry_config=self.keypoints_template)
-    #             for name in self.class_names
-    #         ]
-    #     self._model_meta = sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
-    #     self._get_confidence_tag_meta()
 
     def get_info(self):
         info = super().get_info()
@@ -297,19 +259,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         input_image = input_image[:, :, ::-1]
         if self.task_type == "instance segmentation":
             retina_masks = True
-            # input_height, input_width = input_image.shape[:2]
-            # resolution = 640
-            # scaler = max(input_width, input_height) / resolution
-            # resized_width = int(input_width / scaler)
-            # resized_height = int(input_height / scaler)
-            # input_image = input_image.transpose(2, 0, 1)
-            # input_image = torch.from_numpy(input_image.copy())
-            # input_image = torch.unsqueeze(input_image, 0)
-            # input_image = torch.nn.functional.interpolate(
-            #     input_image, (resized_height, resized_width), mode="nearest"
-            # )
-            # input_image = input_image.squeeze().numpy()
-            # input_image = input_image.transpose(1, 2, 0)
         else:
             retina_masks = False
         predictions = self.model(
@@ -348,12 +297,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     float(box[4]),
                     int(box[5]),
                 )
-                # mask = torch.unsqueeze(mask, 0)
-                # mask = torch.unsqueeze(mask, 0)
-                # mask = torch.nn.functional.interpolate(
-                #     mask, (input_height, input_width), mode="nearest"
-                # )
-                # mask = mask.squeeze()
                 mask = mask.cpu().numpy()
                 results.append(PredictionMask(self.class_names[cls_index], mask, confidence))
         elif self.task_type == "pose estimation":
@@ -396,7 +339,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
 m = YOLOv8Model(
     use_gui=True,
-    # custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
+    custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
 )
 
 if sly.is_production():
