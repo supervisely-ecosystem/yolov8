@@ -27,7 +27,8 @@ team_id = sly.env.team_id()
 
 
 class YOLOv8Model(sly.nn.inference.ObjectDetection):
-    def init_gui(self):
+
+    def initialize_custom_gui(self):
         """Create custom GUI layout for model selection. This method is called once when the application is started."""
         self.pretrained_models_table = PretrainedModelsSelector(yolov8_models)
         custom_models = sly.nn.checkpoints.yolov8.get_list(api, team_id)
@@ -42,33 +43,33 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             ],
         )
 
-        self.model_tab_select = RadioTabs(
+        self.model_source_select = RadioTabs(
             titles=["Pretrained models", "Custom models"],
             descriptions=["Publicly available models", "Models trained by you in Supervisely"],
             contents=[self.pretrained_models_table, self.custom_models_table],
         )
-        return Container([self.model_tab_select])
+        return Container([self.model_source_select])
 
     def update_gui(self, is_model_deployed: bool):
         if is_model_deployed:
             self.pretrained_models_table.disable()
             self.custom_models_table.disable()
-            self.model_tab_select.disable()
+            self.model_source_select.disable()
         else:
             self.pretrained_models_table.enable()
             self.custom_models_table.enable()
-            self.model_tab_select.enable()
+            self.model_source_select.enable()
 
     def set_params_to_ui(self, deploy_params):
         """Method to set GUI from API"""
-        model_tab = deploy_params["model_tab"]
-        self.model_tab_select.set_active_tab(deploy_params["model_tab"])
-        if model_tab == "Pretrained models":
+        model_source = deploy_params["model_source"]
+        self.model_source_select.set_active_tab(deploy_params["model_source"])
+        if model_source == "Pretrained models":
             self.pretrained_models_table.set_active_task_type(deploy_params["task_type"])
             self.pretrained_models_table.set_active_row(deploy_params["model_id"])
         else:
-            use_custom_path = deploy_params["use_custom_path"]
-            if not use_custom_path:
+            is_custom_path = deploy_params["is_custom_path"]
+            if not is_custom_path:
                 self.custom_models_table.custom_tab_widgets.hide()
                 self.custom_models_table.show_custom_checkpoint_path_checkbox.uncheck()
                 self.custom_models_table.set_active_row(deploy_params["model_id"])
@@ -76,57 +77,55 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 model_row.checkpoints_selector.set_value(deploy_params["checkpoint_name"])
             else:
                 self.custom_models_table.show_custom_checkpoint_path_checkbox.check()
-                self.custom_models_table.set_custom_checkpoint_path(deploy_params["model_url"])
+                self.custom_models_table.set_custom_checkpoint_path(deploy_params["checkpoint_url"])
                 self.custom_models_table.set_custom_checkpoint_task_type(deploy_params["task_type"])
                 self.custom_models_table.set_custom_checkpoint_preview(
-                    api.file.get_info_by_path(sly.env.team_id(), deploy_params["model_url"])
+                    api.file.get_info_by_path(sly.env.team_id(), deploy_params["checkpoint_url"])
                 )
                 self.custom_models_table.custom_tab_widgets.show()
 
     def get_params_from_ui(self) -> dict:
         # "Pretrained models" | "Custom models"
-        model_tab = self.model_tab_select.get_active_tab()
+        model_source = self.model_source_select.get_active_tab()
 
         # "object detection" | "instance segmentation" | "pose estimation"
         self.device = self.gui.get_device()
 
-        if model_tab == "Pretrained models":
+        if model_source == "Pretrained models":
             self.task_type = self.pretrained_models_table.get_selected_task_type()
             selected_model_id = self.pretrained_models_table.get_selected_row_index()
             selected_model = self.pretrained_models_table.get_selected_row()["Model"]
             if selected_model.endswith("det"):
-                selected_model = selected_model[:-4]
-            model_filename = f"{selected_model.lower()}.pt"
-            weights_url = (
-                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
-            )
-        elif model_tab == "Custom models":
-            use_custom_path = self.custom_models_table.use_custom_checkpoint_path()
-            if not use_custom_path:
+                selected_model = selected_model[:-4]  # remove "-det" from the end
+            checkpoint_filename = f"{selected_model.lower()}.pt"
+            weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{checkpoint_filename}"
+        elif model_source == "Custom models":
+            is_custom_path = self.custom_models_table.use_custom_checkpoint_path()
+            if not is_custom_path:
                 selected_model_id = self.custom_models_table.get_selected_row_index()
                 selected_model = self.custom_models_table.get_selected_row()
                 self.task_type = selected_model.task_type
                 weights_url = selected_model.get_selected_checkpoint_path()
-                model_filename = selected_model.get_selected_checkpoint_name()
+                checkpoint_filename = selected_model.get_selected_checkpoint_name()
             else:
                 selected_model_id = None
                 self.task_type = self.custom_models_table.get_custom_checkpoint_task_type()
                 weights_url = self.custom_models_table.get_custom_checkpoint_path()
-                model_filename = self.custom_models_table.get_custom_checkpoint_name()
+                checkpoint_filename = self.custom_models_table.get_custom_checkpoint_name()
 
         deploy_params = {
             "device": self.device,
-            "model_tab": model_tab,
+            "model_source": model_source,
             "task_type": self.task_type,
             "model_id": selected_model_id,
-            "checkpoint_name": model_filename,
-            "model_url": weights_url,
-            "use_custom_path": use_custom_path,
+            "checkpoint_name": checkpoint_filename,
+            "checkpoint_url": weights_url,
+            "is_custom_path": is_custom_path,
         }
         return deploy_params
 
-    def download_weights(self, model_dir: str, model_filename: str, weights_url: str) -> str:
-        weights_dst_path = os.path.join(model_dir, model_filename)
+    def download_weights(self, model_dir: str, checkpoint_filename: str, weights_url: str) -> str:
+        weights_dst_path = os.path.join(model_dir, checkpoint_filename)
         if not sly.fs.file_exists(weights_dst_path):
             self.download(
                 src_path=weights_url,
@@ -134,12 +133,12 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             )
         return weights_dst_path
 
-    def load_model_meta(self, model_tab: str, weights_save_path: str):
+    def load_model_meta(self, model_source: str, weights_save_path: str):
         self.class_names = list(self.model.names.values())
         if self.task_type == "pose estimation":
-            if model_tab == "Pretrained models":
+            if model_source == "Pretrained models":
                 self.keypoints_template = human_template
-            elif model_tab == "Custom models":
+            elif model_source == "Custom models":
                 weights_dict = torch.load(weights_save_path)
                 geometry_config = weights_dict["geometry_config"]
                 self.keypoints_template = dict_to_template(geometry_config)
@@ -157,19 +156,19 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
     def load_model(
         self,
-        model_tab: Literal["Pretrained models", "Custom models"],
-        device: Literal["cpu", "cuda:0"],
+        model_source: Literal["Pretrained models", "Custom models"],
+        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
         task_type: Literal["object detection", "instance segmentation", "pose estimation"],
         model_id: int,  # used in endpoint to set model in gui
         checkpoint_name: str,
-        model_url: str,
-        use_custom_path: bool,  # used in endpoint to set model in gui
+        checkpoint_url: str,
+        is_custom_path: bool,  # used in endpoint to set model in gui
     ):
         """
         Load model method is used to deploy model.
 
-        :param model_tab: Specifies whether the model is pretrained or custom.
-        :type model_tab: Literal["Pretrained models", "Custom models"]
+        :param model_source: Specifies whether the model is pretrained or custom.
+        :type model_source: Literal["Pretrained models", "Custom models"]
         :param device: The device on which the model will be deployed.
         :type device: Literal["cpu", "cuda:0"]
         :param task_type: The type of task the model is designed for.
@@ -178,13 +177,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :type model_id: int
         :param checkpoint_name: The name of the checkpoint from which the model is loaded.
         :type checkpoint_name: str
-        :param model_url: The URL where the model can be downloaded.
-        :type model_url: str
-        :param use_custom_path: Flag to detect if the checkpoint file is not in the default location.
-        :type use_custom_path: bool
+        :param checkpoint_url: The URL where the model can be downloaded.
+        :type checkpoint_url: str
+        :param is_custom_path: Flag to detect if the checkpoint file is not in the default location. This is used in the endpoint to set the model in the GUI.
+        :type is_custom_path: bool
         """
         self.task_type = task_type
-        local_weights_path = self.download_weights(self.model_dir, checkpoint_name, model_url)
+        local_weights_path = self.download_weights(self.model_dir, checkpoint_name, checkpoint_url)
         self.model = YOLO(local_weights_path)
         if device.startswith("cuda"):
             if device == "cuda":
@@ -194,7 +193,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         else:
             self.device = "cpu"
         self.model.to(self.device)
-        self.load_model_meta(model_tab, local_weights_path)
+        self.load_model_meta(model_source, local_weights_path)
 
     def get_info(self):
         info = super().get_info()
