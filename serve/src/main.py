@@ -51,7 +51,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         )
         return self.model_source_tabs
 
-    def get_params_from_ui(self) -> dict:
+    def get_params_from_gui(self) -> dict:
         model_source = self.model_source_tabs.get_active_tab()
         self.device = self.gui.get_device()
         if model_source == "Pretrained models":
@@ -283,7 +283,7 @@ if sly.is_production():
 else:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
-    deploy_params = m.get_params_from_ui()
+    deploy_params = m.get_params_from_gui()
     m.load_model(**deploy_params)
     image_path = "./demo_data/image_01.jpg"
     settings = {
