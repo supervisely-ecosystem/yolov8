@@ -18,6 +18,7 @@ from supervisely.app.widgets import (
 from supervisely.nn.prediction_dto import PredictionBBox, PredictionKeypoints, PredictionMask
 
 load_dotenv("local.env")
+# load_dotenv(os.path.expanduser("~/supervisely_umar.env"))
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 root_source_path = str(Path(__file__).parents[2])
@@ -43,84 +44,25 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             ],
         )
 
-        self.model_source_select = RadioTabs(
+        self.model_source_tabs = RadioTabs(
             titles=["Pretrained models", "Custom models"],
             descriptions=["Publicly available models", "Models trained by you in Supervisely"],
             contents=[self.pretrained_models_table, self.custom_models_table],
         )
-        return Container([self.model_source_select])
-
-    def update_gui(self, is_model_deployed: bool):
-        if is_model_deployed:
-            self.pretrained_models_table.disable()
-            self.custom_models_table.disable()
-            self.model_source_select.disable()
-        else:
-            self.pretrained_models_table.enable()
-            self.custom_models_table.enable()
-            self.model_source_select.enable()
-
-    def set_params_to_ui(self, deploy_params):
-        """Method to set GUI from API"""
-        model_source = deploy_params["model_source"]
-        self.model_source_select.set_active_tab(deploy_params["model_source"])
-        if model_source == "Pretrained models":
-            self.pretrained_models_table.set_active_task_type(deploy_params["task_type"])
-            self.pretrained_models_table.set_active_row(deploy_params["model_id"])
-        else:
-            is_custom_path = deploy_params["is_custom_path"]
-            if not is_custom_path:
-                self.custom_models_table.custom_tab_widgets.hide()
-                self.custom_models_table.show_custom_checkpoint_path_checkbox.uncheck()
-                self.custom_models_table.set_active_row(deploy_params["model_id"])
-                model_row = self.custom_models_table.get_selected_row()
-                model_row.checkpoints_selector.set_value(deploy_params["checkpoint_name"])
-            else:
-                self.custom_models_table.show_custom_checkpoint_path_checkbox.check()
-                self.custom_models_table.set_custom_checkpoint_path(deploy_params["checkpoint_url"])
-                self.custom_models_table.set_custom_checkpoint_task_type(deploy_params["task_type"])
-                self.custom_models_table.set_custom_checkpoint_preview(
-                    api.file.get_info_by_path(sly.env.team_id(), deploy_params["checkpoint_url"])
-                )
-                self.custom_models_table.custom_tab_widgets.show()
+        return self.model_source_tabs
 
     def get_params_from_ui(self) -> dict:
-        # "Pretrained models" | "Custom models"
-        model_source = self.model_source_select.get_active_tab()
-
-        # "object detection" | "instance segmentation" | "pose estimation"
+        model_source = self.model_source_tabs.get_active_tab()
         self.device = self.gui.get_device()
-
         if model_source == "Pretrained models":
-            self.task_type = self.pretrained_models_table.get_selected_task_type()
-            selected_model_id = self.pretrained_models_table.get_selected_row_index()
-            selected_model = self.pretrained_models_table.get_selected_row()["Model"]
-            if selected_model.endswith("det"):
-                selected_model = selected_model[:-4]  # remove "-det" from the end
-            checkpoint_filename = f"{selected_model.lower()}.pt"
-            weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{checkpoint_filename}"
+            model_params = self.pretrained_models_table.get_selected_model_params()
         elif model_source == "Custom models":
-            is_custom_path = self.custom_models_table.use_custom_checkpoint_path()
-            if not is_custom_path:
-                selected_model_id = self.custom_models_table.get_selected_row_index()
-                selected_model = self.custom_models_table.get_selected_row()
-                self.task_type = selected_model.task_type
-                weights_url = selected_model.get_selected_checkpoint_path()
-                checkpoint_filename = selected_model.get_selected_checkpoint_name()
-            else:
-                selected_model_id = None
-                self.task_type = self.custom_models_table.get_custom_checkpoint_task_type()
-                weights_url = self.custom_models_table.get_custom_checkpoint_path()
-                checkpoint_filename = self.custom_models_table.get_custom_checkpoint_name()
+            model_params = self.custom_models_table.get_selected_model_params()
 
+        self.task_type = model_params.get("task_type")
         deploy_params = {
             "device": self.device,
-            "model_source": model_source,
-            "task_type": self.task_type,
-            "model_id": selected_model_id,
-            "checkpoint_name": checkpoint_filename,
-            "checkpoint_url": weights_url,
-            "is_custom_path": is_custom_path,
+            **model_params,
         }
         return deploy_params
 
@@ -159,10 +101,8 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         model_source: Literal["Pretrained models", "Custom models"],
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
         task_type: Literal["object detection", "instance segmentation", "pose estimation"],
-        model_id: int,  # used in endpoint to set model in gui
         checkpoint_name: str,
         checkpoint_url: str,
-        is_custom_path: bool,  # used in endpoint to set model in gui
     ):
         """
         Load model method is used to deploy model.
@@ -173,14 +113,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :type device: Literal["cpu", "cuda:0"]
         :param task_type: The type of task the model is designed for.
         :type task_type: Literal["object detection", "instance segmentation", "pose estimation"]
-        :param model_id: The id of the model in the model table. This is used in the endpoint to set the model in the GUI.
-        :type model_id: int
         :param checkpoint_name: The name of the checkpoint from which the model is loaded.
         :type checkpoint_name: str
         :param checkpoint_url: The URL where the model can be downloaded.
         :type checkpoint_url: str
-        :param is_custom_path: Flag to detect if the checkpoint file is not in the default location. This is used in the endpoint to set the model in the GUI.
-        :type is_custom_path: bool
         """
         self.task_type = task_type
         local_weights_path = self.download_weights(self.model_dir, checkpoint_name, checkpoint_url)
