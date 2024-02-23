@@ -66,15 +66,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         }
         return deploy_params
 
-    def download_weights(self, model_dir: str, checkpoint_filename: str, weights_url: str) -> str:
-        weights_dst_path = os.path.join(model_dir, checkpoint_filename)
-        if not sly.fs.file_exists(weights_dst_path):
-            self.download(
-                src_path=weights_url,
-                dst_path=weights_dst_path,
-            )
-        return weights_dst_path
-
     def load_model_meta(self, model_source: str, weights_save_path: str):
         self.class_names = list(self.model.names.values())
         if self.task_type == "pose estimation":
@@ -119,7 +110,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :type checkpoint_url: str
         """
         self.task_type = task_type
-        local_weights_path = self.download_weights(self.model_dir, checkpoint_name, checkpoint_url)
+        local_weights_path = os.path.join(self.model_dir, checkpoint_name)
+        if not sly.fs.file_exists(local_weights_path):
+            self.download(
+                src_path=checkpoint_url,
+                dst_path=local_weights_path,
+            )
+
         self.model = YOLO(local_weights_path)
         if device.startswith("cuda"):
             if device == "cuda":
