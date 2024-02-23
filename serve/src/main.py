@@ -9,12 +9,7 @@ from ultralytics import YOLO
 import supervisely as sly
 from src.keypoints_template import dict_to_template, human_template
 from src.models import yolov8_models
-from supervisely.app.widgets import (
-    Container,
-    PretrainedModelsSelector,
-    RadioTabs,
-    TrainedModelsSelector,
-)
+from supervisely.app.widgets import PretrainedModelsSelector, RadioTabs, CustomModelsSelector
 from supervisely.nn.prediction_dto import PredictionBBox, PredictionKeypoints, PredictionMask
 
 load_dotenv("local.env")
@@ -33,7 +28,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         """Create custom GUI layout for model selection. This method is called once when the application is started."""
         self.pretrained_models_table = PretrainedModelsSelector(yolov8_models)
         custom_models = sly.nn.checkpoints.yolov8.get_list(api, team_id)
-        self.custom_models_table = TrainedModelsSelector(
+        self.custom_models_table = CustomModelsSelector(
             team_id,
             custom_models,
             show_custom_checkpoint_path=True,
@@ -89,8 +84,8 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
     def load_model(
         self,
-        model_source: Literal["Pretrained models", "Custom models"],
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
+        model_source: Literal["Pretrained models", "Custom models"],
         task_type: Literal["object detection", "instance segmentation", "pose estimation"],
         checkpoint_name: str,
         checkpoint_url: str,
