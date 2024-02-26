@@ -1,5 +1,5 @@
 # supervisely==6.72.143
-git+https://github.com/supervisely/supervisely.git@data-nodes-deploy-yolov8-v3
+git+https://github.com/supervisely/supervisely.git@data-nodes-deploy-yolov8-v2
 ultralytics==8.0.112
 --extra-index-url https://download.pytorch.org/whl/cu113
 torch==1.10.1+cu113
