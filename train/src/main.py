@@ -600,6 +600,7 @@ def select_input_data():
         )
     select_data_button.loading = True
     dataset_selector.disable()
+    use_cache_text.disable()
     classes_table.read_project_from_id(project_id)
     select_data_button.loading = False
     select_data_button.hide()
@@ -618,6 +619,7 @@ def reselect_input_data():
     reselect_data_button.hide()
     select_done.hide()
     dataset_selector.enable()
+    use_cache_text.enable()
     curr_step = stepper.get_active_step()
     curr_step -= 1
     stepper.set_active_step(curr_step)

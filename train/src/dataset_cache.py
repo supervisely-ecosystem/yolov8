@@ -48,6 +48,9 @@ def download_project(api: sly.Api, project_info: sly.ProjectInfo, dataset_infos:
     # clean project dir
     if os.path.exists(g.project_dir):
         sly.fs.clean_dir(g.project_dir)
+    
+    # TODO Check if to_download is empty
+    
     # download
     with progress(message="Downloading input data...", total=total) as pbar:
         sly.download(
@@ -63,10 +66,12 @@ def download_project(api: sly.Api, project_info: sly.ProjectInfo, dataset_infos:
         dataset_name = dataset_infos_dict[dataset_id].name
         dataset_dir = os.path.join(g.project_dir, project_info.name, dataset_name)
         cache_dataset_dir = os.path.join(g.cache_dir, str(project_info.id), str(dataset_id))
-        sly.fs.copy_dir_recursively(dataset_dir, cache_dataset_dir)
+        with progress(message="Saving data to cache...") as pbar:
+            sly.fs.copy_dir_recursively(dataset_dir, cache_dataset_dir, progress_cb=pbar.update)
     # copy cached datasets
     for dataset_id in cached:
         dataset_name = dataset_infos_dict[dataset_id].name
         cache_dataset_dir = os.path.join(g.cache_dir, str(project_info.id), str(dataset_id))
         dataset_dir = os.path.join(g.project_dir, project_info.name, dataset_name)
-        sly.fs.copy_dir_recursively(cache_dataset_dir, dataset_dir)
+        with progress(message="Retreiving data from cache...") as pbar:
+            sly.fs.copy_dir_recursively(cache_dataset_dir, dataset_dir, progress_cb=pbar.update)
