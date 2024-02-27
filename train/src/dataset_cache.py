@@ -2,7 +2,7 @@ import os
 from typing import Tuple, List
 import supervisely as sly
 from supervisely.app.widgets import Progress
-import globals as g
+import src.globals as g
 
 
 def is_project_cached(project_id):
