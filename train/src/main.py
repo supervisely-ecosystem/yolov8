@@ -602,6 +602,7 @@ def select_input_data():
     dataset_selector.disable()
     use_cache_text.disable()
     classes_table.read_project_from_id(project_id)
+    classes_table.select_all()
     select_data_button.loading = False
     select_data_button.hide()
     select_done.show()
@@ -1506,6 +1507,7 @@ def auto_train(request: Request):
     else: 
         use_cache_checkbox.uncheck()
     classes_table.read_project_from_id(project_id)
+    classes_table.select_all()
     select_data_button.hide()
     select_done.show()
     reselect_data_button.show()
