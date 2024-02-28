@@ -1476,7 +1476,7 @@ def auto_train(request: Request):
     state = request.state.state
     project_id = state["project_id"]
     task_type = state["task_type"]
-    use_cache = state.get("use_cache", False)
+    use_cache = state.get("use_cache", True)
 
     if task_type == "instance segmentation":
         models_table_columns = [key for key in g.seg_models_data[0].keys()]
