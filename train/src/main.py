@@ -603,6 +603,8 @@ def select_input_data():
     use_cache_text.disable()
     classes_table.read_project_from_id(project_id)
     classes_table.select_all()
+    selected_classes = classes_table.get_selected_classes()
+    _update_select_classes_button(selected_classes)
     select_data_button.loading = False
     select_data_button.hide()
     select_done.show()
@@ -626,8 +628,7 @@ def reselect_input_data():
     stepper.set_active_step(curr_step)
 
 
-@classes_table.value_changed
-def on_classes_selected(selected_classes):
+def _update_select_classes_button(selected_classes):
     n_classes = len(selected_classes)
     if n_classes > 0:
         if n_classes > 1:
@@ -637,6 +638,10 @@ def on_classes_selected(selected_classes):
         select_classes_button.show()
     else:
         select_classes_button.hide()
+
+@classes_table.value_changed
+def on_classes_selected(selected_classes):
+    _update_select_classes_button(selected_classes)
 
 
 @task_type_select.value_changed
@@ -1508,6 +1513,8 @@ def auto_train(request: Request):
         use_cache_checkbox.uncheck()
     classes_table.read_project_from_id(project_id)
     classes_table.select_all()
+    selected_classes = classes_table.get_selected_classes()
+    _update_select_classes_button(selected_classes)
     select_data_button.hide()
     select_done.show()
     reselect_data_button.show()
