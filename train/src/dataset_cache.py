@@ -1,4 +1,6 @@
+import json
 import os
+from pathlib import Path
 from typing import List
 import supervisely as sly
 from supervisely.app.widgets import Progress
@@ -27,6 +29,17 @@ def download_project(
         return
 
     # get datasets to download and cached
+    dirs = [p.resolve().as_posix() for p in Path("/apps_cache", str(project_info.id)).iterdir()]
+    sly.logger.info("apps_cache/%s contents:\n%s", str(project_info.id), "\n".join(dirs))
+    debug_data = {
+        info.name: {
+            "isdir": os.path.isdir(os.path.join("/apps_cache", str(project_info.id), info.name)),
+            "path": os.path.join("/apps_cache", str(project_info.id), info.name)
+        }
+        for info in dataset_infos
+    }
+    debug_msg = json.dumps(debug_data, indent=4)
+    sly.logger.info(debug_msg)
     to_download = [info for info in dataset_infos if not sly.is_cached(project_info.id, info.name)]
     cached = [info for info in dataset_infos if sly.is_cached(project_info.id, info.name)]
     if len(cached) == 0:
