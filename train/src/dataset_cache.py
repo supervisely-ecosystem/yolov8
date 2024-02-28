@@ -27,8 +27,8 @@ def download_project(
         return
 
     # get datasets to download and cached
-    to_download = [info for info in dataset_infos if sly.is_cached(project_info.id, info.name)]
-    cached = [info for info in dataset_infos if not sly.is_cached(project_info.id, info.name)]
+    to_download = [info for info in dataset_infos if not sly.is_cached(project_info.id, info.name)]
+    cached = [info for info in dataset_infos if sly.is_cached(project_info.id, info.name)]
     if len(cached) == 0:
         log_msg = "No cached datasets found"
     else:
