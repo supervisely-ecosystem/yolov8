@@ -1,6 +1,4 @@
-import json
 import os
-from pathlib import Path
 from typing import List
 import supervisely as sly
 from supervisely.app.widgets import Progress
@@ -14,6 +12,8 @@ def download_project(
     use_cache: bool,
     progress: Progress,
 ):
+    if os.path.exists(g.project_dir):
+        sly.fs.clean_dir(g.project_dir)
     if not use_cache:
         dataset_ids = [dataset_info.id for dataset_info in dataset_infos]
         total = sum([dataset_info.images_count for dataset_info in dataset_infos])
@@ -49,9 +49,6 @@ def download_project(
     sly.logger.info(log_msg)
     # get images count
     total = sum([ds_info.images_count for ds_info in to_download])
-    # clean project dir
-    if os.path.exists(g.project_dir):
-        sly.fs.clean_dir(g.project_dir)
     # download
     with progress(message="Downloading input data...", total=total) as pbar:
         sly.download_to_cache(
