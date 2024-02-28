@@ -45,7 +45,7 @@ from supervisely.app.widgets import (
 from src.utils import verify_train_val_sets
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.callbacks import on_train_batch_end
-from src.dataset_cache import is_project_cached, download_project
+from src.dataset_cache import download_project
 from ultralytics import YOLO
 import torch
 from src.metrics_watcher import Watcher
@@ -565,7 +565,7 @@ def on_dataset_selected(new_dataset_ids):
     elif new_dataset_ids != [] and reselect_data_button.is_hidden():
         select_data_button.show()
     update_globals(new_dataset_ids)
-    if is_project_cached(project_id):
+    if sly.is_cached(project_id):
         use_cache_text.text = "Use cached data stored on the agent to optimize project downlaod"
     else:
         use_cache_text.text = "Cache data on the agent to optimize project download for future trainings"
