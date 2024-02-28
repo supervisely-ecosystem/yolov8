@@ -1010,7 +1010,13 @@ def start_training():
     dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
     n_images = sum([info.images_count for info in dataset_infos])
     # download dataset
-    download_project(api, project_info, dataset_infos, use_cache=use_cache_checkbox.is_checked(), progress=progress_bar_download_project)
+    download_project(
+        api=api,
+        project_info=project_info,
+        dataset_infos=dataset_infos,
+        use_cache=use_cache_checkbox.is_checked(),
+        progress=progress_bar_download_project
+    )
     # remove unselected classes
     selected_classes = classes_table.get_selected_classes()
     sly.Project.remove_classes_except(g.project_dir, classes_to_keep=selected_classes, inplace=True)
@@ -1604,7 +1610,7 @@ def auto_train(request: Request):
     download_project(
         api=api,
         project_info=project_info,
-        dataset_ids=dataset_infos,
+        dataset_infos=dataset_infos,
         use_cache=use_cache,
         progress=progress_bar_download_project
     )

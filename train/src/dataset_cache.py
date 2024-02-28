@@ -60,7 +60,13 @@ def download_project(
         )
     # copy datasets from cache
     total = sum([sly.get_cache_size(project_info.id, ds.name) for ds in dataset_infos])
-    with progress(message="Retreiving data from cache...", total=total) as pbar:
+    with progress(
+        message="Retreiving data from cache...",
+        total=total,
+        unit='B',
+        unit_scale=True,
+        unit_divisor=1024
+    ) as pbar:
         dataset_names = [ds_info.name for ds_info in dataset_infos]
         sly.copy_from_cache(
             project_id=project_info.id,
