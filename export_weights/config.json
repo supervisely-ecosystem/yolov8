@@ -1,0 +1,24 @@
+{
+  "name": "Export YOLOv8 weights",
+  "description": "to TorchScript and ONNX formats",
+  "categories": [
+    "neural network",
+    "images",
+    "videos",
+    "object detection",
+    "detection & tracking",
+    "nn tools"
+  ],
+  "context_menu": {
+    "target": [
+      "files_file"
+    ]
+  },
+  "docker_image": "supervisely/yolov8:1.0.1",
+  "main_script": "export_weights/src/main.py",
+  "modal_template": "export_weights/src/modal.html",
+  "modal_template_state": {
+    "Format": "onnx"
+  },
+  "headless": true
+}
