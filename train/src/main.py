@@ -565,7 +565,7 @@ def on_dataset_selected(new_dataset_ids):
     elif new_dataset_ids != [] and reselect_data_button.is_hidden():
         select_data_button.show()
     update_globals(new_dataset_ids)
-    if sly.is_cached(project_id):
+    if sly.project.download.is_cached(project_id):
         use_cache_text.text = "Use cached data stored on the agent to optimize project downlaod"
     else:
         use_cache_text.text = "Cache data on the agent to optimize project download for future trainings"
