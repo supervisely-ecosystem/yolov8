@@ -1,4 +1,4 @@
-git+https://github.com/supervisely/supervisely.git@project-download-with-cache
+supervisely==6.73.41
 # git+https://github.com/supervisely/supervisely.git@v2-stop-rename
 ultralytics==8.0.112
 --extra-index-url https://download.pytorch.org/whl/cu113
