@@ -28,7 +28,9 @@ This application converts files with PyTorch YOLOv8 weights to `.onnx` format.
 
 1. Select File `.pt` file with YOLOv8 weights
 
-2. Click `Run` button
+2. Select output format: `ONNX` or `TorchScript`
+
+3. Click `Run` button
 
 ### Option 2. From context menu
 
@@ -36,7 +38,9 @@ This application converts files with PyTorch YOLOv8 weights to `.onnx` format.
 
 1. Open the context menu of a `.pt` file with YOLOv8 weights
 
-2. Click `Run` button
+2. Select output format: `ONNX` or `TorchScript`
+
+3. Click `Run` button
 
 # Acknowledgment
 
