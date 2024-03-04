@@ -1,6 +1,7 @@
 from pathlib import Path
 import supervisely as sly
 from ultralytics import YOLO
+import onnx
 import globals as g
 
 
@@ -16,6 +17,9 @@ def export_weights(format: str):
     # Export the model
     output_file_path = model.export(format=format, dynamic=False)
     output_file_path = Path(output_file_path)
+
+    onnx_model = onnx.load(output_file_path)
+    onnx.checker.check_model(onnx_model)
 
     # Upload the model
     dst_path = Path(remote_file_path).parent / output_file_path.name
