@@ -1,4 +1,5 @@
 <div align="center" markdown>
+<img src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/f9810cd6-7457-441a-9f89-a6188013b87f" />
 
 # Export YOLOv8 weights
   
