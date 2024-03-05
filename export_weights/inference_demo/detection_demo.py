@@ -1,10 +1,12 @@
 # based on https://github.com/ultralytics/ultralytics/tree/main/examples/YOLOv8-ONNXRuntime
 
 import argparse
+import ast
 
 import cv2
 import numpy as np
 import onnxruntime as ort
+import onnx
 
 
 COLORS = {}
@@ -27,6 +29,12 @@ class YOLOv8:
         self.input_image = input_image
         self.confidence_thres = confidence_thres
         self.iou_thres = iou_thres
+
+        m = onnx.load(onnx_model)
+        props = { p.key : p.value for p in m.metadata_props }
+        if 'names' in props:
+            self.classes = ast.literal_eval(props['names'])
+
 
     def draw_detections(self, img, box, score, class_id):
         """
@@ -51,7 +59,7 @@ class YOLOv8:
         cv2.rectangle(img, (int(x1), int(y1)), (int(x1 + w), int(y1 + h)), color, 2)
 
         # Create the label text with class name and score
-        label = f"{class_id}: {score:.2f}"
+        label = f"{self.classes[class_id]}: {score:.2f}"
 
         # Calculate the dimensions of the label text
         (label_width, label_height), _ = cv2.getTextSize(

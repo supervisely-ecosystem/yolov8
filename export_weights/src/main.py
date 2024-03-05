@@ -15,7 +15,7 @@ def export_weights(format: str):
     model = YOLO(local_file_path)
 
     # Export the model
-    output_file_path = model.export(format=format, dynamic=False)
+    output_file_path = model.export(format=format, dynamic=False, simplify=True)
     output_file_path = Path(output_file_path)
 
     onnx_model = onnx.load(output_file_path)

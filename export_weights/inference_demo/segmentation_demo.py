@@ -1,10 +1,13 @@
 # based on https://github.com/ultralytics/ultralytics/tree/main/examples/YOLOv8-Segmentation-ONNXRuntime-Python
 
 import argparse
+import ast
 
 import cv2
 import numpy as np
 import onnxruntime as ort
+import onnx
+
 
 
 COLORS = {}
@@ -42,6 +45,11 @@ class YOLOv8Seg:
         self.model_height, self.model_width = [
             x.shape for x in self.session.get_inputs()
         ][0][-2:]
+
+        m = onnx.load(onnx_model)
+        props = { p.key : p.value for p in m.metadata_props }
+        if 'names' in props:
+            self.classes = ast.literal_eval(props['names'])
 
     def __call__(self, im0, conf_threshold=0.4, iou_threshold=0.45, nm=32):
         """
@@ -311,7 +319,7 @@ class YOLOv8Seg:
         im_canvas = im.copy()
         for (*box, conf, cls_), segment in zip(bboxes, segments):
             color = COLORS.setdefault(int(cls_), np.random.randint(0, 255, 3).tolist())
-            label = f"{cls_}: {conf:.3f}"
+            label = f"{self.classes[cls_]}: {conf:.3f}"
 
             # draw contour and fill mask
             cv2.polylines(
