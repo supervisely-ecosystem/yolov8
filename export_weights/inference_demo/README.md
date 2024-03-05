@@ -11,6 +11,8 @@ You will need to install the required packages to run the script. You can instal
 pip install -r requirements.txt
 ```
 
+<em>If you want to run the script with GPU support, you will need to install the `onnxruntime-gpu` instead of `onnxruntime`</em>
+
 To run the script, use the following command:
 
 ```bash
@@ -28,7 +30,7 @@ Optional arguments:
 --visualize - flag to visualize the output
 
 
-## Segmentation demo
+## Segmentation demo [BETA]
 
 The `segmentation_demo.py` script demonstrates how to use the YOLOv8 ONNX model for object detection and segmentation. The script takes an image as input and outputs the image with bounding boxes around detected objects and the segmented masks.
 You will need to install the required packages to run the script. You can install them using the following command:
