@@ -1,4 +1,4 @@
-local.env
-__pycache__/
-.venv
+/my_model
+.venv/
+*.pyc
 supervisely
