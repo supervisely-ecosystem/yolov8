@@ -96,7 +96,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :param model_source: Specifies whether the model is pretrained or custom.
         :type model_source: Literal["Pretrained models", "Custom models"]
         :param device: The device on which the model will be deployed.
-        :type device: Literal["cpu", "cuda:0"]
+        :type device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
         :param task_type: The type of task the model is designed for.
         :type task_type: Literal["object detection", "instance segmentation", "pose estimation"]
         :param checkpoint_name: The name of the checkpoint from which the model is loaded.
