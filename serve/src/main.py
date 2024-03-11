@@ -13,7 +13,6 @@ from supervisely.app.widgets import PretrainedModelsSelector, RadioTabs, CustomM
 from supervisely.nn.prediction_dto import PredictionBBox, PredictionKeypoints, PredictionMask
 
 load_dotenv("local.env")
-# load_dotenv(os.path.expanduser("~/supervisely_umar.env"))
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 root_source_path = str(Path(__file__).parents[2])
