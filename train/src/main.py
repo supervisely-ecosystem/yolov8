@@ -45,6 +45,7 @@ from supervisely.app.widgets import (
 from src.utils import verify_train_val_sets
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.callbacks import on_train_batch_end
+from src.dataset_cache import download_project
 from ultralytics import YOLO
 import torch
 from src.metrics_watcher import Watcher
@@ -94,6 +95,8 @@ sly.logger.info(f"App root directory: {g.app_root_directory}")
 
 ### 1. Dataset selection
 dataset_selector = SelectDataset(project_id=project_id, multiselect=True, select_all_datasets=True)
+use_cache_text = Text("Use cached data stored on the agent to optimize project downlaod")
+use_cache_checkbox = Checkbox(use_cache_text, checked=True)
 select_data_button = Button("Select data")
 select_done = DoneLabel("Successfully selected input data")
 select_done.hide()
@@ -107,6 +110,7 @@ reselect_data_button.hide()
 project_settings_content = Container(
     [
         dataset_selector,
+        use_cache_checkbox,
         select_data_button,
         select_done,
         reselect_data_button,
@@ -561,6 +565,10 @@ def on_dataset_selected(new_dataset_ids):
     elif new_dataset_ids != [] and reselect_data_button.is_hidden():
         select_data_button.show()
     update_globals(new_dataset_ids)
+    if sly.project.download.is_cached(project_id):
+        use_cache_text.text = "Use cached data stored on the agent to optimize project downlaod"
+    else:
+        use_cache_text.text = "Cache data on the agent to optimize project download for future trainings"
 
 
 @select_data_button.click
@@ -592,7 +600,11 @@ def select_input_data():
         )
     select_data_button.loading = True
     dataset_selector.disable()
+    use_cache_text.disable()
     classes_table.read_project_from_id(project_id)
+    classes_table.select_all()
+    selected_classes = classes_table.get_selected_classes()
+    _update_select_classes_button(selected_classes)
     select_data_button.loading = False
     select_data_button.hide()
     select_done.show()
@@ -610,13 +622,13 @@ def reselect_input_data():
     reselect_data_button.hide()
     select_done.hide()
     dataset_selector.enable()
+    use_cache_text.enable()
     curr_step = stepper.get_active_step()
     curr_step -= 1
     stepper.set_active_step(curr_step)
 
 
-@classes_table.value_changed
-def on_classes_selected(selected_classes):
+def _update_select_classes_button(selected_classes):
     n_classes = len(selected_classes)
     if n_classes > 0:
         if n_classes > 1:
@@ -626,6 +638,10 @@ def on_classes_selected(selected_classes):
         select_classes_button.show()
     else:
         select_classes_button.hide()
+
+@classes_table.value_changed
+def on_classes_selected(selected_classes):
+    _update_select_classes_button(selected_classes)
 
 
 @task_type_select.value_changed
@@ -991,22 +1007,16 @@ def start_training():
         sly.fs.remove_dir(local_artifacts_dir)
     start_training_button.loading = True
     # get number of images in selected datasets
-    n_images = 0
-    for dataset_id in dataset_ids:
-        dataset_info = api.dataset.get_info_by_id(dataset_id)
-        n_images += dataset_info.images_count
+    dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
+    n_images = sum([info.images_count for info in dataset_infos])
     # download dataset
-    if os.path.exists(g.project_dir):
-        sly.fs.clean_dir(g.project_dir)
-    with progress_bar_download_project(message="Downloading input data...", total=n_images) as pbar:
-        sly.download(
-            api=api,
-            project_id=project_id,
-            dest_dir=g.project_dir,
-            dataset_ids=dataset_ids,
-            log_progress=True,
-            progress_cb=pbar.update,
-        )
+    download_project(
+        api=api,
+        project_info=project_info,
+        dataset_infos=dataset_infos,
+        use_cache=use_cache_checkbox.is_checked(),
+        progress=progress_bar_download_project
+    )
     # remove unselected classes
     selected_classes = classes_table.get_selected_classes()
     sly.Project.remove_classes_except(g.project_dir, classes_to_keep=selected_classes, inplace=True)
@@ -1478,6 +1488,7 @@ def auto_train(request: Request):
     state = request.state.state
     project_id = state["project_id"]
     task_type = state["task_type"]
+    use_cache = state.get("use_cache", True)
 
     if task_type == "instance segmentation":
         models_table_columns = [key for key in g.seg_models_data[0].keys()]
@@ -1502,7 +1513,14 @@ def auto_train(request: Request):
             subtitles=models_table_subtitles,
         )
     dataset_selector.disable()
+    if use_cache:
+        use_cache_checkbox.check()
+    else: 
+        use_cache_checkbox.uncheck()
     classes_table.read_project_from_id(project_id)
+    classes_table.select_all()
+    selected_classes = classes_table.get_selected_classes()
+    _update_select_classes_button(selected_classes)
     select_data_button.hide()
     select_done.show()
     reselect_data_button.show()
@@ -1584,30 +1602,18 @@ def auto_train(request: Request):
     # start_training_button.loading = True
     # get number of images in selected datasets
     if "dataset_ids" not in state:
-        n_images = 0
-        dataset_ids = []
         dataset_infos = api.dataset.get_list(project_id)
-        for dataset_info in dataset_infos:
-            n_images += dataset_info.images_count
-            dataset_ids.append(dataset_info.id)
+        dataset_ids = [dataset_info.id for dataset_info in dataset_infos]
     else:
         dataset_ids = state["dataset_ids"]
-        n_images = 0
-        for dataset_id in dataset_ids:
-            dataset_info = api.dataset.get_info_by_id(dataset_id)
-            n_images += dataset_info.images_count
-    # download dataset
-    if os.path.exists(g.project_dir):
-        sly.fs.clean_dir(g.project_dir)
-    with progress_bar_download_project(message="Downloading input data...", total=n_images) as pbar:
-        sly.download(
-            api=api,
-            project_id=project_id,
-            dest_dir=g.project_dir,
-            dataset_ids=dataset_ids,
-            log_progress=True,
-            progress_cb=pbar.update,
-        )
+        dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
+    download_project(
+        api=api,
+        project_info=project_info,
+        dataset_infos=dataset_infos,
+        use_cache=use_cache,
+        progress=progress_bar_download_project
+    )
     project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
     selected_classes = [cls.name for cls in project_meta.obj_classes]
     # remove classes with unnecessary shapes
