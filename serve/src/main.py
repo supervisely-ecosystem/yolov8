@@ -1,157 +1,72 @@
-import supervisely as sly
-from supervisely.app.widgets import RadioGroup, Field
-from supervisely.project.project_meta import ProjectMeta
-from supervisely.annotation.obj_class import ObjClass
-from supervisely.imaging.color import get_predefined_colors
-from supervisely.nn.prediction_dto import (
-    PredictionMask,
-    PredictionBBox,
-    PredictionKeypoints,
-)
-from ultralytics import YOLO
-import torch
 import os
-from dotenv import load_dotenv
 from pathlib import Path
+from typing import Any, Dict, List, Union, Literal
 
-from src.keypoints_template import human_template, dict_to_template
+import torch
+from dotenv import load_dotenv
+from ultralytics import YOLO
 
-try:
-    from typing import Literal
-except ImportError:
-    # for compatibility with python 3.7
-    from typing_extensions import Literal
-from typing import List, Any, Dict, Union
-import numpy as np
-
+import supervisely as sly
+from src.keypoints_template import dict_to_template, human_template
+from src.models import yolov8_models
+from supervisely.app.widgets import PretrainedModelsSelector, RadioTabs, CustomModelsSelector
+from supervisely.nn.prediction_dto import PredictionBBox, PredictionKeypoints, PredictionMask
 
 load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
+
 root_source_path = str(Path(__file__).parents[2])
-det_models_data_path = os.path.join(root_source_path, "models", "det_models_data.json")
-seg_models_data_path = os.path.join(root_source_path, "models", "seg_models_data.json")
-pose_models_data_path = os.path.join(root_source_path, "models", "pose_models_data.json")
-det_models_data = sly.json.load_json_file(det_models_data_path)
-seg_models_data = sly.json.load_json_file(seg_models_data_path)
-pose_models_data = sly.json.load_json_file(pose_models_data_path)
+
+api = sly.Api.from_env()
+team_id = sly.env.team_id()
 
 
 class YOLOv8Model(sly.nn.inference.ObjectDetection):
-    def add_content_to_pretrained_tab(self, gui):
-        task_type_items = [
-            RadioGroup.Item(value="object detection"),
-            RadioGroup.Item(value="instance segmentation"),
-            RadioGroup.Item(value="pose estimation"),
-        ]
-        self.task_type_select = RadioGroup(items=task_type_items, direction="vertical")
-        task_type_select_f = Field(
-            content=self.task_type_select,
-            title="Task type",
+
+    def initialize_custom_gui(self):
+        """Create custom GUI layout for model selection. This method is called once when the application is started."""
+        self.pretrained_models_table = PretrainedModelsSelector(yolov8_models)
+        custom_models = sly.nn.checkpoints.yolov8.get_list(api, team_id)
+        self.custom_models_table = CustomModelsSelector(
+            team_id,
+            custom_models,
+            show_custom_checkpoint_path=True,
+            custom_checkpoint_task_types=[
+                "object detection",
+                "instance segmentation",
+                "pose estimation",
+            ],
         )
 
-        @self.task_type_select.value_changed
-        def change_table(task_type):
-            if task_type == "object detection":
-                models_table_columns = [key for key in det_models_data[0].keys()]
-                models_table_subtitles = [None] * len(models_table_columns)
-                models_table_rows = []
-                for element in det_models_data:
-                    models_table_rows.append(list(element.values()))
-                gui._models_table.set_data(
-                    columns=models_table_columns,
-                    rows=models_table_rows,
-                    subtitles=models_table_subtitles,
-                )
-                gui._models = det_models_data
-            elif task_type == "instance segmentation":
-                models_table_columns = [key for key in seg_models_data[0].keys()]
-                models_table_subtitles = [None] * len(models_table_columns)
-                models_table_rows = []
-                for element in seg_models_data:
-                    models_table_rows.append(list(element.values()))
-                gui._models_table.set_data(
-                    columns=models_table_columns,
-                    rows=models_table_rows,
-                    subtitles=models_table_subtitles,
-                )
-                gui._models = seg_models_data
-            elif task_type == "pose estimation":
-                models_table_columns = [key for key in pose_models_data[0].keys()]
-                models_table_subtitles = [None] * len(models_table_columns)
-                models_table_rows = []
-                for element in pose_models_data:
-                    models_table_rows.append(list(element.values()))
-                gui._models_table.set_data(
-                    columns=models_table_columns,
-                    rows=models_table_rows,
-                    subtitles=models_table_subtitles,
-                )
-                gui._models = pose_models_data
-
-        return task_type_select_f
-
-    def add_content_to_custom_tab(self, gui):
-        task_type_items = [
-            RadioGroup.Item(value="object detection"),
-            RadioGroup.Item(value="instance segmentation"),
-            RadioGroup.Item(value="pose estimation"),
-        ]
-        self.custom_task_type_select = RadioGroup(items=task_type_items, direction="vertical")
-        custom_task_type_select_f = Field(
-            content=self.custom_task_type_select,
-            title="Task type",
+        self.model_source_tabs = RadioTabs(
+            titles=["Pretrained models", "Custom models"],
+            descriptions=["Publicly available models", "Models trained by you in Supervisely"],
+            contents=[self.pretrained_models_table, self.custom_models_table],
         )
-        return custom_task_type_select_f
+        return self.model_source_tabs
 
-    def get_models(self):
-        return det_models_data
-
-    def load_on_device(
-        self,
-        model_dir,
-        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
-    ):
-        model_source = self.gui.get_model_source()
+    def get_params_from_gui(self) -> dict:
+        model_source = self.model_source_tabs.get_active_tab()
+        self.device = self.gui.get_device()
         if model_source == "Pretrained models":
-            self.task_type = self.task_type_select.get_value()
-            selected_model = self.gui.get_checkpoint_info()["Model"]
-            if selected_model.endswith("det"):
-                selected_model = selected_model[:-4]
-            model_filename = selected_model.lower() + ".pt"
-            weights_url = (
-                f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
-            )
-            weights_dst_path = os.path.join(model_dir, model_filename)
-            if not sly.fs.file_exists(weights_dst_path):
-                self.download(
-                    src_path=weights_url,
-                    dst_path=weights_dst_path,
-                )
+            model_params = self.pretrained_models_table.get_selected_model_params()
         elif model_source == "Custom models":
-            self.task_type = self.custom_task_type_select.get_value()
-            custom_link = self.gui.get_custom_link()
-            weights_file_name = os.path.basename(custom_link)
-            weights_dst_path = os.path.join(model_dir, weights_file_name)
-            if not sly.fs.file_exists(weights_dst_path):
-                self.download(
-                    src_path=custom_link,
-                    dst_path=weights_dst_path,
-                )
-        self.model = YOLO(weights_dst_path)
+            model_params = self.custom_models_table.get_selected_model_params()
+
+        self.task_type = model_params.get("task_type")
+        deploy_params = {
+            "device": self.device,
+            **model_params,
+        }
+        return deploy_params
+
+    def load_model_meta(self, model_source: str, weights_save_path: str):
         self.class_names = list(self.model.names.values())
-        if device.startswith("cuda"):
-            if device == "cuda":
-                self.device = 0
-            else:
-                self.device = int(device[-1])
-        else:
-            self.device = "cpu"
-        self.model.to(self.device)
         if self.task_type == "pose estimation":
             if model_source == "Pretrained models":
                 self.keypoints_template = human_template
             elif model_source == "Custom models":
-                weights_dict = torch.load(weights_dst_path)
+                weights_dict = torch.load(weights_save_path)
                 geometry_config = weights_dict["geometry_config"]
                 self.keypoints_template = dict_to_template(geometry_config)
         if self.task_type == "object detection":
@@ -165,6 +80,47 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             ]
         self._model_meta = sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
         self._get_confidence_tag_meta()
+
+    def load_model(
+        self,
+        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
+        model_source: Literal["Pretrained models", "Custom models"],
+        task_type: Literal["object detection", "instance segmentation", "pose estimation"],
+        checkpoint_name: str,
+        checkpoint_url: str,
+    ):
+        """
+        Load model method is used to deploy model.
+
+        :param model_source: Specifies whether the model is pretrained or custom.
+        :type model_source: Literal["Pretrained models", "Custom models"]
+        :param device: The device on which the model will be deployed.
+        :type device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
+        :param task_type: The type of task the model is designed for.
+        :type task_type: Literal["object detection", "instance segmentation", "pose estimation"]
+        :param checkpoint_name: The name of the checkpoint from which the model is loaded.
+        :type checkpoint_name: str
+        :param checkpoint_url: The URL where the model can be downloaded.
+        :type checkpoint_url: str
+        """
+        self.task_type = task_type
+        local_weights_path = os.path.join(self.model_dir, checkpoint_name)
+        if not sly.fs.file_exists(local_weights_path):
+            self.download(
+                src_path=checkpoint_url,
+                dst_path=local_weights_path,
+            )
+
+        self.model = YOLO(local_weights_path)
+        if device.startswith("cuda"):
+            if device == "cuda":
+                self.device = 0
+            else:
+                self.device = int(device[-1])
+        else:
+            self.device = "cpu"
+        self.model.to(self.device)
+        self.load_model_meta(model_source, local_weights_path)
 
     def get_info(self):
         info = super().get_info()
@@ -229,19 +185,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         input_image = input_image[:, :, ::-1]
         if self.task_type == "instance segmentation":
             retina_masks = True
-            # input_height, input_width = input_image.shape[:2]
-            # resolution = 640
-            # scaler = max(input_width, input_height) / resolution
-            # resized_width = int(input_width / scaler)
-            # resized_height = int(input_height / scaler)
-            # input_image = input_image.transpose(2, 0, 1)
-            # input_image = torch.from_numpy(input_image.copy())
-            # input_image = torch.unsqueeze(input_image, 0)
-            # input_image = torch.nn.functional.interpolate(
-            #     input_image, (resized_height, resized_width), mode="nearest"
-            # )
-            # input_image = input_image.squeeze().numpy()
-            # input_image = input_image.transpose(1, 2, 0)
         else:
             retina_masks = False
         predictions = self.model(
@@ -270,24 +213,19 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 results.append(PredictionBBox(self.class_names[cls_index], bbox, confidence))
         elif self.task_type == "instance segmentation":
             boxes_data = predictions[0].boxes.data
-            masks = predictions[0].masks.data
-            for box, mask in zip(boxes_data, masks):
-                left, top, right, bottom, confidence, cls_index = (
-                    int(box[0]),
-                    int(box[1]),
-                    int(box[2]),
-                    int(box[3]),
-                    float(box[4]),
-                    int(box[5]),
-                )
-                # mask = torch.unsqueeze(mask, 0)
-                # mask = torch.unsqueeze(mask, 0)
-                # mask = torch.nn.functional.interpolate(
-                #     mask, (input_height, input_width), mode="nearest"
-                # )
-                # mask = mask.squeeze()
-                mask = mask.cpu().numpy()
-                results.append(PredictionMask(self.class_names[cls_index], mask, confidence))
+            if predictions[0].masks:
+                masks = predictions[0].masks.data
+                for box, mask in zip(boxes_data, masks):
+                    left, top, right, bottom, confidence, cls_index = (
+                        int(box[0]),
+                        int(box[1]),
+                        int(box[2]),
+                        int(box[3]),
+                        float(box[4]),
+                        int(box[5]),
+                    )
+                    mask = mask.cpu().numpy()
+                    results.append(PredictionMask(self.class_names[cls_index], mask, confidence))
         elif self.task_type == "pose estimation":
             boxes_data = predictions[0].boxes.data
             keypoints_data = predictions[0].keypoints.data
@@ -336,7 +274,8 @@ if sly.is_production():
 else:
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
-    m.load_on_device(m.model_dir, device)
+    deploy_params = m.get_params_from_gui()
+    m.load_model(**deploy_params)
     image_path = "./demo_data/image_01.jpg"
     settings = {
         "conf": 0.25,
