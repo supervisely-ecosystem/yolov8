@@ -37,10 +37,15 @@ from supervisely.app.widgets import (
     GridGallery,
     TaskLogs,
     Stepper,
+    Text,
+    Collapse,
+    ImageSlider,
+    Dialog,
 )
 from src.utils import verify_train_val_sets
-from src.sly_to_yolov8 import transform
+from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.callbacks import on_train_batch_end
+from src.dataset_cache import download_project
 from ultralytics import YOLO
 import torch
 from src.metrics_watcher import Watcher
@@ -57,7 +62,7 @@ from fastapi import Response, Request
 def update_globals(new_dataset_ids):
     global dataset_ids, project_id, workspace_id, project_info, project_meta
     dataset_ids = new_dataset_ids
-    if dataset_ids:
+    if dataset_ids and all(ds_id is not None for ds_id in dataset_ids):
         project_id = api.dataset.get_info_by_id(dataset_ids[0]).project_id
         workspace_id = api.project.get_info_by_id(project_id).workspace_id
         project_info = api.project.get_info_by_id(project_id)
@@ -90,6 +95,8 @@ sly.logger.info(f"App root directory: {g.app_root_directory}")
 
 ### 1. Dataset selection
 dataset_selector = SelectDataset(project_id=project_id, multiselect=True, select_all_datasets=True)
+use_cache_text = Text("Use cached data stored on the agent to optimize project downlaod")
+use_cache_checkbox = Checkbox(use_cache_text, checked=True)
 select_data_button = Button("Select data")
 select_done = DoneLabel("Successfully selected input data")
 select_done.hide()
@@ -103,6 +110,7 @@ reselect_data_button.hide()
 project_settings_content = Container(
     [
         dataset_selector,
+        use_cache_checkbox,
         select_data_button,
         select_done,
         reselect_data_button,
@@ -157,7 +165,7 @@ card_classes.collapse()
 card_classes.lock()
 
 
-### 3. Train / validation split
+### 3.1 Train / validation split
 train_val_split = TrainValSplits(project_id=project_id)
 unlabeled_images_select = SelectString(values=["keep unlabeled images", "ignore unlabeled images"])
 unlabeled_images_select_f = Field(
@@ -178,6 +186,36 @@ resplit_data_button = Button(
 resplit_data_button.hide()
 split_done = DoneLabel("Data was successfully splitted")
 split_done.hide()
+
+### 3.2 Check if there are images without bounding boxes (for pose estimation)
+bbox_miss_gallery = ImageSlider(previews=[], height=100, selectable=False)
+bbox_miss_collapse_item = Collapse.Item(
+    name="show_images",
+    title="Following images have no bounding boxes for graphs:",
+    content=bbox_miss_gallery,
+)
+bbox_miss_collapse = Collapse(items=[bbox_miss_collapse_item])
+bbox_miss_collapse.hide()
+bbox_miss_text = Text("Select options to handle them:")
+bbox_miss_manual_checkbox = Checkbox(
+    "Stop processing (I will add bounding boxes manually)", checked=True
+)
+bbox_miss_manual_checkbox.disable()
+bbox_miss_auto_checkbox = Checkbox(
+    "Continue processing (bounding boxes will be created automatically)"
+)
+bbox_miss_btn = Button("OK")
+bbox_miss_content = Container(
+    widgets=[
+        bbox_miss_collapse,
+        bbox_miss_text,
+        bbox_miss_manual_checkbox,
+        bbox_miss_auto_checkbox,
+        bbox_miss_btn,
+    ]
+)
+bbox_miss_dialog = Dialog(title="Images with no bounding boxes", content=bbox_miss_content)
+bbox_miss_check_progress = Progress()
 train_val_content = Container(
     [
         train_val_split,
@@ -185,6 +223,9 @@ train_val_content = Container(
         split_data_button,
         resplit_data_button,
         split_done,
+        bbox_miss_dialog,
+        bbox_miss_check_progress,
+        bbox_miss_collapse
     ]
 )
 card_train_val_split = Card(
@@ -256,6 +297,8 @@ reselect_model_button = Button(
     plain=True,
 )
 reselect_model_button.hide()
+model_not_found_text = Text("Custom model not found", status="error")
+model_not_found_text.hide()
 model_select_done = DoneLabel("Model was successfully selected")
 model_select_done.hide()
 model_selection_content = Container(
@@ -263,6 +306,7 @@ model_selection_content = Container(
         model_tabs,
         select_model_button,
         reselect_model_button,
+        model_not_found_text,
         model_select_done,
     ]
 )
@@ -521,6 +565,10 @@ def on_dataset_selected(new_dataset_ids):
     elif new_dataset_ids != [] and reselect_data_button.is_hidden():
         select_data_button.show()
     update_globals(new_dataset_ids)
+    if sly.project.download.is_cached(project_id):
+        use_cache_text.text = "Use cached data stored on the agent to optimize project downlaod"
+    else:
+        use_cache_text.text = "Cache data on the agent to optimize project download for future trainings"
 
 
 @select_data_button.click
@@ -552,7 +600,11 @@ def select_input_data():
         )
     select_data_button.loading = True
     dataset_selector.disable()
+    use_cache_text.disable()
     classes_table.read_project_from_id(project_id)
+    classes_table.select_all()
+    selected_classes = classes_table.get_selected_classes()
+    _update_select_classes_button(selected_classes)
     select_data_button.loading = False
     select_data_button.hide()
     select_done.show()
@@ -570,13 +622,13 @@ def reselect_input_data():
     reselect_data_button.hide()
     select_done.hide()
     dataset_selector.enable()
+    use_cache_text.enable()
     curr_step = stepper.get_active_step()
     curr_step -= 1
     stepper.set_active_step(curr_step)
 
 
-@classes_table.value_changed
-def on_classes_selected(selected_classes):
+def _update_select_classes_button(selected_classes):
     n_classes = len(selected_classes)
     if n_classes > 0:
         if n_classes > 1:
@@ -586,6 +638,10 @@ def on_classes_selected(selected_classes):
         select_classes_button.show()
     else:
         select_classes_button.hide()
+
+@classes_table.value_changed
+def on_classes_selected(selected_classes):
+    _update_select_classes_button(selected_classes)
 
 
 @task_type_select.value_changed
@@ -701,10 +757,23 @@ def select_other_classes():
 
 @split_data_button.click
 def split_data():
+    split_data_button.loading = True
     train_val_split.disable()
     unlabeled_images_select.disable()
-    split_data_button.hide()
     split_done.show()
+    task_type = task_type_select.get_value()
+    if task_type == "pose estimation":
+        selected_classes = classes_table.get_selected_classes()
+        image_urls = check_bbox_exist_on_images(
+            api,selected_classes, dataset_ids, project_meta, bbox_miss_check_progress
+        )
+        if len(image_urls) > 0:
+            bbox_miss_gallery.set_data(previews=image_urls)
+            bbox_miss_dialog.show()
+            bbox_miss_collapse.show()
+    split_data_button.loading = False
+    split_data_button.hide()
+
     resplit_data_button.show()
     curr_step = stepper.get_active_step()
     curr_step += 1
@@ -725,24 +794,66 @@ def resplit_data():
     stepper.set_active_step(curr_step)
 
 
+@bbox_miss_auto_checkbox.value_changed
+def on_auto_change(value):
+    if value:
+        bbox_miss_manual_checkbox.uncheck()
+    else:
+        bbox_miss_manual_checkbox.check()
+
+
+@bbox_miss_btn.click
+def close_dialog():
+    bbox_miss_dialog.hide()
+    if bbox_miss_manual_checkbox.is_checked():
+        bbox_miss_collapse.set_active_panel(bbox_miss_collapse_item.name)
+        msg = (
+            "Application will be stopped (corresponding option is selected). "
+            "Add bounding boxes to images with no bounding boxes and restart the app"
+        )
+        sly.app.show_dialog("Warning", msg, status="warning")
+        app.stop()
+
+
+@model_tabs.value_changed
+def model_tab_changed(value):
+    if value == "Pretrained models":
+        model_not_found_text.hide()
+        model_select_done.hide()
+
+
 @select_model_button.click
 def select_model():
-    select_model_button.hide()
-    model_select_done.show()
-    model_tabs.disable()
-    models_table.disable()
-    model_path_input.disable()
-    reselect_model_button.show()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_params.unlock()
-    card_train_params.uncollapse()
+    weights_type = model_tabs.get_active_tab()
+    file_exists = True
+    if weights_type == "Custom models":
+        custom_link = model_path_input.get_value()
+        if custom_link != "":
+            file_exists = api.file.exists(sly.env.team_id(), custom_link)
+        else:
+            file_exists = False
+    if not file_exists and weights_type == "Custom models":
+        model_not_found_text.show()
+        model_select_done.hide()
+    else:
+        model_select_done.show()
+        model_not_found_text.hide()
+        select_model_button.hide()
+        model_tabs.disable()
+        models_table.disable()
+        model_path_input.disable()
+        reselect_model_button.show()
+        curr_step = stepper.get_active_step()
+        curr_step += 1
+        stepper.set_active_step(curr_step)
+        card_train_params.unlock()
+        card_train_params.uncollapse()
 
 
 @reselect_model_button.click
 def reselect_model():
     select_model_button.show()
+    model_not_found_text.hide()
     model_select_done.hide()
     model_tabs.enable()
     models_table.enable()
@@ -758,7 +869,13 @@ def change_file_preview(value):
     file_info = None
     if value != "":
         file_info = api.file.get_info_by_path(sly.env.team_id(), value)
-    model_file_thumbnail.set(file_info)
+    if file_info is None:
+        model_not_found_text.show()
+        model_select_done.hide()
+        model_file_thumbnail.set(None)
+    else:
+        model_not_found_text.hide()
+        model_file_thumbnail.set(file_info)
 
 
 @additional_config_radio.value_changed
@@ -890,22 +1007,16 @@ def start_training():
         sly.fs.remove_dir(local_artifacts_dir)
     start_training_button.loading = True
     # get number of images in selected datasets
-    n_images = 0
-    for dataset_id in dataset_ids:
-        dataset_info = api.dataset.get_info_by_id(dataset_id)
-        n_images += dataset_info.images_count
+    dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
+    n_images = sum([info.images_count for info in dataset_infos])
     # download dataset
-    if os.path.exists(g.project_dir):
-        sly.fs.clean_dir(g.project_dir)
-    with progress_bar_download_project(message="Downloading input data...", total=n_images) as pbar:
-        sly.download(
-            api=api,
-            project_id=project_id,
-            dest_dir=g.project_dir,
-            dataset_ids=dataset_ids,
-            log_progress=True,
-            progress_cb=pbar.update,
-        )
+    download_project(
+        api=api,
+        project_info=project_info,
+        dataset_infos=dataset_infos,
+        use_cache=use_cache_checkbox.is_checked(),
+        progress=progress_bar_download_project
+    )
     # remove unselected classes
     selected_classes = classes_table.get_selected_classes()
     sly.Project.remove_classes_except(g.project_dir, classes_to_keep=selected_classes, inplace=True)
@@ -1013,6 +1124,8 @@ def start_training():
         model_filename = "custom_model.pt"
         weights_dst_path = os.path.join(g.app_data_dir, model_filename)
         file_info = api.file.get_info_by_path(sly.env.team_id(), custom_link)
+        if file_info is None:
+            raise FileNotFoundError(f"Custon model file not found: {custom_link}")
         file_size = file_info.sizeb
         progress = sly.Progress(
             message="",
@@ -1375,6 +1488,7 @@ def auto_train(request: Request):
     state = request.state.state
     project_id = state["project_id"]
     task_type = state["task_type"]
+    use_cache = state.get("use_cache", True)
 
     if task_type == "instance segmentation":
         models_table_columns = [key for key in g.seg_models_data[0].keys()]
@@ -1399,7 +1513,14 @@ def auto_train(request: Request):
             subtitles=models_table_subtitles,
         )
     dataset_selector.disable()
+    if use_cache:
+        use_cache_checkbox.check()
+    else: 
+        use_cache_checkbox.uncheck()
     classes_table.read_project_from_id(project_id)
+    classes_table.select_all()
+    selected_classes = classes_table.get_selected_classes()
+    _update_select_classes_button(selected_classes)
     select_data_button.hide()
     select_done.show()
     reselect_data_button.show()
@@ -1481,30 +1602,18 @@ def auto_train(request: Request):
     # start_training_button.loading = True
     # get number of images in selected datasets
     if "dataset_ids" not in state:
-        n_images = 0
-        dataset_ids = []
         dataset_infos = api.dataset.get_list(project_id)
-        for dataset_info in dataset_infos:
-            n_images += dataset_info.images_count
-            dataset_ids.append(dataset_info.id)
+        dataset_ids = [dataset_info.id for dataset_info in dataset_infos]
     else:
         dataset_ids = state["dataset_ids"]
-        n_images = 0
-        for dataset_id in dataset_ids:
-            dataset_info = api.dataset.get_info_by_id(dataset_id)
-            n_images += dataset_info.images_count
-    # download dataset
-    if os.path.exists(g.project_dir):
-        sly.fs.clean_dir(g.project_dir)
-    with progress_bar_download_project(message="Downloading input data...", total=n_images) as pbar:
-        sly.download(
-            api=api,
-            project_id=project_id,
-            dest_dir=g.project_dir,
-            dataset_ids=dataset_ids,
-            log_progress=True,
-            progress_cb=pbar.update,
-        )
+        dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
+    download_project(
+        api=api,
+        project_info=project_info,
+        dataset_infos=dataset_infos,
+        use_cache=use_cache,
+        progress=progress_bar_download_project
+    )
     project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
     selected_classes = [cls.name for cls in project_meta.obj_classes]
     # remove classes with unnecessary shapes
