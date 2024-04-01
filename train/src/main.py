@@ -1483,13 +1483,13 @@ def start_training():
                 progress_size_cb=progress_cb,
             )
     else:
-        sly.logger.info("Uploading artifacts before stopping the app... (progress bar is disabled)")
+        sly.logger.info("Uploading training artifacts before stopping the app... (progress bar is disabled)")
         team_files_dir = api.file.upload_directory(
             team_id=sly.env.team_id(),
             local_dir=local_artifacts_dir,
             remote_dir=remote_artifacts_dir,
         )
-        sly.logger.info("Artifacts uploaded successfully")
+        sly.logger.info("Training artifacts uploaded successfully")
 
     if not app.is_stopped():
         file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
