@@ -1304,40 +1304,39 @@ def start_training():
 
     def stop_on_batch_end_if_needed(trainer_validator, *args, **kwargs):
         app_is_stopped = app.is_stopped()
+        not_ready_for_api_calls = False
         if not app_is_stopped:
-            app_is_stopped = api.app.is_ready_for_api_calls(g.app_session_id) is False
-        if app_is_stopped:
+            not_ready_for_api_calls = api.app.is_ready_for_api_calls(g.app_session_id) is False
+        if app_is_stopped or not_ready_for_api_calls:
             trainer_validator.stop = True
-            app.set_stop_event()
             print(f"Stopping training...")
-            raise app.StopException("This error is expected.")
+            if not app_is_stopped:
+                app.stop()
         
 
     model.add_callback("on_train_batch_end", stop_on_batch_end_if_needed)
     model.add_callback("on_val_batch_end", stop_on_batch_end_if_needed)
 
-    with app.handle_stop():
-        model.train(
-            data=data_path,
-            epochs=n_epochs_input.get_value(),
-            patience=patience_input.get_value(),
-            batch=batch_size_input.get_value(),
-            imgsz=image_size_input.get_value(),
-            save_period=1000,
-            device=device,
-            workers=n_workers_input.get_value(),
-            optimizer=select_optimizer.get_value(),
-            pretrained=pretrained,
-            project=checkpoint_dir,
-            **additional_params,
-        )
+    model.train(
+        data=data_path,
+        epochs=n_epochs_input.get_value(),
+        patience=patience_input.get_value(),
+        batch=batch_size_input.get_value(),
+        imgsz=image_size_input.get_value(),
+        save_period=1000,
+        device=device,
+        workers=n_workers_input.get_value(),
+        optimizer=select_optimizer.get_value(),
+        pretrained=pretrained,
+        project=checkpoint_dir,
+        **additional_params,
+    )
 
     if app.is_stopped():
         print("Stopping app...")
         sly.fs.remove_dir(g.app_data_dir)
         watcher.running = False
         train_batch_watcher.running = False
-        app.stop()
         return
     progress_bar_iters.hide()
     progress_bar_epochs.hide()
