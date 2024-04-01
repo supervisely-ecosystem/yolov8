@@ -1306,10 +1306,11 @@ def start_training():
         app_is_stopped = app.is_stopped()
         print(f"App is stopped: {app_is_stopped}")
         if not app_is_stopped:
-            try:
-                app_is_stopped = not app.is_running()
-            except:
-                app_is_stopped = True
+            app_is_stopped = not app.is_running()
+            # try:
+            #     app_is_stopped = not app.is_running()
+            # except:
+            #     app_is_stopped = True
         print(f"App is stopped: {app_is_stopped}")
         if not app_is_stopped:
             app_is_stopped = not api.app.is_ready_for_api_calls(g.app_session_id)
@@ -1337,6 +1338,10 @@ def start_training():
             project=checkpoint_dir,
             **additional_params,
         )
+
+    if app.is_stopped():
+        print("App is stopped")
+        raise app.StopException("This error is expected.")
 
     progress_bar_iters.hide()
     progress_bar_epochs.hide()
