@@ -1332,6 +1332,7 @@ def start_training():
             **additional_params,
         )
 
+    print(app.is_stopped())
     progress_bar_iters.hide()
     progress_bar_epochs.hide()
     watcher.running = False
