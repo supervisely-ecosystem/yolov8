@@ -1338,7 +1338,6 @@ def start_training():
         print("Stopping app...")
         sly.fs.remove_dir(g.app_data_dir)
         watcher.running = False
-        train_batch_watcher.running = False
         return
     progress_bar_iters.hide()
     progress_bar_epochs.hide()
