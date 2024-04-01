@@ -1308,9 +1308,8 @@ def start_training():
         if not app_is_stopped:
             not_ready_for_api_calls = api.app.is_ready_for_api_calls(g.app_session_id) is False
         if app_is_stopped or not_ready_for_api_calls:
+            print(f"Stopping the train process...")
             trainer_validator.stop = True
-            print(f"Stopping training...")
-            app.stop()
             raise app.StopException("This error is expected.")
         
 
@@ -1334,9 +1333,10 @@ def start_training():
         )
 
     if app.is_stopped():
-        print("Stopping app...")
+        print("Stopping the app...")
         sly.fs.remove_dir(g.app_data_dir)
         watcher.running = False
+        app.stop()
         return
     progress_bar_iters.hide()
     progress_bar_epochs.hide()
