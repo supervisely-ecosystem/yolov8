@@ -1303,11 +1303,16 @@ def start_training():
         threading.Thread(target=train_batch_watcher_func, daemon=True).start()
 
     def stop_on_batch_end_if_needed(trainer_validator, *args, **kwargs):
-        print("Checking if app is stopped")
-        try:
-            app_is_stopped = app.is_stopped()
-        except:
-            app_is_stopped = True
+        app_is_stopped = app.is_stopped()
+        print(f"App is stopped: {app_is_stopped}")
+        if not app_is_stopped:
+            try:
+                app_is_stopped = not app.is_running()
+            except:
+                app_is_stopped = True
+        print(f"App is stopped: {app_is_stopped}")
+        if not app_is_stopped:
+            app_is_stopped = not api.app.is_ready_for_api_calls(g.app_session_id)
         print(f"App is stopped: {app_is_stopped}")
         if app_is_stopped:
             trainer_validator.stop = True
