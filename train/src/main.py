@@ -1302,9 +1302,16 @@ def start_training():
 
         threading.Thread(target=train_batch_watcher_func, daemon=True).start()
 
-    def stop_on_batch_end_if_needed(*args, **kwargs):
-        if app.is_stopped():
+    def stop_on_batch_end_if_needed(trainer_validator, *args, **kwargs):
+        app_is_stopped = app.is_stopped()
+        not_ready_for_api_calls = False
+        if not app_is_stopped:
+            not_ready_for_api_calls = api.app.is_ready_for_api_calls(g.app_session_id) is False
+        if app_is_stopped or not_ready_for_api_calls:
+            print(f"Stopping the train process...")
+            trainer_validator.stop = True
             raise app.StopException("This error is expected.")
+        
 
     model.add_callback("on_train_batch_end", stop_on_batch_end_if_needed)
     model.add_callback("on_val_batch_end", stop_on_batch_end_if_needed)
@@ -1325,8 +1332,15 @@ def start_training():
             **additional_params,
         )
 
-    progress_bar_iters.hide()
-    progress_bar_epochs.hide()
+    # if app.is_stopped():
+    #     print("Stopping the app...")
+    #     sly.fs.remove_dir(g.app_data_dir)
+    #     watcher.running = False
+    #     app.stop()
+    #     return
+    if not app.is_stopped():
+        progress_bar_iters.hide()
+        progress_bar_epochs.hide()
     watcher.running = False
 
     # visualize model predictions
@@ -1362,37 +1376,43 @@ def start_training():
         tf_confusion_matrix_info = api.file.upload(
             team_id, confusion_matrix_path, remote_confusion_matrix_path
         )
-        additional_gallery.append(tf_confusion_matrix_info.full_storage_url)
-        additional_gallery_f.show()
+        if not app.is_stopped():
+            additional_gallery.append(tf_confusion_matrix_info.full_storage_url)
+            additional_gallery_f.show()
     pr_curve_path = os.path.join(local_artifacts_dir, "PR_curve.png")
     if os.path.exists(pr_curve_path):
         remote_pr_curve_path = os.path.join(remote_images_path, "PR_curve.png")
         tf_pr_curve_info = api.file.upload(team_id, pr_curve_path, remote_pr_curve_path)
-        additional_gallery.append(tf_pr_curve_info.full_storage_url)
+        if not app.is_stopped():
+            additional_gallery.append(tf_pr_curve_info.full_storage_url)
     f1_curve_path = os.path.join(local_artifacts_dir, "F1_curve.png")
     if os.path.exists(f1_curve_path):
         remote_f1_curve_path = os.path.join(remote_images_path, "F1_curve.png")
         tf_f1_curve_info = api.file.upload(team_id, f1_curve_path, remote_f1_curve_path)
-        additional_gallery.append(tf_f1_curve_info.full_storage_url)
+        if not app.is_stopped():
+            additional_gallery.append(tf_f1_curve_info.full_storage_url)
     box_f1_curve_path = os.path.join(local_artifacts_dir, "BoxF1_curve.png")
     if os.path.exists(box_f1_curve_path):
         remote_box_f1_curve_path = os.path.join(remote_images_path, "BoxF1_curve.png")
         tf_box_f1_curve_info = api.file.upload(team_id, box_f1_curve_path, remote_box_f1_curve_path)
-        additional_gallery.append(tf_box_f1_curve_info.full_storage_url)
+        if not app.is_stopped():
+            additional_gallery.append(tf_box_f1_curve_info.full_storage_url)
     pose_f1_curve_path = os.path.join(local_artifacts_dir, "PoseF1_curve.png")
     if os.path.exists(pose_f1_curve_path):
         remote_pose_f1_curve_path = os.path.join(remote_images_path, "PoseF1_curve.png")
         tf_pose_f1_curve_info = api.file.upload(
             team_id, pose_f1_curve_path, remote_pose_f1_curve_path
         )
-        additional_gallery.append(tf_pose_f1_curve_info.full_storage_url)
+        if not app.is_stopped():
+            additional_gallery.append(tf_pose_f1_curve_info.full_storage_url)
     mask_f1_curve_path = os.path.join(local_artifacts_dir, "MaskF1_curve.png")
     if os.path.exists(mask_f1_curve_path):
         remote_mask_f1_curve_path = os.path.join(remote_images_path, "MaskF1_curve.png")
         tf_mask_f1_curve_info = api.file.upload(
             team_id, mask_f1_curve_path, remote_mask_f1_curve_path
         )
-        additional_gallery.append(tf_mask_f1_curve_info.full_storage_url)
+        if not app.is_stopped():
+            additional_gallery.append(tf_mask_f1_curve_info.full_storage_url)
 
     # rename best checkpoint file
     results = pd.read_csv(watch_file)
@@ -1433,46 +1453,57 @@ def start_training():
         "/yolov8_train", task_type_select.get_value(), project_info.name, str(g.app_session_id)
     )
 
-    def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
-        value = monitor.bytes_read
-        if progress.total == 0:
-            progress.set(value, monitor.len, report=False)
-        else:
-            progress.set_current_value(value, report=False)
-        artifacts_pbar.update(progress.current - artifacts_pbar.n)
+    if not app.is_stopped():
+        def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
+            value = monitor.bytes_read
+            if progress.total == 0:
+                progress.set(value, monitor.len, report=False)
+            else:
+                progress.set_current_value(value, report=False)
+            artifacts_pbar.update(progress.current - artifacts_pbar.n)
 
-    local_files = sly.fs.list_files_recursively(local_artifacts_dir)
-    total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
-    progress = sly.Progress(
-        message="",
-        total_cnt=total_size,
-        is_size=True,
-    )
-    progress_cb = partial(upload_monitor, api=api, progress=progress)
-    with progress_bar_upload_artifacts(
-        message="Uploading train artifacts to Team Files...",
-        total=total_size,
-        unit="bytes",
-        unit_scale=True,
-    ) as artifacts_pbar:
+        local_files = sly.fs.list_files_recursively(local_artifacts_dir)
+        total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
+        progress = sly.Progress(
+            message="",
+            total_cnt=total_size,
+            is_size=True,
+        )
+        progress_cb = partial(upload_monitor, api=api, progress=progress)
+        with progress_bar_upload_artifacts(
+            message="Uploading train artifacts to Team Files...",
+            total=total_size,
+            unit="bytes",
+            unit_scale=True,
+        ) as artifacts_pbar:
+            team_files_dir = api.file.upload_directory(
+                team_id=sly.env.team_id(),
+                local_dir=local_artifacts_dir,
+                remote_dir=remote_artifacts_dir,
+                progress_size_cb=progress_cb,
+            )
+    else:
+        sly.logger.info("Uploading training artifacts before stopping the app... (progress bar is disabled)")
         team_files_dir = api.file.upload_directory(
             team_id=sly.env.team_id(),
             local_dir=local_artifacts_dir,
             remote_dir=remote_artifacts_dir,
-            progress_size_cb=progress_cb,
         )
-    file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
-    train_artifacts_folder.set(file_info)
-    # finish training
-    start_training_button.loading = False
-    start_training_button.disable()
-    logs_button.disable()
-    train_done.show()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_artifacts.unlock()
-    card_train_artifacts.uncollapse()
+        sly.logger.info("Training artifacts uploaded successfully")
+
+    if not app.is_stopped():
+        file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
+        train_artifacts_folder.set(file_info)
+        # finish training
+        start_training_button.loading = False
+        start_training_button.disable()
+        logs_button.disable()
+        train_done.show()
+        curr_step = stepper.get_active_step()
+        curr_step += 1
+        stepper.set_active_step(curr_step)
+        card_train_artifacts.unlock()
+        card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
     sly.fs.silent_remove("train_batches.txt")
