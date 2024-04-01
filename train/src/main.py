@@ -1312,25 +1312,27 @@ def start_training():
             print(f"Stopping training...")
             if not app_is_stopped:
                 app.stop()
+            raise app.StopException("This error is expected.")
         
 
     model.add_callback("on_train_batch_end", stop_on_batch_end_if_needed)
     model.add_callback("on_val_batch_end", stop_on_batch_end_if_needed)
 
-    model.train(
-        data=data_path,
-        epochs=n_epochs_input.get_value(),
-        patience=patience_input.get_value(),
-        batch=batch_size_input.get_value(),
-        imgsz=image_size_input.get_value(),
-        save_period=1000,
-        device=device,
-        workers=n_workers_input.get_value(),
-        optimizer=select_optimizer.get_value(),
-        pretrained=pretrained,
-        project=checkpoint_dir,
-        **additional_params,
-    )
+    with app.handle_stop():
+        model.train(
+            data=data_path,
+            epochs=n_epochs_input.get_value(),
+            patience=patience_input.get_value(),
+            batch=batch_size_input.get_value(),
+            imgsz=image_size_input.get_value(),
+            save_period=1000,
+            device=device,
+            workers=n_workers_input.get_value(),
+            optimizer=select_optimizer.get_value(),
+            pretrained=pretrained,
+            project=checkpoint_dir,
+            **additional_params,
+        )
 
     if app.is_stopped():
         print("Stopping app...")
