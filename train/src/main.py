@@ -1310,8 +1310,7 @@ def start_training():
         if app_is_stopped or not_ready_for_api_calls:
             trainer_validator.stop = True
             print(f"Stopping training...")
-            if not app_is_stopped:
-                app.stop()
+            app.stop()
             raise app.StopException("This error is expected.")
         
 
