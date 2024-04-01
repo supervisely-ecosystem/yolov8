@@ -1304,12 +1304,12 @@ def start_training():
 
     def stop_on_batch_end_if_needed(trainer_validator, *args, **kwargs):
         app_is_stopped = app.is_stopped()
-        print(f"App is stopped: {app_is_stopped}")
         if not app_is_stopped:
-            app_is_stopped = not api.app.is_ready_for_api_calls(g.app_session_id)
-        print(f"App is stopped: {app_is_stopped}")
+            app_is_stopped = api.app.is_ready_for_api_calls(g.app_session_id) is False
         if app_is_stopped:
             trainer_validator.stop = True
+            print(f"Stopping training...")
+            app.stop()
             raise app.StopException("This error is expected.")
         
 
