@@ -83,8 +83,8 @@ def download_project(
                 dataset_names=dataset_names,
                 progress_cb=pbar.update
             )
-    except Exception as e:
-        sly.logger.error(f"Failed to retreive project from cache. Downloading it...", exc_info=True)
+    except Exception:
+        sly.logger.warning(f"Failed to retreive project from cache. Downloading it...", exc_info=True)
         if os.path.exists(g.project_dir):
             sly.fs.clean_dir(g.project_dir)
         _no_cache_download(api, project_info, dataset_infos, progress)
