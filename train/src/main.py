@@ -974,6 +974,7 @@ def change_logs_visibility():
 @start_training_button.click
 def start_training():
     task_type = task_type_select.get_value()
+    use_cache = use_cache_checkbox.is_checked()
 
     local_dir = g.root_model_checkpoint_dir
     if task_type == "object detection":
@@ -1002,12 +1003,26 @@ def start_training():
         api=api,
         project_info=project_info,
         dataset_infos=dataset_infos,
-        use_cache=use_cache_checkbox.is_checked(),
+        use_cache=use_cache,
         progress=progress_bar_download_project
     )
     # remove unselected classes
     selected_classes = classes_table.get_selected_classes()
-    sly.Project.remove_classes_except(g.project_dir, classes_to_keep=selected_classes, inplace=True)
+    try:
+        sly.Project.remove_classes_except(g.project_dir, classes_to_keep=selected_classes, inplace=True)
+    except Exception:
+        if not use_cache:
+            raise
+        sly.logger.warn(f"Error during classes removing. Will try to re-download project without cache", exc_info=True)
+        download_project(
+            api=api,
+            project_info=project_info,
+            dataset_infos=dataset_infos,
+            use_cache=False,
+            progress=progress_bar_download_project
+        )
+        sly.Project.remove_classes_except(g.project_dir, classes_to_keep=selected_classes, inplace=True)
+
     # remove classes with unnecessary shapes
     if task_type != "object detection":
         unnecessary_classes = []
@@ -1045,8 +1060,22 @@ def start_training():
                     "Val split length is 0 after ignoring images. Please check your data"
                 )
     # split the data
-    train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
-    train_set, val_set = train_val_split.get_splits()
+    try:
+        train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+        train_set, val_set = train_val_split.get_splits()
+    except Exception:
+        if not use_cache:
+            raise
+        sly.logger.warning("Error during data splitting. Will try to re-download project without cache", exc_info=True)
+        download_project(
+            api=api,
+            project_info=project_info,
+            dataset_infos=dataset_infos,
+            use_cache=False,
+            progress=progress_bar_download_project
+        )
+        train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+        train_set, val_set = train_val_split.get_splits()
     verify_train_val_sets(train_set, val_set)
     # convert dataset from supervisely to yolo format
     if os.path.exists(g.yolov8_project_dir):
