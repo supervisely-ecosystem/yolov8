@@ -574,7 +574,19 @@ def on_dataset_selected(new_dataset_ids):
 @select_data_button.click
 def select_input_data():
     project_shapes = [cls.geometry_type.geometry_name() for cls in project_meta.obj_classes]
-    if "graph" in project_shapes:
+    if "bitmap" in project_shapes or "polygon" in project_shapes:
+        task_type_select.set_value("instance segmentation")
+        models_table_columns = [key for key in g.seg_models_data[0].keys()]
+        models_table_subtitles = [None] * len(models_table_columns)
+        models_table_rows = []
+        for element in g.seg_models_data:
+            models_table_rows.append(list(element.values()))
+        models_table.set_data(
+            columns=models_table_columns,
+            rows=models_table_rows,
+            subtitles=models_table_subtitles,
+        )
+    elif "graph" in project_shapes:
         task_type_select.set_value("pose estimation")
         models_table_columns = [key for key in g.pose_models_data[0].keys()]
         models_table_subtitles = [None] * len(models_table_columns)
