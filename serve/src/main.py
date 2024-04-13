@@ -159,7 +159,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 if not dto.mask.any():  # skip empty masks
                     sly.logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
                     return None
-                geometry = sly.Bitmap(dto.mask)
+                geometry = sly.Bitmap(dto.mask, extra_validation=False)
             elif isinstance(dto, PredictionBBox):
                 geometry = sly.Rectangle(*dto.bbox_tlbr)
             tags = []
