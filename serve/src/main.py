@@ -1,10 +1,12 @@
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Union, Literal
+from typing import Any, Dict, Generator, List, Union, Literal
+from threading import Event
 
 import torch
 from dotenv import load_dotenv
 from ultralytics import YOLO
+from ultralytics.yolo.engine.results import Results
 
 import supervisely as sly
 from src.keypoints_template import dict_to_template, human_template
@@ -157,7 +159,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 if not dto.mask.any():  # skip empty masks
                     sly.logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
                     return None
-                geometry = sly.Bitmap(dto.mask)
+                geometry = sly.Bitmap(dto.mask, extra_validation=False)
             elif isinstance(dto, PredictionBBox):
                 geometry = sly.Rectangle(*dto.bbox_tlbr)
             tags = []
@@ -176,30 +178,12 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 nodes.append(sly.Node(label=label, row=y, col=x))
             label = sly.Label(sly.GraphNodes(nodes), obj_class)
         return label
-
-    def predict(
-        self, image_path: str, settings: Dict[str, Any]
-    ) -> List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]:
-        input_image = sly.image.read(image_path)
-        # RGB to BGR
-        input_image = input_image[:, :, ::-1]
-        if self.task_type == "instance segmentation":
-            retina_masks = True
-        else:
-            retina_masks = False
-        predictions = self.model(
-            source=input_image,
-            conf=settings["conf"],
-            iou=settings["iou"],
-            half=settings["half"],
-            device=self.device,
-            max_det=settings["max_det"],
-            agnostic_nms=settings["agnostic_nms"],
-            retina_masks=retina_masks,
-        )
-        results = []
+    
+    def _to_dto(self, prediction: Results, settings: dict) -> List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]:
+        """Converts YOLO Results to a List of Prediction DTOs."""
+        dtos = []
         if self.task_type == "object detection":
-            boxes_data = predictions[0].boxes.data
+            boxes_data = prediction.boxes.data
             for box in boxes_data:
                 left, top, right, bottom, confidence, cls_index = (
                     int(box[0]),
@@ -210,11 +194,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     int(box[5]),
                 )
                 bbox = [top, left, bottom, right]
-                results.append(PredictionBBox(self.class_names[cls_index], bbox, confidence))
+                dtos.append(PredictionBBox(self.class_names[cls_index], bbox, confidence))
         elif self.task_type == "instance segmentation":
-            boxes_data = predictions[0].boxes.data
-            if predictions[0].masks:
-                masks = predictions[0].masks.data
+            boxes_data = prediction.boxes.data
+            if prediction.masks:
+                masks = prediction.masks.data
                 for box, mask in zip(boxes_data, masks):
                     left, top, right, bottom, confidence, cls_index = (
                         int(box[0]),
@@ -225,10 +209,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         int(box[5]),
                     )
                     mask = mask.cpu().numpy()
-                    results.append(PredictionMask(self.class_names[cls_index], mask, confidence))
+                    dtos.append(PredictionMask(self.class_names[cls_index], mask, confidence))
         elif self.task_type == "pose estimation":
-            boxes_data = predictions[0].boxes.data
-            keypoints_data = predictions[0].keypoints.data
+            boxes_data = prediction.boxes.data
+            keypoints_data = prediction.keypoints.data
             point_labels = self.keypoints_template.point_names
             point_threshold = settings.get("point_threshold", 0.1)
             for box, keypoints in zip(boxes_data, keypoints_data):
@@ -254,14 +238,61 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         included_labels.append(point_labels[j])
                         included_point_coordinates.append(point_coordinate.cpu().numpy())
                 if len(included_labels) > 1:
-                    results.append(
-                        sly.nn.PredictionKeypoints(
-                            self.class_names[cls_index],
-                            included_labels,
-                            included_point_coordinates,
-                        )
-                    )
-        return results
+                    dtos.append(sly.nn.PredictionKeypoints(
+                        self.class_names[cls_index],
+                        included_labels,
+                        included_point_coordinates,
+                    ))
+        return dtos
+        
+    def predict_video(self, video_path: str, settings: Dict[str, Any], stop: Event) -> Generator:
+        retina_masks = self.task_type == "instance segmentation"
+        predictions_generator = self.model(
+            source = video_path,
+            stream = True,
+            conf=settings["conf"],
+            iou=settings["iou"],
+            half=settings["half"],
+            device=self.device,
+            max_det=settings["max_det"],
+            agnostic_nms=settings["agnostic_nms"],
+            retina_masks=retina_masks,
+        )
+        for prediction in predictions_generator:
+            if stop.is_set():
+                predictions_generator.close()
+                return
+            yield self._to_dto(prediction, settings)
+
+    def predict_batch(self, source: List, settings: Dict[str, Any]) -> List[List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]]:
+        retina_masks = self.task_type == "instance segmentation"
+        predictions = self.model(
+            source=source,
+            conf=settings["conf"],
+            iou=settings["iou"],
+            half=settings["half"],
+            device=self.device,
+            max_det=settings["max_det"],
+            agnostic_nms=settings["agnostic_nms"],
+            retina_masks=retina_masks,
+        )
+        return [self._to_dto(prediction, settings) for prediction in predictions]
+
+    def predict(
+        self, image_path: str, settings: Dict[str, Any]
+    ) -> List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]:
+        retina_masks = self.task_type == "instance segmentation"
+        predictions = self.model(
+            source=image_path,
+            conf=settings["conf"],
+            iou=settings["iou"],
+            half=settings["half"],
+            device=self.device,
+            max_det=settings["max_det"],
+            agnostic_nms=settings["agnostic_nms"],
+            retina_masks=retina_masks,
+        )
+        return self._to_dto(predictions[0], settings)
 
 
 m = YOLOv8Model(
