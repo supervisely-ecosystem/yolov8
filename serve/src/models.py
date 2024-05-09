@@ -1,4 +1,4 @@
-yolov8_models = [
+models = [
     {
         "Model": "YOLOv8n-det",
         "Size (pixels)": "640",
@@ -6,8 +6,8 @@ yolov8_models = [
         "params (M)": "3.2",
         "FLOPs (B)": "8.7",
         "meta": {
-            "taskType": "object detection",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8n.pt",
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8n.pt",
         },
     },
     {
@@ -17,8 +17,8 @@ yolov8_models = [
         "params (M)": "11.2",
         "FLOPs (B)": "28.6",
         "meta": {
-            "taskType": "object detection",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8s.pt",
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8s.pt",
         },
     },
     {
@@ -28,8 +28,8 @@ yolov8_models = [
         "params (M)": "25.9",
         "FLOPs (B)": "78.9",
         "meta": {
-            "taskType": "object detection",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8m.pt",
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8m.pt",
         },
     },
     {
@@ -39,8 +39,8 @@ yolov8_models = [
         "params (M)": "43.7",
         "FLOPs (B)": "165.2",
         "meta": {
-            "taskType": "object detection",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8l.pt",
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8l.pt",
         },
     },
     {
@@ -50,8 +50,8 @@ yolov8_models = [
         "params (M)": "68.2",
         "FLOPs (B)": "257.8",
         "meta": {
-            "taskType": "object detection",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x.pt",
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x.pt",
         },
     },
     {
@@ -62,8 +62,8 @@ yolov8_models = [
         "params (M)": "3.4",
         "FLOPs (B)": "12.6",
         "meta": {
-            "taskType": "instance segmentation",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8n-seg.pt",
+            "task_type": "instance segmentation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8n-seg.pt",
         },
     },
     {
@@ -74,8 +74,8 @@ yolov8_models = [
         "params (M)": "11.8",
         "FLOPs (B)": "42.6",
         "meta": {
-            "taskType": "instance segmentation",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8s-seg.pt",
+            "task_type": "instance segmentation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8s-seg.pt",
         },
     },
     {
@@ -86,8 +86,8 @@ yolov8_models = [
         "params (M)": "27.3",
         "FLOPs (B)": "110.2",
         "meta": {
-            "taskType": "instance segmentation",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8m-seg.pt",
+            "task_type": "instance segmentation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8m-seg.pt",
         },
     },
     {
@@ -98,8 +98,8 @@ yolov8_models = [
         "params (M)": "46.0",
         "FLOPs (B)": "220.5",
         "meta": {
-            "taskType": "instance segmentation",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8l-seg.pt",
+            "task_type": "instance segmentation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8l-seg.pt",
         },
     },
     {
@@ -110,8 +110,8 @@ yolov8_models = [
         "params (M)": "71.8",
         "FLOPs (B)": "344.1",
         "meta": {
-            "taskType": "instance segmentation",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x-seg.pt",
+            "task_type": "instance segmentation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x-seg.pt",
         },
     },
     {
@@ -121,8 +121,8 @@ yolov8_models = [
         "params (M)": "3.3",
         "FLOPs (B)": "9.2",
         "meta": {
-            "taskType": "pose estimation",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8n-pose.pt",
+            "task_type": "pose estimation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8n-pose.pt",
         },
     },
     {
@@ -132,8 +132,8 @@ yolov8_models = [
         "params (M)": "11.6",
         "FLOPs (B)": "30.2",
         "meta": {
-            "taskType": "pose estimation",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8s-pose.pt",
+            "task_type": "pose estimation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8s-pose.pt",
         },
     },
     {
@@ -143,8 +143,8 @@ yolov8_models = [
         "params (M)": "26.4",
         "FLOPs (B)": "81.0",
         "meta": {
-            "taskType": "pose estimation",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8m-pose.pt",
+            "task_type": "pose estimation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8m-pose.pt",
         },
     },
     {
@@ -154,8 +154,8 @@ yolov8_models = [
         "params (M)": "44.4",
         "FLOPs (B)": "168.6",
         "meta": {
-            "taskType": "pose estimation",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8l-pose.pt",
+            "task_type": "pose estimation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8l-pose.pt",
         },
     },
     {
@@ -165,8 +165,8 @@ yolov8_models = [
         "params (M)": "69.4",
         "FLOPs (B)": "263.2",
         "meta": {
-            "taskType": "pose estimation",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x-pose.pt",
+            "task_type": "pose estimation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x-pose.pt",
         },
     },
     {
@@ -176,8 +176,8 @@ yolov8_models = [
         "params (M)": "99.1",
         "FLOPs (B)": "1066.4",
         "meta": {
-            "taskType": "pose estimation",
-            "weightsURL": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x-pose-p6.pt",
+            "task_type": "pose estimation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x-pose-p6.pt",
         },
     },
 ]
