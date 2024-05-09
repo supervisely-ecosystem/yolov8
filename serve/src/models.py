@@ -1,4 +1,4 @@
-models = [
+yolov8_models = [
     {
         "Model": "YOLOv8n-det",
         "Size (pixels)": "640",
