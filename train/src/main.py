@@ -1257,14 +1257,14 @@ def start_training():
             if check_number(float(val_seg_loss)):
                 grid_plot.add_scalar("val/seg loss", float(val_seg_loss), int(x))
         # visualize train batch
-        batch = f"train_batch{x}.jpg"
+        batch = f"train_batch{x-1}.jpg"
         local_train_batches_path = os.path.join(local_artifacts_dir, batch)
         if os.path.exists(local_train_batches_path) and batch not in plotted_train_batches and x < 10:
             plotted_train_batches.append(batch)
             remote_train_batches_path = os.path.join(remote_images_path, batch)
             tf_train_batches_info = api.file.upload(team_id, local_train_batches_path, remote_train_batches_path)
             train_batches_gallery.append(tf_train_batches_info.full_storage_url)
-            if x == 0:
+            if x == 1:
                 train_batches_gallery_f.show()
 
     watcher = Watcher(
