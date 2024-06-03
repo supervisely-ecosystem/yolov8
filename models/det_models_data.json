@@ -5,7 +5,7 @@
         "mAP": "37.3",
         "params (M)": "3.2",
         "FLOPs (B)": "8.7",
-        "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8n.pt"
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8n.pt"
     },
     {
         "Model": "YOLOv8n-det (Open Images V7)",
@@ -21,7 +21,7 @@
         "mAP": "44.9",
         "params (M)": "11.2",
         "FLOPs (B)": "28.6",
-        "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8s.pt"
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8s.pt"
     },
     {
         "Model": "YOLOv8s-det (Open Images V7)",
@@ -37,7 +37,7 @@
         "mAP": "50.2",
         "params (M)": "25.9",
         "FLOPs (B)": "78.9",
-        "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8m.pt"
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8m.pt"
     },
     {
         "Model": "YOLOv8m-det (Open Images V7)",
@@ -53,7 +53,7 @@
         "mAP": "52.9",
         "params (M)": "43.7",
         "FLOPs (B)": "165.2",
-        "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8l.pt"
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8l.pt"
     },
     {
         "Model": "YOLOv8l-det (Open Images V7)",
@@ -69,7 +69,7 @@
         "mAP": "53.9",
         "params (M)": "68.2",
         "FLOPs (B)": "257.8",
-        "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x.pt"
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8x.pt"
     },
     {
         "Model": "YOLOv8x-det (Open Images V7)",

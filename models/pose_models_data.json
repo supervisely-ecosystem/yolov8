@@ -5,7 +5,7 @@
         "mAP": "50.4",
         "params (M)": "3.3",
         "FLOPs (B)": "9.2",
-        "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8n-pose.pt"
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8n-pose.pt"
     },
     {
         "Model": "YOLOv8s-pose",
@@ -13,7 +13,7 @@
         "mAP": "60.0",
         "params (M)": "11.6",
         "FLOPs (B)": "30.2",
-        "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8s-pose.pt"
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8s-pose.pt"
     },
     {
         "Model": "YOLOv8m-pose",
@@ -21,7 +21,7 @@
         "mAP": "65.0",
         "params (M)": "26.4",
         "FLOPs (B)": "81.0",
-        "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8m-pose.pt"
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8m-pose.pt"
     },
     {
         "Model": "YOLOv8l-pose",
@@ -29,7 +29,7 @@
         "mAP": "67.6",
         "params (M)": "44.4",
         "FLOPs (B)": "168.6",
-        "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8l-pose.pt"
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8l-pose.pt"
     },
     {
         "Model": "YOLOv8x-pose",
@@ -37,7 +37,7 @@
         "mAP": "69.2",
         "params (M)": "69.4",
         "FLOPs (B)": "263.2",
-        "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x-pose.pt"
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8x-pose.pt"
     },
     {
         "Model": "YOLOv8x-pose-p6",
@@ -45,6 +45,6 @@
         "mAP": "71.6",
         "params (M)": "99.1",
         "FLOPs (B)": "1066.4",
-        "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x-pose-p6.pt"
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8x-pose-p6.pt"
     }
 ]
