@@ -235,4 +235,50 @@ yolov8_models = [
             "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x-pose-p6.pt",
         },
     },
+    {
+        "Model": "YOLOv9c-det",
+        "Size (pixels)": "640",
+        "mAP": "53.0",
+        "params (M)": "25.5",
+        "FLOPs (B)": "102.8",
+        "meta": {
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9c.pt",
+        },
+    },
+    {
+        "Model": "YOLOv9e-det",
+        "Size (pixels)": "640",
+        "mAP": "55.6",
+        "params (M)": "58.1",
+        "FLOPs (B)": "192.5",
+        "meta": {
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9e.pt",
+        },
+    },
+    {
+        "Model": "YOLOv9c-seg",
+        "Size (pixels)": "640",
+        "mAP (box)": "52.4",
+        "mAP (mask)": "42.2",
+        "params (M)": "27.9",
+        "FLOPs (B)": "159.4",
+        "meta": {
+            "task_type": "instance segmentation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9c-seg.pt",
+        },
+    },
+    {
+        "Model": "YOLOv9e-seg",
+        "Size (pixels)": "640",
+        "mAP (box)": "55.1",
+        "mAP (mask)": "44.3",
+        "params (M)": "60.5",
+        "FLOPs (B)": "248.4",
+        "meta": {
+            "task_type": "instance segmentation",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9e-seg.pt",
+        },
+    },
 ]

@@ -78,5 +78,21 @@
         "params (M)": "68.7",
         "FLOPs (B)": "260.6",
         "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8x-oiv7.pt"
+    },
+    {
+        "Model": "YOLOv9c-det",
+        "Size (pixels)": "640",
+        "mAP": "53.0",
+        "params (M)": "25.5",
+        "FLOPs (B)": "102.8",
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9c.pt"
+    },
+    {
+        "Model": "YOLOv9e-det",
+        "Size (pixels)": "640",
+        "mAP": "55.6",
+        "params (M)": "58.1",
+        "FLOPs (B)": "192.5",
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9e.pt"
     }
 ]

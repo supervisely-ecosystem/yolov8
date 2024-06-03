@@ -43,5 +43,23 @@
         "params (M)": "71.8",
         "FLOPs (B)": "344.1",
         "weights_url": "https://github.com/ultralytics/assets/releases/download/v0.0.0/YOLOv8x-seg.pt"
+    },
+    {
+        "Model": "YOLOv9c-seg",
+        "Size (pixels)": "640",
+        "mAP (box)": "52.4",
+        "mAP (mask)": "42.2",
+        "params (M)": "27.9",
+        "FLOPs (B)": "159.4",
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9c-seg.pt"
+    },
+    {
+        "Model": "YOLOv9e-seg",
+        "Size (pixels)": "640",
+        "mAP (box)": "55.1",
+        "mAP (mask)": "44.3",
+        "params (M)": "60.5",
+        "FLOPs (B)": "248.4",
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9e-seg.pt"
     }
 ]
