@@ -1542,12 +1542,16 @@ def start_training():
         print(app_url, file=text_file)
 
     # upload training artifacts to team files
+    checkpoint = YOLOv8Checkpoint(team_id)
+    model_dir = checkpoint.get_model_dir()
     remote_artifacts_dir = os.path.join(
-        "/yolov8_train",
+        model_dir,
         task_type_select.get_value(),
         project_info.name,
         str(g.app_session_id),
     )
+    remote_weights_dir = os.path.join(remote_artifacts_dir, checkpoint.weights_dir)
+    
 
     if not app.is_stopped():
 
@@ -1605,6 +1609,19 @@ def start_training():
         stepper.set_active_step(curr_step)
         card_train_artifacts.unlock()
         card_train_artifacts.uncollapse()
+    
+    # upload sly_metadata.json
+    checkpoint.generate_sly_metadata(
+        app_name=checkpoint._app_name,
+        session_id=g.app_session_id,
+        session_path=remote_artifacts_dir,
+        weights_path=remote_weights_dir,
+        weights_ext=checkpoint.weights_ext,
+        training_project_name=project_info.name,
+        task_type=task_type,
+        config_path=None,
+    )
+        
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
     sly.fs.silent_remove("train_batches.txt")
@@ -2181,6 +2198,7 @@ def auto_train(request: Request):
         task_type=task_type,
         config_path=None,
     )
+    
     train_artifacts_folder.set(file_info)
     
     # finish training
