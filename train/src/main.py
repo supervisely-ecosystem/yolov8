@@ -10,6 +10,7 @@ import supervisely.io.env as env
 import src.globals as g
 from dotenv import load_dotenv
 import yaml
+from supervisely.nn.checkpoints.yolov8 import YOLOv8Checkpoint
 from supervisely.app.widgets import (
     Container,
     Card,
@@ -2130,7 +2131,7 @@ def auto_train(request: Request):
         print(app_url, file=text_file)
 
     # upload training artifacts to team files
-    checkpoint = sly.nn.checkpoints.YOLOv8Checkpoint(team_id)
+    checkpoint = YOLOv8Checkpoint(team_id)
     model_dir = checkpoint.get_model_dir()
     remote_artifacts_dir = os.path.join(
         model_dir, task_type, project_info.name, str(g.app_session_id)

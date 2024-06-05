@@ -21,6 +21,8 @@ from supervisely.nn.prediction_dto import (
     PredictionMask,
 )
 
+from supervisely.nn.checkpoints.yolov8 import YOLOv8Checkpoint
+
 load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -35,7 +37,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def initialize_custom_gui(self):
         """Create custom GUI layout for model selection. This method is called once when the application is started."""
         self.pretrained_models_table = PretrainedModelsSelector(yolov8_models)
-        custom_yolov8 = sly.nn.checkpoints.YOLOv8Checkpoint(team_id)
+        custom_yolov8 = YOLOv8Checkpoint(team_id)
         custom_models = custom_yolov8.get_list()
         self.custom_models_table = CustomModelsSelector(
             team_id,
