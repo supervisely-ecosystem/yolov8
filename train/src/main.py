@@ -56,6 +56,7 @@ from urllib.request import urlopen
 import math
 import ruamel.yaml
 from fastapi import Response, Request
+import uuid
 
 
 # function for updating global variables
@@ -1036,6 +1037,23 @@ def start_training():
                 unnecessary_classes.append(cls.name)
         if len(unnecessary_classes) > 0:
             sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
+    # extract geometry configs
+    if task_type == "pose estimation":
+        total_config = {"nodes": {}, "edges": []}
+        for cls in project_meta.obj_classes:
+            if cls.name in selected_classes and cls.geometry_type.geometry_name() == "graph":
+                g.keypoints_classes.append(cls.name)
+                geometry_config = cls.geometry_config
+                for key, value in geometry_config["nodes"].items():
+                    if key not in total_config["nodes"]:
+                        total_config["nodes"][key] = value
+        if len(total_config["nodes"]) == 17:
+            total_config["nodes"][uuid.uuid4().hex[:6]] = {
+                "label": "fictive",
+                "color": [0, 0, 255],
+                "loc": [0, 0],
+            }
+        g.keypoints_template = total_config
     # transfer project to detection task if necessary
     if task_type == "object detection":
         sly.Project.to_detection_task(g.project_dir, inplace=True)
@@ -1052,7 +1070,7 @@ def start_training():
             new_val_count = round(n_images_after * val_part)
             if new_val_count < 1:
                 sly.app.show_dialog(
-                    title="An error occurted",
+                    title="An error occured",
                     description="Val split length is 0 after ignoring images. Please check your data",
                     status="error",
                 )
