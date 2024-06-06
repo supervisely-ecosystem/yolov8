@@ -1551,7 +1551,6 @@ def start_training():
         str(g.app_session_id),
     )
     remote_weights_dir = os.path.join(remote_artifacts_dir, checkpoint.weights_dir)
-    
 
     if not app.is_stopped():
 
@@ -1609,7 +1608,7 @@ def start_training():
         stepper.set_active_step(curr_step)
         card_train_artifacts.unlock()
         card_train_artifacts.uncollapse()
-    
+
     # upload sly_metadata.json
     checkpoint.generate_sly_metadata(
         app_name=checkpoint._app_name,
@@ -1621,7 +1620,7 @@ def start_training():
         task_type=task_type,
         config_path=None,
     )
-        
+
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
     sly.fs.silent_remove("train_batches.txt")
@@ -2186,7 +2185,7 @@ def auto_train(request: Request):
     file_info = api.file.get_info_by_path(
         sly.env.team_id(), team_files_dir + "/results.csv"
     )
-    
+
     # upload sly_metadata.json
     checkpoint.generate_sly_metadata(
         app_name=checkpoint._app_name,
@@ -2198,9 +2197,9 @@ def auto_train(request: Request):
         task_type=task_type,
         config_path=None,
     )
-    
+
     train_artifacts_folder.set(file_info)
-    
+
     # finish training
     start_training_button.loading = False
     start_training_button.disable()
