@@ -1039,14 +1039,18 @@ def start_training():
             sly.Project.remove_classes(g.project_dir, classes_to_remove=unnecessary_classes, inplace=True)
     # extract geometry configs
     if task_type == "pose estimation":
+        nodes_order = []
+        cls2config = {}
         total_config = {"nodes": {}, "edges": []}
         for cls in project_meta.obj_classes:
             if cls.name in selected_classes and cls.geometry_type.geometry_name() == "graph":
                 g.keypoints_classes.append(cls.name)
                 geometry_config = cls.geometry_config
+                cls2config[cls.name] = geometry_config
                 for key, value in geometry_config["nodes"].items():
                     if key not in total_config["nodes"]:
                         total_config["nodes"][key] = value
+                        nodes_order.append(key)
         if len(total_config["nodes"]) == 17:
             total_config["nodes"][uuid.uuid4().hex[:6]] = {
                 "label": "fictive",
@@ -1449,13 +1453,16 @@ def start_training():
 
     # add geometry config to saved weights for pose estimation task
     if task_type == "pose estimation":
-        for obj_class in project_meta.obj_classes:
-            if obj_class.geometry_type.geometry_name() == "graph" and obj_class.name in selected_classes:
-                geometry_config = obj_class.geometry_config
-                break
         weights_filepath = os.path.join(local_artifacts_dir, "weights", best_filename)
         weights_dict = torch.load(weights_filepath)
-        weights_dict["geometry_config"] = geometry_config
+        if len(cls2config.keys()) == 1:
+            geometry_config = list(cls2config.values())[0]
+            weights_dict["geometry_config"] = geometry_config
+        elif len(cls2config.keys()) > 1:
+            weights_dict["geometry_config"] = {
+                "configs": cls2config,
+                "nodes_order": nodes_order,
+            }
         torch.save(weights_dict, weights_filepath)
 
     # save link to app ui
