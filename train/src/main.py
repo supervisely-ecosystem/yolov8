@@ -85,6 +85,9 @@ load_dotenv(os.path.expanduser("~/supervisely.env"))
 api = sly.Api()
 team_id = sly.env.team_id()
 
+checkpoint = YOLOv8Checkpoint(team_id)
+model_dir = checkpoint.get_model_dir()
+
 # if app had started from context menu, one of this has to be set:
 project_id = sly.env.project_id(raise_not_found=False)
 dataset_id = sly.env.dataset_id(raise_not_found=False)
@@ -1542,8 +1545,6 @@ def start_training():
         print(app_url, file=text_file)
 
     # upload training artifacts to team files
-    checkpoint = YOLOv8Checkpoint(team_id)
-    model_dir = checkpoint.get_model_dir()
     remote_artifacts_dir = os.path.join(
         model_dir,
         task_type_select.get_value(),
@@ -2147,8 +2148,6 @@ def auto_train(request: Request):
         print(app_url, file=text_file)
 
     # upload training artifacts to team files
-    checkpoint = YOLOv8Checkpoint(team_id)
-    model_dir = checkpoint.get_model_dir()
     remote_artifacts_dir = os.path.join(
         model_dir, task_type, project_info.name, str(g.app_session_id)
     )
