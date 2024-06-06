@@ -1495,18 +1495,22 @@ def start_training():
         )
         sly.logger.info("Training artifacts uploaded successfully")
 
-    # set workflow output
+    # ------------------------------------- Set Workflow Outputs ------------------------------------- #
+
     weights_file_path_in_team_files_dir = os.path.join(team_files_dir, "weights", best_filename)
-    if api.file.exists(sly.env.team_id(), weights_file_path_in_team_files_dir):
-        api.app.add_output_file(weights_file_path_in_team_files_dir, model_weight=True)
+    best_filename_info = api.file.get_info_by_path(sly.env.team_id(), weights_file_path_in_team_files_dir)   
+    if best_filename_info:
+        api.app.add_output_file(best_filename_info, model_weight=True)
     else:
         sly.logger.error(f"File {weights_file_path_in_team_files_dir} not found in team files")
 
     app_ui_link_path_in_team_files_dir = os.path.join(team_files_dir, "open_app.lnk")
-    if api.file.exists(sly.env.team_id(), app_ui_link_path_in_team_files_dir):
-        api.app.add_output_app(app_ui_link_path_in_team_files_dir)
+    app_ui_file_info = api.file.get_info_by_path(sly.env.team_id(), app_ui_link_path_in_team_files_dir)
+    if app_ui_file_info:
+        api.app.add_output_app(app_ui_file_info.id)
     else:
         sly.logger.error(f"File {app_ui_link_path_in_team_files_dir} not found in team files")
+    # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():
         file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
