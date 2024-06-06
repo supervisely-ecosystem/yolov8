@@ -1008,6 +1008,7 @@ def start_training():
         use_cache=use_cache,
         progress=progress_bar_download_project,
     )
+    api.app.add_input_project(project_info.id)
     # remove unselected classes
     selected_classes = classes_table.get_selected_classes()
     try:
@@ -1165,6 +1166,7 @@ def start_training():
             )
         pretrained = True
         model = YOLO(weights_dst_path)
+        api.app.add_input_file(file_info, model_weight=True)
 
     # add callbacks to model
     model.add_callback("on_train_batch_end", on_train_batch_end)
@@ -1492,6 +1494,19 @@ def start_training():
             remote_dir=remote_artifacts_dir,
         )
         sly.logger.info("Training artifacts uploaded successfully")
+
+    # set workflow output
+    weights_file_path_in_team_files_dir = os.path.join(team_files_dir, "weights", best_filename)
+    if api.file.exists(sly.env.team_id(), weights_file_path_in_team_files_dir):
+        api.app.add_output_file(weights_file_path_in_team_files_dir, model_weight=True)
+    else:
+        sly.logger.error(f"File {weights_file_path_in_team_files_dir} not found in team files")
+
+    app_ui_link_path_in_team_files_dir = os.path.join(team_files_dir, "open_app.lnk")
+    if api.file.exists(sly.env.team_id(), app_ui_link_path_in_team_files_dir):
+        api.app.add_output_app(app_ui_link_path_in_team_files_dir)
+    else:
+        sly.logger.error(f"File {app_ui_link_path_in_team_files_dir} not found in team files")
 
     if not app.is_stopped():
         file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
