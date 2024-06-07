@@ -10,7 +10,7 @@ import supervisely.io.env as env
 import src.globals as g
 from dotenv import load_dotenv
 import yaml
-from supervisely.nn.models.yolov8 import YOLOv8
+from supervisely.nn.artifacts.yolov8 import YOLOv8
 from supervisely.app.widgets import (
     Container,
     Card,
@@ -85,8 +85,8 @@ load_dotenv(os.path.expanduser("~/supervisely.env"))
 api = sly.Api()
 team_id = sly.env.team_id()
 
-sly_yolov8 = YOLOv8(team_id)
-framework_dir = sly_yolov8.framework_dir
+yolov8_artifacts = YOLOv8(team_id)
+framework_folder = yolov8_artifacts.framework_folder
 
 # if app had started from context menu, one of this has to be set:
 project_id = sly.env.project_id(raise_not_found=False)
@@ -921,7 +921,7 @@ def change_file_preview(value):
 def change_radio(value):
     if value == "import template from Team Files":
         remote_templates_dir = os.path.join(
-            "/yolov8_train", task_type_select.get_value(), "param_templates"
+            framework_folder, task_type_select.get_value(), "param_templates"
         )
         templates = api.file.list(team_id, remote_templates_dir)
         if len(templates) == 0:
@@ -938,7 +938,7 @@ def change_radio(value):
 @additional_config_template_select.value_changed
 def change_template(template):
     remote_templates_dir = os.path.join(
-        "/yolov8_train", task_type_select.get_value(), "param_templates"
+        framework_folder, task_type_select.get_value(), "param_templates"
     )
     remote_template_path = os.path.join(remote_templates_dir, template)
     local_template_path = os.path.join(g.app_data_dir, template)
@@ -952,7 +952,7 @@ def change_template(template):
 def upload_template():
     save_template_button.loading = True
     remote_templates_dir = os.path.join(
-        "/yolov8_train", task_type_select.get_value(), "param_templates"
+        framework_folder, task_type_select.get_value(), "param_templates"
     )
     additional_params = train_settings_editor.get_text()
     ryaml = ruamel.yaml.YAML()
@@ -1249,7 +1249,7 @@ def start_training():
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
     plotted_train_batches = []
     remote_images_path = (
-        f"/yolov8_train/{task_type}/{project_info.name}/images/{g.app_session_id}/"
+        f"{framework_folder}/{task_type}/{project_info.name}/images/{g.app_session_id}/"
     )
 
     def check_number(value):
@@ -1546,12 +1546,12 @@ def start_training():
 
     # upload training artifacts to team files
     remote_artifacts_dir = os.path.join(
-        framework_dir,
+        framework_folder,
         task_type_select.get_value(),
         project_info.name,
         str(g.app_session_id),
     )
-    remote_weights_dir = os.path.join(remote_artifacts_dir, sly_yolov8.weights_dir)
+    remote_weights_dir = os.path.join(remote_artifacts_dir, yolov8_artifacts.weights_folder)
 
     if not app.is_stopped():
 
@@ -1611,14 +1611,14 @@ def start_training():
         card_train_artifacts.uncollapse()
 
     # upload sly_metadata.json
-    sly_yolov8.generate_sly_metadata(
-        app_name=sly_yolov8._app_name,
-        session_id=g.app_session_id,
-        session_path=remote_artifacts_dir,
-        weights_path=remote_weights_dir,
-        weights_ext=sly_yolov8.weights_ext,
-        training_project_name=project_info.name,
-        task_type=task_type,
+    yolov8_artifacts.generate_metadata(
+        app_name=yolov8_artifacts.app_name,
+        task_id=g.app_session_id,
+        artifacts_folder=remote_artifacts_dir,
+        weights_folder=remote_weights_dir,
+        weights_ext=yolov8_artifacts.weights_ext,
+        project_name=project_info.name,
+        cv_task=task_type,
         config_path=None,
     )
 
@@ -2149,9 +2149,9 @@ def auto_train(request: Request):
 
     # upload training artifacts to team files
     remote_artifacts_dir = os.path.join(
-        framework_dir, task_type, project_info.name, str(g.app_session_id)
+        framework_folder, task_type, project_info.name, str(g.app_session_id)
     )
-    remote_weights_dir = os.path.join(remote_artifacts_dir, sly_yolov8.weights_dir)
+    remote_weights_dir = os.path.join(remote_artifacts_dir, yolov8_artifacts.weights_folder)
 
     def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
         value = monitor.bytes_read
@@ -2186,14 +2186,14 @@ def auto_train(request: Request):
     )
 
     # upload sly_metadata.json
-    sly_yolov8.generate_sly_metadata(
-        app_name=sly_yolov8._app_name,
-        session_id=g.app_session_id,
-        session_path=remote_artifacts_dir,
-        weights_path=remote_weights_dir,
-        weights_ext=sly_yolov8.weights_ext,
-        training_project_name=project_info.name,
-        task_type=task_type,
+    yolov8_artifacts.generate_metadata(
+        app_name=yolov8_artifacts.app_name,
+        task_id=g.app_session_id,
+        artifacts_folder=remote_artifacts_dir,
+        weights_folder=remote_weights_dir,
+        weights_ext=yolov8_artifacts.weights_ext,
+        project_name=project_info.name,
+        cv_task=task_type,
         config_path=None,
     )
 
