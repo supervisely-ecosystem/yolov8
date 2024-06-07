@@ -1503,13 +1503,9 @@ def start_training():
         api.app.add_output_file(best_filename_info, model_weight=True)
     else:
         sly.logger.error(f"File {weights_file_path_in_team_files_dir} not found in team files")
-
-    app_ui_link_path_in_team_files_dir = os.path.join(team_files_dir, "open_app.lnk")
-    app_ui_file_info = api.file.get_info_by_path(sly.env.team_id(), app_ui_link_path_in_team_files_dir)
-    if app_ui_file_info:
-        api.app.add_output_app(app_ui_file_info.id)
-    else:
-        sly.logger.error(f"File {app_ui_link_path_in_team_files_dir} not found in team files")
+    
+    api.app.add_output_app()
+    
     # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():
