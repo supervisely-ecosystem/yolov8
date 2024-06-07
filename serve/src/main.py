@@ -106,7 +106,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self,
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
         model_source: Literal["Pretrained models", "Custom models"],
-        task_type: Literal[
+        cv_task: Literal[
             "object detection", "instance segmentation", "pose estimation"
         ],
         checkpoint_name: str,
@@ -119,14 +119,14 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :type model_source: Literal["Pretrained models", "Custom models"]
         :param device: The device on which the model will be deployed.
         :type device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
-        :param task_type: The type of task the model is designed for.
-        :type task_type: Literal["object detection", "instance segmentation", "pose estimation"]
+        :param cv_task: The type of computer vision task the model is designed for.
+        :type cv_task: Literal["object detection", "instance segmentation", "pose estimation"]
         :param checkpoint_name: The name of the checkpoint from which the model is loaded.
         :type checkpoint_name: str
         :param checkpoint_url: The URL where the model can be downloaded.
         :type checkpoint_url: str
         """
-        self.task_type = task_type
+        self.task_type = cv_task
         local_weights_path = os.path.join(self.model_dir, checkpoint_name)
         if not sly.fs.file_exists(local_weights_path):
             self.download(
