@@ -70,6 +70,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             "device": self.device,
             **model_params,
         }
+
+        # -------------------------------------- Add Workflow Input -------------------------------------- #
+        checkpoint_url = model_params.get("checkpoint_url")
+        if checkpoint_url:
+            self.api.app.add_input_file(checkpoint_url, model_weight=True)
+        # ----------------------------------------------- - ---------------------------------------------- #
+        
         return deploy_params
 
     def load_model_meta(self, model_source: str, weights_save_path: str):
