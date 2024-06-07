@@ -1551,7 +1551,7 @@ def start_training():
         project_info.name,
         str(g.app_session_id),
     )
-    remote_weights_dir = os.path.join(remote_artifacts_dir, yolov8_artifacts.weights_folder)
+    remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
 
     if not app.is_stopped():
 
@@ -1618,7 +1618,7 @@ def start_training():
         weights_folder=remote_weights_dir,
         weights_ext=yolov8_artifacts.weights_ext,
         project_name=project_info.name,
-        cv_task=task_type,
+        task_type=task_type,
         config_path=None,
     )
 
@@ -2151,7 +2151,7 @@ def auto_train(request: Request):
     remote_artifacts_dir = os.path.join(
         framework_folder, task_type, project_info.name, str(g.app_session_id)
     )
-    remote_weights_dir = os.path.join(remote_artifacts_dir, yolov8_artifacts.weights_folder)
+    remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
 
     def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
         value = monitor.bytes_read
@@ -2193,7 +2193,7 @@ def auto_train(request: Request):
         weights_folder=remote_weights_dir,
         weights_ext=yolov8_artifacts.weights_ext,
         project_name=project_info.name,
-        cv_task=task_type,
+        task_type=task_type,
         config_path=None,
     )
 
