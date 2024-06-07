@@ -73,7 +73,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
         # -------------------------------------- Add Workflow Input -------------------------------------- #
         checkpoint_url = model_params.get("checkpoint_url")
-        if checkpoint_url:
+        if checkpoint_url and self.api.file.exists(checkpoint_url):
             self.api.app.add_input_file(checkpoint_url, model_weight=True)
         # ----------------------------------------------- - ---------------------------------------------- #
         
