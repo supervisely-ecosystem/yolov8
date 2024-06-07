@@ -37,8 +37,8 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def initialize_custom_gui(self):
         """Create custom GUI layout for model selection. This method is called once when the application is started."""
         self.pretrained_models_table = PretrainedModelsSelector(yolov8_models)
-        sly_yolov8 = YOLOv8(team_id)
-        custom_checkpoints = sly_yolov8.get_checkpoints()
+        framework = YOLOv8(team_id)
+        custom_checkpoints = framework.get_checkpoints()
         self.custom_models_table = CustomModelsSelector(
             team_id,
             custom_checkpoints,
