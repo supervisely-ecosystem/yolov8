@@ -10,7 +10,7 @@ import supervisely.io.env as env
 import src.globals as g
 from dotenv import load_dotenv
 import yaml
-from supervisely.nn.checkpoints.yolov8 import YOLOv8Checkpoint
+from supervisely.nn.models.yolov8 import YOLOv8
 from supervisely.app.widgets import (
     Container,
     Card,
@@ -85,8 +85,8 @@ load_dotenv(os.path.expanduser("~/supervisely.env"))
 api = sly.Api()
 team_id = sly.env.team_id()
 
-checkpoint = YOLOv8Checkpoint(team_id)
-model_dir = checkpoint.get_model_dir()
+sly_yolov8 = YOLOv8(team_id)
+framework_dir = sly_yolov8.framework_dir
 
 # if app had started from context menu, one of this has to be set:
 project_id = sly.env.project_id(raise_not_found=False)
@@ -1546,12 +1546,12 @@ def start_training():
 
     # upload training artifacts to team files
     remote_artifacts_dir = os.path.join(
-        model_dir,
+        framework_dir,
         task_type_select.get_value(),
         project_info.name,
         str(g.app_session_id),
     )
-    remote_weights_dir = os.path.join(remote_artifacts_dir, checkpoint.weights_dir)
+    remote_weights_dir = os.path.join(remote_artifacts_dir, sly_yolov8.weights_dir)
 
     if not app.is_stopped():
 
@@ -1611,12 +1611,12 @@ def start_training():
         card_train_artifacts.uncollapse()
 
     # upload sly_metadata.json
-    checkpoint.generate_sly_metadata(
-        app_name=checkpoint._app_name,
+    sly_yolov8.generate_sly_metadata(
+        app_name=sly_yolov8._app_name,
         session_id=g.app_session_id,
         session_path=remote_artifacts_dir,
         weights_path=remote_weights_dir,
-        weights_ext=checkpoint.weights_ext,
+        weights_ext=sly_yolov8.weights_ext,
         training_project_name=project_info.name,
         task_type=task_type,
         config_path=None,
@@ -2149,9 +2149,9 @@ def auto_train(request: Request):
 
     # upload training artifacts to team files
     remote_artifacts_dir = os.path.join(
-        model_dir, task_type, project_info.name, str(g.app_session_id)
+        framework_dir, task_type, project_info.name, str(g.app_session_id)
     )
-    remote_weights_dir = os.path.join(remote_artifacts_dir, checkpoint.weights_dir)
+    remote_weights_dir = os.path.join(remote_artifacts_dir, sly_yolov8.weights_dir)
 
     def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
         value = monitor.bytes_read
@@ -2186,12 +2186,12 @@ def auto_train(request: Request):
     )
 
     # upload sly_metadata.json
-    checkpoint.generate_sly_metadata(
-        app_name=checkpoint._app_name,
+    sly_yolov8.generate_sly_metadata(
+        app_name=sly_yolov8._app_name,
         session_id=g.app_session_id,
         session_path=remote_artifacts_dir,
         weights_path=remote_weights_dir,
-        weights_ext=checkpoint.weights_ext,
+        weights_ext=sly_yolov8.weights_ext,
         training_project_name=project_info.name,
         task_type=task_type,
         config_path=None,
