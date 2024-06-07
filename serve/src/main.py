@@ -43,7 +43,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             team_id,
             custom_checkpoints,
             show_custom_checkpoint_path=True,
-            custom_checkpoint_task_types=[
+            custom_checkpoint_cv_tasks=[
                 "object detection",
                 "instance segmentation",
                 "pose estimation",
