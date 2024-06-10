@@ -21,6 +21,8 @@ from supervisely.nn.prediction_dto import (
     PredictionMask,
 )
 
+from supervisely.nn.artifacts.yolov8 import YOLOv8
+
 load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -35,10 +37,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def initialize_custom_gui(self):
         """Create custom GUI layout for model selection. This method is called once when the application is started."""
         self.pretrained_models_table = PretrainedModelsSelector(yolov8_models)
-        custom_models = sly.nn.checkpoints.yolov8.get_list(api, team_id)
+        yolov8_artifacts = YOLOv8(team_id)
+        custom_checkpoints = yolov8_artifacts.get_list()
         self.custom_models_table = CustomModelsSelector(
             team_id,
-            custom_models,
+            custom_checkpoints,
             show_custom_checkpoint_path=True,
             custom_checkpoint_task_types=[
                 "object detection",
@@ -89,7 +92,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     for key, value in geometry_data["configs"].items():
                         self.cls2config[key] = value
         if self.task_type == "object detection":
-            obj_classes = [sly.ObjClass(name, sly.Rectangle) for name in self.class_names]
+            obj_classes = [
+                sly.ObjClass(name, sly.Rectangle) for name in self.class_names
+            ]
         elif self.task_type == "instance segmentation":
             obj_classes = [sly.ObjClass(name, sly.Bitmap) for name in self.class_names]
         elif self.task_type == "pose estimation":
@@ -114,7 +119,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self,
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
         model_source: Literal["Pretrained models", "Custom models"],
-        task_type: Literal["object detection", "instance segmentation", "pose estimation"],
+        task_type: Literal[
+            "object detection", "instance segmentation", "pose estimation"
+        ],
         checkpoint_name: str,
         checkpoint_url: str,
     ):
@@ -125,7 +132,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :type model_source: Literal["Pretrained models", "Custom models"]
         :param device: The device on which the model will be deployed.
         :type device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
-        :param task_type: The type of task the model is designed for.
+        :param task_type: The type of computer vision task the model is designed for.
         :type task_type: Literal["object detection", "instance segmentation", "pose estimation"]
         :param checkpoint_name: The name of the checkpoint from which the model is loaded.
         :type checkpoint_name: str
@@ -164,7 +171,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def get_classes(self) -> List[str]:
         return self.class_names
 
-    def _create_label(self, dto: Union[PredictionMask, PredictionBBox, PredictionKeypoints]):
+    def _create_label(
+        self, dto: Union[PredictionMask, PredictionBBox, PredictionKeypoints]
+    ):
         if self.task_type == "object detection":
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
@@ -184,7 +193,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 )
             if isinstance(dto, PredictionMask):
                 if not dto.mask.any():  # skip empty masks
-                    sly.logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
+                    sly.logger.debug(
+                        f"Mask of class {dto.class_name} is empty and will be skipped"
+                    )
                     return None
                 geometry = sly.Bitmap(dto.mask, extra_validation=False)
             elif isinstance(dto, PredictionBBox):
@@ -229,7 +240,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     int(box[5]),
                 )
                 bbox = [top, left, bottom, right]
-                dtos.append(PredictionBBox(self.class_names[cls_index], bbox, confidence))
+                dtos.append(
+                    PredictionBBox(self.class_names[cls_index], bbox, confidence)
+                )
         elif self.task_type == "instance segmentation":
             boxes_data = prediction.boxes.data
             if prediction.masks:
@@ -244,7 +257,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         int(box[5]),
                     )
                     mask = mask.cpu().numpy()
-                    dtos.append(PredictionMask(self.class_names[cls_index], mask, confidence))
+                    dtos.append(
+                        PredictionMask(self.class_names[cls_index], mask, confidence)
+                    )
         elif self.task_type == "pose estimation":
             boxes_data = prediction.boxes.data
             keypoints_data = prediction.keypoints.data
@@ -319,7 +334,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         )
         return dtos
 
-    def predict_video(self, video_path: str, settings: Dict[str, Any], stop: Event) -> Generator:
+    def predict_video(
+        self, video_path: str, settings: Dict[str, Any], stop: Event
+    ) -> Generator:
         retina_masks = self.task_type == "instance segmentation"
         predictions_generator = self.model(
             source=video_path,
@@ -374,7 +391,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 m = YOLOv8Model(
     model_dir="app_data",
     use_gui=True,
-    custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
+    custom_inference_settings=os.path.join(
+        root_source_path, "serve", "custom_settings.yaml"
+    ),
 )
 
 if sly.is_production():
