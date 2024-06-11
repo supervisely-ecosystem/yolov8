@@ -48,6 +48,7 @@ from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.callbacks import on_train_batch_end
 from src.dataset_cache import download_project
 from ultralytics import YOLO
+from ultralytics.utils.metrics import ConfusionMatrix
 import torch
 from src.metrics_watcher import Watcher
 import threading
@@ -58,6 +59,15 @@ import math
 import ruamel.yaml
 from fastapi import Response, Request
 import uuid
+
+
+orifinal_plot = ConfusionMatrix.plot
+def custom_plot(self, normalize=True, save_dir="", names=(), on_plot=None):
+    """Modified plot function to handle long class names"""
+
+    checked_names = [name if len(name) < 25 else name[:25] + "..." for name in names]
+    orifinal_plot(self, normalize, save_dir, checked_names, on_plot)
+ConfusionMatrix.plot = custom_plot
 
 
 # function for updating global variables
