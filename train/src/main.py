@@ -60,8 +60,6 @@ import ruamel.yaml
 from fastapi import Response, Request
 import uuid
 
-from pathlib import Path
-
 ConfusionMatrix.plot = custom_plot
 
 # function for updating global variables
