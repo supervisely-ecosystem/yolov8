@@ -59,14 +59,19 @@ import math
 import ruamel.yaml
 from fastapi import Response, Request
 import uuid
+import matplotlib.pyplot as plt
+
 
 
 orifinal_plot = ConfusionMatrix.plot
 def custom_plot(self, normalize=True, save_dir="", names=(), on_plot=None):
     """Modified plot function to handle long class names"""
+    long_names = any(len(name) > 25 for name in names)
+    if long_names:
+        plt.tick_params(axis="both", which="major", labelsize=6)
+    # checked_names = [name if len(name) < 25 else name[:20] + "..." for name in names]
 
-    checked_names = [name if len(name) < 25 else name[:25] + "..." for name in names]
-    orifinal_plot(self, normalize, save_dir, checked_names, on_plot)
+    orifinal_plot(self, normalize, save_dir, names, on_plot)
 ConfusionMatrix.plot = custom_plot
 
 
