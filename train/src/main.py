@@ -43,11 +43,12 @@ from supervisely.app.widgets import (
     ImageSlider,
     Dialog,
 )
-from src.utils import verify_train_val_sets
+from src.utils import verify_train_val_sets, custom_plot
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.callbacks import on_train_batch_end
 from src.dataset_cache import download_project
 from ultralytics import YOLO
+from ultralytics.utils.metrics import ConfusionMatrix
 import torch
 from src.metrics_watcher import Watcher
 import threading
@@ -59,6 +60,7 @@ import ruamel.yaml
 from fastapi import Response, Request
 import uuid
 
+ConfusionMatrix.plot = custom_plot
 
 # function for updating global variables
 def update_globals(new_dataset_ids):
