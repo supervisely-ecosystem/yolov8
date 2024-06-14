@@ -70,7 +70,7 @@ https://user-images.githubusercontent.com/91027877/249004380-e8a4758b-0356-4efc-
 - [Apply NN to Videos Project](https://ecosystem.supervise.ly/apps/apply-nn-to-videos-project) - app allows to label your videos using served Supervisely models.  
   <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/apply-nn-to-videos-project" src="https://imgur.com/LDo8K1A.png" height="70px" margin-bottom="20px" />
 
-- [Train YOLO (v8, v9)](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/yolov8/train) - app allows to create custom YOLOv8 weights through training process.
+- [Train YOLO (v8, v9)](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/yolov8/train) - app allows to create custom YOLO (v8, v9) weights through training process.
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/yolov8/train" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/82348f9a-38fc-4736-885c-d6786e37a218" height="70px" margin-bottom="20px"/>
 
 - [Export to YOLOv8 format](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/export-to-yolov8) - transform annotations from Supervisely format to YOLOv8 format.
