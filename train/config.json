@@ -20,7 +20,7 @@
   "isolate": true,
   "icon": "https://github.com/supervisely-ecosystem/yolov8/assets/119248312/5d195130-d8be-463c-a162-1bfd33cee2e4",
   "icon_cover": true,
-  "poster": "https://github.com/supervisely-ecosystem/yolov8/assets/119248312/140804a7-4c4a-4211-9493-8f473d08bc5b",
+  "poster": "https://github.com/supervisely-ecosystem/yolov8/assets/119248312/48a1e99c-23f9-469e-ac32-3c9614622042",
   "context_menu": {
     "target": [
       "images_project"
