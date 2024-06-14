@@ -1,8 +1,8 @@
 
 <div align="center" markdown>
-<img src="https://github.com/supervisely-ecosystem/yolov8/assets/12828725/2849410e-4922-4d23-93a7-2385d6d75426"/>  
+<img src="https://github.com/supervisely-ecosystem/yolov8/assets/119248312/140804a7-4c4a-4211-9493-8f473d08bc5b"/>  
 
-# Train YOLOv8
+# Train YOLO (v8, v9)
 
 <p align="center">
   <a href="#Overview">Overview</a> •
@@ -24,9 +24,13 @@
 
 # Overview
 
-YOLOv8 is a powerful neural network architecture which provides both decent accuracy of predictions and high speed of inference. In comparison to YOLOv5, YOLOv8 uses anchor-free head (it allows to speed up non-max suppression (NMS) process), new backbone and new loss functions.
+This application now supports different checkpoints from YOLOv8 and YOLOv9 architectures.
 
-This app allows to train YOLOv8 model on selected dataset. You can define model checkpoint, data split method, training hyperparameters, data augmentation and many other features related to model training. App supports both models pretrained on COCO and models trained on custom datasets. Supported task types are object detection, instance segmentation and pose estimation.
+YOLOv8 is a powerful neural network architecture that provides both decent accuracy of predictions and high speed of inference. In comparison to YOLOv5, YOLOv8 uses an anchor-free head (allowing to speed up the non-max suppression (NMS) process), a new backbone, and new loss functions.
+
+YOLOv9, the latest iteration, builds upon the advancements of YOLOv8 by further improving the model's performance and efficiency. It incorporates extended feature extraction techniques, advanced loss functions and optimized training processes for better accuracy and faster inference times.
+
+This app allows you to train models using both YOLOv8 and YOLOv9 on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
 
 🔥🔥🔥 Check out our [youtube tutorial](https://youtu.be/Rsr8xWJ6s9I) and the [complete guide in our blog](https://supervisely.com/blog/train-yolov8-on-custom-data-no-code/):   
 
