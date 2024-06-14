@@ -1,6 +1,6 @@
 
 <div align="center" markdown>
-<img src="https://github.com/supervisely-ecosystem/yolov8/assets/119248312/140804a7-4c4a-4211-9493-8f473d08bc5b"/>  
+<img src="https://github.com/supervisely-ecosystem/yolov8/assets/119248312/48a1e99c-23f9-469e-ac32-3c9614622042"/>  
 
 # Train YOLO (v8, v9)
 
