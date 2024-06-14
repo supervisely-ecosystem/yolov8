@@ -10,7 +10,7 @@
     "pose estimation",
     "train"
   ],
-  "description": "Dashboard to configure, start and monitor YOLOv8 training",
+  "description": "Dashboard to configure, start and monitor YOLO (v8, v9) training",
   "docker_image": "supervisely/yolov8:1.0.11",
   "instance_version": "6.9.3",
   "entrypoint": "python -m uvicorn src.main:app --app-dir ./train --host 0.0.0.0 --port 8000 --ws websockets",
