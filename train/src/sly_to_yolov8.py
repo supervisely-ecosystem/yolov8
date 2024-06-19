@@ -5,6 +5,7 @@ import src.globals as g
 import numpy as np
 import math
 
+
 def check_bbox_exist_on_images(api, selected_classes, datasets, project_meta, progress):
     bbox_miss_image_urls = []
     images_cnt = 0
@@ -31,7 +32,7 @@ def check_bbox_exist_on_images(api, selected_classes, datasets, project_meta, pr
                         bbox_miss_image_urls.append(img_info.preview_url)
                     pbar.update()
     return bbox_miss_image_urls
-    
+
 
 def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_list):
     if task_type == "object detection":
@@ -66,8 +67,7 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
             boxes_list = [label.geometry for label in labels_list if isinstance(label.geometry, sly.Rectangle)]
             if len(boxes_list) == 0:
                 sly.logger.warn(
-                    "Failed to find bounding boxes for graphs, "
-                    "boxes will be created by transforming graphs to boxes"
+                    "Failed to find bounding boxes for graphs, " "boxes will be created by transforming graphs to boxes"
                 )
                 class_number = class_names.index(label.obj_class.name)
                 rect_geometry = label.geometry.to_bbox()
@@ -101,7 +101,9 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
                     height = round(matched_box.height / img_size[0], 6)
                 # if failed to match graphs and boxes, get box by transforming graph to box
                 else:
-                    sly.logger.warn("Failed to match graphs and boxes, boxes will be created by transforming graphs to boxes")
+                    sly.logger.warn(
+                        "Failed to match graphs and boxes, boxes will be created by transforming graphs to boxes"
+                    )
                     class_number = class_names.index(label.obj_class.name)
                     rect_geometry = label.geometry.to_bbox()
                     center = rect_geometry.center
@@ -146,6 +148,7 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
         result = f"{class_number} {scaled_points_str}"
     return result
 
+
 def _create_data_config(output_dir, meta: sly.ProjectMeta, task_type):
     class_names = []
     class_colors = []
@@ -165,13 +168,8 @@ def _create_data_config(output_dir, meta: sly.ProjectMeta, task_type):
             "colors": class_colors,
         }
     elif task_type == "pose estimation":
-        for obj_class in meta.obj_classes:
-            if obj_class.geometry_type.geometry_name() == "graph":
-                geometry_config = obj_class.geometry_config
-                g.keypoints_template = geometry_config
-                n_keypoints = len(geometry_config["nodes"])
-                flip_idx = [i for i in range(n_keypoints)]
-                break
+        n_keypoints = len(g.keypoints_template["nodes"])
+        flip_idx = [i for i in range(n_keypoints)]
         data_yaml = {
             "train": os.path.join(output_dir, "images/train"),
             "val": os.path.join(output_dir, "images/val"),

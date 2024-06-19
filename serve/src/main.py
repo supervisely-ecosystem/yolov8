@@ -21,6 +21,8 @@ from supervisely.nn.prediction_dto import (
     PredictionMask,
 )
 
+from supervisely.nn.artifacts.yolov8 import YOLOv8
+
 load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 
@@ -35,10 +37,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def initialize_custom_gui(self):
         """Create custom GUI layout for model selection. This method is called once when the application is started."""
         self.pretrained_models_table = PretrainedModelsSelector(yolov8_models)
-        custom_models = sly.nn.checkpoints.yolov8.get_list(api, team_id)
+        yolov8_artifacts = YOLOv8(team_id)
+        custom_checkpoints = yolov8_artifacts.get_list()
         self.custom_models_table = CustomModelsSelector(
             team_id,
-            custom_models,
+            custom_checkpoints,
             show_custom_checkpoint_path=True,
             custom_checkpoint_task_types=[
                 "object detection",
@@ -86,17 +89,36 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 self.keypoints_template = human_template
             elif model_source == "Custom models":
                 weights_dict = torch.load(weights_save_path)
-                geometry_config = weights_dict["geometry_config"]
-                self.keypoints_template = dict_to_template(geometry_config)
+                geometry_data = weights_dict["geometry_config"]
+                if "nodes_order" not in geometry_data:
+                    geometry_config = geometry_data
+                    self.keypoints_template = dict_to_template(geometry_config)
+                else:
+                    self.nodes_order = geometry_data["nodes_order"]
+                    self.cls2config = {}
+                    for key, value in geometry_data["configs"].items():
+                        self.cls2config[key] = value
         if self.task_type == "object detection":
-            obj_classes = [sly.ObjClass(name, sly.Rectangle) for name in self.class_names]
+            obj_classes = [
+                sly.ObjClass(name, sly.Rectangle) for name in self.class_names
+            ]
         elif self.task_type == "instance segmentation":
             obj_classes = [sly.ObjClass(name, sly.Bitmap) for name in self.class_names]
         elif self.task_type == "pose estimation":
-            obj_classes = [
-                sly.ObjClass(name, sly.GraphNodes, geometry_config=self.keypoints_template)
-                for name in self.class_names
-            ]
+            if len(self.class_names) == 1:
+                obj_classes = [
+                    sly.ObjClass(name, sly.GraphNodes, geometry_config=self.keypoints_template)
+                    for name in self.class_names
+                ]
+            elif len(self.class_names) > 1:
+                obj_classes = [
+                    sly.ObjClass(
+                        name,
+                        sly.GraphNodes,
+                        geometry_config=dict_to_template(self.cls2config[name]),
+                    )
+                    for name in self.class_names
+                ]
         self._model_meta = sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
         self._get_confidence_tag_meta()
 
@@ -104,7 +126,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self,
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
         model_source: Literal["Pretrained models", "Custom models"],
-        task_type: Literal["object detection", "instance segmentation", "pose estimation"],
+        task_type: Literal[
+            "object detection", "instance segmentation", "pose estimation"
+        ],
         checkpoint_name: str,
         checkpoint_url: str,
     ):
@@ -115,7 +139,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :type model_source: Literal["Pretrained models", "Custom models"]
         :param device: The device on which the model will be deployed.
         :type device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"]
-        :param task_type: The type of task the model is designed for.
+        :param task_type: The type of computer vision task the model is designed for.
         :type task_type: Literal["object detection", "instance segmentation", "pose estimation"]
         :param checkpoint_name: The name of the checkpoint from which the model is loaded.
         :type checkpoint_name: str
@@ -154,7 +178,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def get_classes(self) -> List[str]:
         return self.class_names
 
-    def _create_label(self, dto: Union[PredictionMask, PredictionBBox, PredictionKeypoints]):
+    def _create_label(
+        self, dto: Union[PredictionMask, PredictionBBox, PredictionKeypoints]
+    ):
         if self.task_type == "object detection":
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
@@ -174,7 +200,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 )
             if isinstance(dto, PredictionMask):
                 if not dto.mask.any():  # skip empty masks
-                    sly.logger.debug(f"Mask of class {dto.class_name} is empty and will be skipped")
+                    sly.logger.debug(
+                        f"Mask of class {dto.class_name} is empty and will be skipped"
+                    )
                     return None
                 geometry = sly.Bitmap(dto.mask, extra_validation=False)
             elif isinstance(dto, PredictionBBox):
@@ -196,6 +224,12 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             label = sly.Label(sly.GraphNodes(nodes), obj_class)
         return label
 
+    def node_id_to_point(self, keypoints):
+        nid2point = {}
+        for node, keypoint in zip(self.nodes_order, keypoints):
+            nid2point[node] = keypoint
+        return nid2point
+
     def _to_dto(
         self, prediction, settings: dict
     ) -> List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]:
@@ -213,7 +247,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     int(box[5]),
                 )
                 bbox = [top, left, bottom, right]
-                dtos.append(PredictionBBox(self.class_names[cls_index], bbox, confidence))
+                dtos.append(
+                    PredictionBBox(self.class_names[cls_index], bbox, confidence)
+                )
         elif self.task_type == "instance segmentation":
             boxes_data = prediction.boxes.data
             if prediction.masks:
@@ -228,45 +264,86 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         int(box[5]),
                     )
                     mask = mask.cpu().numpy()
-                    dtos.append(PredictionMask(self.class_names[cls_index], mask, confidence))
+                    dtos.append(
+                        PredictionMask(self.class_names[cls_index], mask, confidence)
+                    )
         elif self.task_type == "pose estimation":
             boxes_data = prediction.boxes.data
             keypoints_data = prediction.keypoints.data
-            point_labels = self.keypoints_template.point_names
             point_threshold = settings.get("point_threshold", 0.1)
-            for box, keypoints in zip(boxes_data, keypoints_data):
-                left, top, right, bottom, confidence, cls_index = (
-                    int(box[0]),
-                    int(box[1]),
-                    int(box[2]),
-                    int(box[3]),
-                    float(box[4]),
-                    int(box[5]),
-                )
-                included_labels, included_point_coordinates = [], []
-                if keypoints_data.shape[-1] == 3:
-                    point_coordinates, point_scores = keypoints[:, :2], keypoints[:, 2]
-                    for j, (point_coordinate, point_score) in enumerate(
-                        zip(point_coordinates, point_scores)
-                    ):
+            if len(self.class_names) == 1:
+                point_labels = self.keypoints_template.point_names
+                if len(point_labels) == 17:
+                    point_labels.append("fictive")
+                for box, keypoints in zip(boxes_data, keypoints_data):
+                    left, top, right, bottom, confidence, cls_index = (
+                        int(box[0]),
+                        int(box[1]),
+                        int(box[2]),
+                        int(box[3]),
+                        float(box[4]),
+                        int(box[5]),
+                    )
+                    included_labels, included_point_coordinates = [], []
+                    if keypoints_data.shape[-1] == 3:
+                        point_coordinates, point_scores = (
+                            keypoints[:, :2],
+                            keypoints[:, 2],
+                        )
+                        for j, (point_coordinate, point_score) in enumerate(
+                            zip(point_coordinates, point_scores)
+                        ):
+                            if point_score >= point_threshold and point_labels[j] != "fictive":
+                                included_labels.append(point_labels[j])
+                                included_point_coordinates.append(point_coordinate.cpu().numpy())
+                    elif keypoints_data.shape[-1] == 2:
+                        for j, point_coordinate in enumerate(keypoints):
+                            included_labels.append(point_labels[j])
+                            included_point_coordinates.append(point_coordinate.cpu().numpy())
+                    if len(included_labels) > 1:
+                        dtos.append(
+                            sly.nn.PredictionKeypoints(
+                                self.class_names[cls_index],
+                                included_labels,
+                                included_point_coordinates,
+                            )
+                        )
+            elif len(self.class_names) > 1:
+                for box, keypoints in zip(boxes_data, keypoints_data):
+                    left, top, right, bottom, confidence, cls_index = (
+                        int(box[0]),
+                        int(box[1]),
+                        int(box[2]),
+                        int(box[3]),
+                        float(box[4]),
+                        int(box[5]),
+                    )
+                    keypoints_template = self.cls2config[self.class_names[cls_index]]
+                    point_labels = [
+                        value["label"] for value in keypoints_template["nodes"].values()
+                    ]
+                    node_ids = list(keypoints_template["nodes"].keys())
+                    nid2point = self.node_id_to_point(keypoints)
+                    included_labels, included_point_coordinates = [], []
+                    for j, node_id in enumerate(node_ids):
+                        kpt = nid2point[node_id]
+                        point_coordinate, point_score = kpt[:2], kpt[2]
                         if point_score >= point_threshold:
                             included_labels.append(point_labels[j])
                             included_point_coordinates.append(point_coordinate.cpu().numpy())
-                elif keypoints_data.shape[-1] == 2:
-                    for j, point_coordinate in enumerate(keypoints):
-                        included_labels.append(point_labels[j])
-                        included_point_coordinates.append(point_coordinate.cpu().numpy())
-                if len(included_labels) > 1:
-                    dtos.append(
-                        sly.nn.PredictionKeypoints(
-                            self.class_names[cls_index],
-                            included_labels,
-                            included_point_coordinates,
+                    if len(included_labels) > 1:
+                        dtos.append(
+                            sly.nn.PredictionKeypoints(
+                                self.class_names[cls_index],
+                                included_labels,
+                                included_point_coordinates,
+                            )
                         )
-                    )
         return dtos
 
-    def predict_video(self, video_path: str, settings: Dict[str, Any], stop: Event) -> Generator:
+    def predict_video(
+        self, video_path: str, settings: Dict[str, Any], stop: Event
+    ) -> Generator:
         retina_masks = self.task_type == "instance segmentation"
         predictions_generator = self.model(
             source=video_path,
@@ -321,7 +398,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 m = YOLOv8Model(
     model_dir="app_data",
     use_gui=True,
-    custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
+    custom_inference_settings=os.path.join(
+        root_source_path, "serve", "custom_settings.yaml"
+    ),
 )
 
 if sly.is_production():

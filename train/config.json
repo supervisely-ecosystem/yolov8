@@ -1,5 +1,5 @@
 {
-  "name": "Train YOLOv8",
+  "name": "Train YOLO (v8, v9)",
   "version": "2.0.0",
   "type": "app",
   "categories": [
@@ -10,17 +10,17 @@
     "pose estimation",
     "train"
   ],
-  "description": "Dashboard to configure, start and monitor YOLOv8 training",
-  "docker_image": "supervisely/yolov8:1.0.7",
+  "description": "Dashboard to configure, start and monitor YOLO (v8, v9) training",
+  "docker_image": "supervisely/yolov8:1.0.12",
   "instance_version": "6.9.3",
   "entrypoint": "python -m uvicorn src.main:app --app-dir ./train --host 0.0.0.0 --port 8000 --ws websockets",
   "task_location": "workspace_tasks",
   "need_gpu": true,
   "gpu": "required",
   "isolate": true,
-  "icon": "https://github-production-user-asset-6210df.s3.amazonaws.com/12828725/248305685-8e9903d3-aa29-4172-bf58-5dbc12a9b6a4.png",
+  "icon": "https://github.com/supervisely-ecosystem/yolov8/assets/119248312/5d195130-d8be-463c-a162-1bfd33cee2e4",
   "icon_cover": true,
-  "poster": "https://github.com/supervisely-ecosystem/yolov8/assets/12828725/2849410e-4922-4d23-93a7-2385d6d75426",
+  "poster": "https://github.com/supervisely-ecosystem/yolov8/assets/119248312/48a1e99c-23f9-469e-ac32-3c9614622042",
   "context_menu": {
     "target": [
       "images_project"
