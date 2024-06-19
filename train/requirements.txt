@@ -1,1 +1,1 @@
-git+https://github.com/supervisely/supervisely.git@app-workflow
+git+https://github.com/supervisely/supervisely.git@workflow+versions
