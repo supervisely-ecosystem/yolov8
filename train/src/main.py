@@ -1067,7 +1067,7 @@ def start_training():
     )
 
 # -------------------------------------- Set Workflow Input -------------------------------------- #
-    project_version_id = g.api.project.version.create(
+    project_version_id = api.project.version.create(
             project_info, "YOLOv8", "This backup created by Supervisely before train session"
         )
     if project_version_id is None:
