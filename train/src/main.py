@@ -1065,7 +1065,16 @@ def start_training():
         use_cache=use_cache,
         progress=progress_bar_download_project,
     )
-    api.app.add_input_project(project_info.id)
+
+# -------------------------------------- Set Workflow Input -------------------------------------- #
+    project_version_id = g.api.project.version.create(
+            project_info, "YOLOv8", "This backup created by Supervisely before train session"
+        )
+    if project_version_id is None:
+        project_version_id = project_info.version.get("id", None) if project_info.version else None
+    api.app.add_input_project(project_info.id, version=project_version_id)
+# ----------------------------------------------- - ---------------------------------------------- #
+
     # remove unselected classes
     selected_classes = classes_table.get_selected_classes()
     try:
