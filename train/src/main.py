@@ -1068,7 +1068,7 @@ def start_training():
 
 # -------------------------------------- Set Workflow Input -------------------------------------- #
     project_version_id = api.project.version.create(
-            project_info, "YOLOv8", "This backup created by Supervisely before train session"
+            project_info, "YOLOv8", f"This backup created by Supervisely before train task ID {api.task_id}"
         )
     if project_version_id is None:
         project_version_id = project_info.version.get("id", None) if project_info.version else None
