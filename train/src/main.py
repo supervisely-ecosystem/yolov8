@@ -1072,7 +1072,7 @@ def start_training():
         )
     if project_version_id is None:
         project_version_id = project_info.version.get("id", None) if project_info.version else None
-    api.app.add_input_project(project_info.id, version=project_version_id)
+    api.app.add_input_project(project_info.id, project_version_id)
 # ----------------------------------------------- - ---------------------------------------------- #
 
     # remove unselected classes
