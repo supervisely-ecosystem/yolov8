@@ -8,3 +8,4 @@ RUN pip3 install ultralytics==8.2.26
 
 RUN python3 -m pip install git+https://github.com/supervisely/supervisely.git@tracking-algorithms#egg=supervisely[tracking]
 RUN python3 -c "from supervisely.nn.tracker import *"
+RUN pip3 install dill==0.3.8
