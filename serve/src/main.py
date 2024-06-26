@@ -76,8 +76,16 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
         # -------------------------------------- Add Workflow Input -------------------------------------- #
         checkpoint_url = model_params.get("checkpoint_url")
+        checkpoint_name = model_params.get("checkpoint_name")
+        if checkpoint_name and "v8" in checkpoint_name:
+            model_name = "YOLOv8"
+        elif checkpoint_name and "v9" in checkpoint_name:
+            model_name = "YOLOv9"
+        else:
+            model_name = "Custom"
+        meta = {"customNodeSettings": {"title": f"<h4>Serve {model_name}</h4>"}}
         if checkpoint_url and self.api.file.exists(sly.env.team_id(), checkpoint_url):
-            self.api.app.add_input_file(checkpoint_url, model_weight=True)
+            self.api.app.add_input_file(checkpoint_url, model_weight=True, meta=meta)
         # ----------------------------------------------- - ---------------------------------------------- #
         
         return deploy_params
