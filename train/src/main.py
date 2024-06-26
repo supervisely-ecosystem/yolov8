@@ -1654,7 +1654,7 @@ def start_training():
                  "color": "#FFA500",
                  "backgroundColor": "#FFE8BE"
              },
-             "title": "Checkpoints",
+             "title": "<h4>Checkpoints</h4>",
          }
      }
         api.app.add_output_file(best_filename_info, model_weight=True, meta=meta)
