@@ -1068,7 +1068,7 @@ def start_training():
 
 # -------------------------------------- Set Workflow Input -------------------------------------- #
     project_version_id = api.project.version.create(
-            project_info, "YOLOv8", f"This backup created by Supervisely before train task ID {api.task_id}"
+            project_info, "Train YOLO (v8, v9)", f"This backup was created by Supervisely before the Train YOLO task with ID: {api.task_id}"
         )
     if project_version_id is None:
         project_version_id = project_info.version.get("id", None) if project_info.version else None
@@ -1632,12 +1632,36 @@ def start_training():
 
     weights_file_path_in_team_files_dir = os.path.join(team_files_dir, "weights", best_filename)
     best_filename_info = api.file.get_info_by_path(sly.env.team_id(), weights_file_path_in_team_files_dir)   
+    module_id = api.task.get_info_by_id(api.task_id).get("meta", {}).get("app", {}).get("id")
+    if model_filename and "v8" in model_filename:
+        model_name = "YOLOv8"
+    elif model_filename and "v9" in model_filename:
+        model_name = "YOLOv9"
+    else:
+        model_name = "Custom"
     if best_filename_info:
-        api.app.add_output_file(best_filename_info, model_weight=True)
+        meta = {
+            "customNodeSettings": {
+             "title": f"<h4>Train {model_name}</h4>",
+             "mainLink": {
+                 "url": f"/apps/{module_id}/sessions/{api.task_id}" if module_id else f"apps/sessions/{api.task_id}",
+                 "title": "Show Results"
+             }
+         },
+         "customRelationSettings": {
+             "icon": {
+                 "icon": "zmdi-folder",
+                 "color": "#FFA500",
+                 "backgroundColor": "#FFE8BE"
+             },
+             "title": "Checkpoints",
+         }
+     }
+        api.app.add_output_file(best_filename_info, model_weight=True, meta=meta)
     else:
         sly.logger.error(f"File {weights_file_path_in_team_files_dir} not found in team files")
     
-    api.app.add_output_app()
+    # api.app.add_output_app()
     
     # ----------------------------------------------- - ---------------------------------------------- #
 
