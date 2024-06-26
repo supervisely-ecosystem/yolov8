@@ -1638,7 +1638,7 @@ def start_training():
     elif model_filename and "v9" in model_filename:
         model_name = "YOLOv9"
     else:
-        model_name = "Custom"
+        model_name = "Custom Model"
     if best_filename_info:
         meta = {
             "customNodeSettings": {
@@ -1655,7 +1655,8 @@ def start_training():
                  "backgroundColor": "#FFE8BE"
              },
              "title": "<h4>Checkpoints</h4>",
-         }
+             "mainLink": {"url": f"/files/{best_filename_info.id}/true", "title": "Open Folder"}
+        }
      }
         api.app.add_output_file(best_filename_info, model_weight=True, meta=meta)
     else:
