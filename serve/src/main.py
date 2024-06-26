@@ -77,13 +77,17 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         # -------------------------------------- Add Workflow Input -------------------------------------- #
         checkpoint_url = model_params.get("checkpoint_url")
         checkpoint_name = model_params.get("checkpoint_name")
+        module_id = api.task.get_info_by_id(api.task_id).get("meta", {}).get("app", {}).get("id")
         if checkpoint_name and "v8" in checkpoint_name:
             model_name = "YOLOv8"
         elif checkpoint_name and "v9" in checkpoint_name:
             model_name = "YOLOv9"
         else:
-            model_name = "Custom"
-        meta = {"customNodeSettings": {"title": f"<h4>Serve {model_name}</h4>"}}
+            model_name = "Custom Model"
+        meta = {"customNodeSettings": {"title": f"<h4>Serve {model_name}</h4>", "mainLink": {
+                 "url": f"/apps/{module_id}/sessions/{api.task_id}" if module_id else f"apps/sessions/{api.task_id}",
+                 "title": "Show Settings"
+             }}}
         if checkpoint_url and self.api.file.exists(sly.env.team_id(), checkpoint_url):
             self.api.app.add_input_file(checkpoint_url, model_weight=True, meta=meta)
         # ----------------------------------------------- - ---------------------------------------------- #
