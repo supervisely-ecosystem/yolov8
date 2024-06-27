@@ -90,6 +90,7 @@ load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 api = sly.Api()
 team_id = sly.env.team_id()
+server_address = sly.env.server_address()
 
 yolov8_artifacts = YOLOv8(team_id)
 framework_folder = yolov8_artifacts.framework_folder
@@ -1395,7 +1396,7 @@ def start_training():
         not_ready_for_api_calls = False
         if not app_is_stopped:
             not_ready_for_api_calls = api.app.is_ready_for_api_calls(g.app_session_id) is False
-        if (app_is_stopped or not_ready_for_api_calls) and sly.is_production():
+        if (app_is_stopped or not_ready_for_api_calls) and sly.is_production() and server_address != "https://demo.supervisely.com":
             print(f"Stopping the train process...")
             trainer_validator.stop = True
             raise app.StopException("This error is expected.")
