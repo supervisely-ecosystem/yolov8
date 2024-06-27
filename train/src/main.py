@@ -59,7 +59,7 @@ import math
 import ruamel.yaml
 from fastapi import Response, Request
 import uuid
-
+from workflow import Workflow
 ConfusionMatrix.plot = custom_plot
 
 # function for updating global variables
@@ -1067,12 +1067,8 @@ def start_training():
     )
 
 # -------------------------------------- Set Workflow Input -------------------------------------- #
-    project_version_id = api.project.version.create(
-            project_info, "Train YOLO (v8, v9)", f"This backup was created by Supervisely before the Train YOLO task with ID: {api.task_id}"
-        )
-    if project_version_id is None:
-        project_version_id = project_info.version.get("id", None) if project_info.version else None
-    api.app.add_input_project(project_info.id, project_version_id)
+    workflow_yolo = Workflow(api)
+    workflow_yolo.add_input(project_info)
 # ----------------------------------------------- - ---------------------------------------------- #
 
     # remove unselected classes
@@ -1629,41 +1625,7 @@ def start_training():
         sly.logger.info("Training artifacts uploaded successfully")
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
-
-    weights_file_path_in_team_files_dir = os.path.join(team_files_dir, "weights", best_filename)
-    best_filename_info = api.file.get_info_by_path(sly.env.team_id(), weights_file_path_in_team_files_dir)   
-    module_id = api.task.get_info_by_id(api.task_id).get("meta", {}).get("app", {}).get("id")
-    if model_filename and "v8" in model_filename:
-        model_name = "YOLOv8"
-    elif model_filename and "v9" in model_filename:
-        model_name = "YOLOv9"
-    else:
-        model_name = "Custom Model"
-    if best_filename_info:
-        meta = {
-            "customNodeSettings": {
-             "title": f"<h4>Train {model_name}</h4>",
-             "mainLink": {
-                 "url": f"/apps/{module_id}/sessions/{api.task_id}" if module_id else f"apps/sessions/{api.task_id}",
-                 "title": "Show Results"
-             }
-         },
-         "customRelationSettings": {
-             "icon": {
-                 "icon": "zmdi-folder",
-                 "color": "#FFA500",
-                 "backgroundColor": "#FFE8BE"
-             },
-             "title": "<h4>Checkpoints</h4>",
-             "mainLink": {"url": f"/files/{best_filename_info.id}/true", "title": "Open Folder"}
-        }
-     }
-        api.app.add_output_file(best_filename_info, model_weight=True, meta=meta)
-    else:
-        sly.logger.error(f"File {weights_file_path_in_team_files_dir} not found in team files")
-    
-    # api.app.add_output_app()
-    
+    workflow_yolo.add_output(model_filename, team_files_dir, best_filename)
     # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():
