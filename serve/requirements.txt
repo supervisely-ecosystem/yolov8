@@ -1,2 +1,1 @@
-# git+https://github.com/supervisely/supervisely@benchmark-inference
-supervisely==6.73.118
+git+https://github.com/supervisely/supervisely@model-benchmark-mix
