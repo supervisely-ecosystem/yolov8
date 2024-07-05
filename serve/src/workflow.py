@@ -19,6 +19,14 @@ class Workflow:
         self._min_instance_version = (
             "6.9.22" if min_instance_version is None else min_instance_version
         )
+    
+    def check_instance_ver_compatibility(self):
+        if self.api.instance_version < self._min_instance_version:
+            sly.logger.info(
+                f"Supervisely instance version does not support workflow and versioning features. To use them, please update your instance minimum to version {self._min_instance_version}."
+            )
+            return False
+        return True
 
     @check_compatibility
     def add_input(self, model_params: dict):
