@@ -356,11 +356,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             yield self._to_dto(prediction, settings)
 
     def predict_batch(
-        self, source: List, settings: Dict[str, Any]
+        self, images_np: List, settings: Dict[str, Any]
     ) -> List[List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]]:
         retina_masks = self.task_type == "instance segmentation"
         predictions = self.model(
-            source=source,
+            source=images_np,
             conf=settings["conf"],
             iou=settings["iou"],
             half=settings["half"],
