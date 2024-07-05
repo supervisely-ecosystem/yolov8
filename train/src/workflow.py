@@ -36,7 +36,7 @@ class Workflow:
         )
         if project_version_id is None:
             project_version_id = project_info.version.get("id", None) if project_info.version else None
-        self.api.app.add_input_project(project_info.id, version_id=project_version_id)
+        self.api.app.workflow.add_input_project(project_info.id, version_id=project_version_id)
 
     @check_compatibility
     def add_output(self, model_filename: str, team_files_dir: str, best_filename: str):
@@ -68,7 +68,7 @@ class Workflow:
                 "mainLink": {"url": f"/files/{best_filename_info.id}/true", "title": "Open Folder"}
             }
         }
-            self.api.app.add_output_file(best_filename_info, model_weight=True, meta=meta)
+            self.api.app.workflow.add_output_file(best_filename_info, model_weight=True, meta=meta)
         else:
             sly.logger.error(f"File {best_filename_info.path} not found in team files. Cannot set workflow output.")
 

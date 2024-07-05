@@ -32,7 +32,7 @@ class Workflow:
             model_name = "Custom Model"
         meta = {"customNodeSettings": {"title": f"<h4>Serve {model_name}</h4>"}}
         if checkpoint_url and self.api.file.exists(sly.env.team_id(), checkpoint_url):
-            self.api.app.add_input_file(checkpoint_url, model_weight=True, meta=meta)
+            self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
         else:
             sly.logger.warn(f"Checkpoint {checkpoint_url} not found. Cannot set workflow input")
 
