@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Union, Literal
 from threading import Event
 
+import cv2
 import torch
 from dotenv import load_dotenv
 from ultralytics import YOLO
