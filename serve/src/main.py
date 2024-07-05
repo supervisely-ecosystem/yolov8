@@ -360,7 +360,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     ) -> List[List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]]:
         retina_masks = self.task_type == "instance segmentation"
         predictions = self.model(
-            source=images_np,
+            source=[cv2.cvtColor(img, cv2.COLOR_RGB2BGR) for img in images_np],
             conf=settings["conf"],
             iou=settings["iou"],
             half=settings["half"],
