@@ -60,7 +60,7 @@ from fastapi import Response, Request
 import uuid
 import matplotlib.pyplot as plt
 
-from workflow import Workflow
+from src.workflow import Workflow
 ConfusionMatrix.plot = custom_plot
 plt.switch_backend("Agg")
 

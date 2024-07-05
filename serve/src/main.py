@@ -22,7 +22,7 @@ from supervisely.nn.prediction_dto import (
 )
 
 from supervisely.nn.artifacts.yolov8 import YOLOv8
-from workflow import Workflow
+from src.workflow import Workflow
 
 load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
