@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Union, Literal
 from threading import Event
 
+import cv2
 import torch
 from dotenv import load_dotenv
 from ultralytics import YOLO
@@ -363,11 +364,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             yield self._to_dto(prediction, settings)
 
     def predict_batch(
-        self, source: List, settings: Dict[str, Any]
+        self, images_np: List, settings: Dict[str, Any]
     ) -> List[List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]]:
         retina_masks = self.task_type == "instance segmentation"
         predictions = self.model(
-            source=source,
+            source=[cv2.cvtColor(img, cv2.COLOR_RGB2BGR) for img in images_np],
             conf=settings["conf"],
             iou=settings["iou"],
             half=settings["half"],
