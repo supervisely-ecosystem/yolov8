@@ -1046,11 +1046,6 @@ def start_training():
         progress=progress_bar_download_project,
     )
 
-# -------------------------------------- Set Workflow Input -------------------------------------- #
-    workflow_yolo = Workflow(api)
-    workflow_yolo.add_input(project_info)
-# ----------------------------------------------- - ---------------------------------------------- #
-
     # remove unselected classes
     selected_classes = classes_table.get_selected_classes()
     try:
@@ -1164,7 +1159,8 @@ def start_training():
         else:
             progress.set_current_value(value, report=False)
         weights_pbar.update(progress.current)
-
+    
+    file_info = None
     if weights_type == "Pretrained models":
         selected_index = models_table.get_selected_row_index()
         selected_dict = models_data[selected_index]
@@ -1230,7 +1226,11 @@ def start_training():
             )
         pretrained = True
         model = YOLO(weights_dst_path)
-        api.app.add_input_file(file_info, model_weight=True)
+
+    # ---------------------------------- Init And Set Workflow Input --------------------------------- #
+    workflow_yolo = Workflow(api)    
+    workflow_yolo.add_input(project_info, file_info)
+    # ----------------------------------------------- - ---------------------------------------------- #
 
     # add callbacks to model
     def on_train_batch_end(trainer):
