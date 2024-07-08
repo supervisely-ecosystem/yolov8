@@ -32,7 +32,7 @@ class Workflow:
         return True
     
     @check_compatibility
-    def add_input(self, project_info: sly.ProjectInfo, file_info: sly.FileInfo=None):
+    def add_input(self, project_info: sly.ProjectInfo, file_info = None):
         project_version_id = self.api.project.version.create(
             project_info, "Train YOLO (v8, v9)", f"This backup was created by Supervisely before the Train YOLO task with ID: {self.api.task_id}"
         )
