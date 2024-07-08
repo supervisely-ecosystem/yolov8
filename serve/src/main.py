@@ -23,6 +23,7 @@ from supervisely.nn.prediction_dto import (
 )
 
 from supervisely.nn.artifacts.yolov8 import YOLOv8
+from src.workflow import Workflow
 
 load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
@@ -74,6 +75,12 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             "device": self.device,
             **model_params,
         }
+
+        # -------------------------------------- Add Workflow Input -------------------------------------- #
+        workflow_serve = Workflow(api)
+        workflow_serve.add_input(model_params)
+        # ----------------------------------------------- - ---------------------------------------------- #
+        
         return deploy_params
 
     def load_model_meta(self, model_source: str, weights_save_path: str):
