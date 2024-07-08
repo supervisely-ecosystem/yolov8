@@ -1,3 +1,5 @@
+# Description: This file contains versioning features and the Workflow class that is used to add input and output to the workflow.
+
 import supervisely as sly
 import os
 
