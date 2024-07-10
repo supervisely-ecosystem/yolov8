@@ -47,7 +47,7 @@ class Workflow:
         if checkpoint_url and self.api.file.exists(sly.env.team_id(), checkpoint_url):
             self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
         else:
-            sly.logger.debug(f"Checkpoint {checkpoint_url} not found. Cannot set workflow input")
+            sly.logger.debug(f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input")
 
     @check_compatibility
     def add_output(self):
