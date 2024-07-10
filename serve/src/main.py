@@ -4,6 +4,7 @@ from typing import Any, Dict, Generator, List, Union, Literal
 from threading import Event
 
 import numpy as np
+import cv2
 import torch
 from dotenv import load_dotenv
 from ultralytics import YOLO
@@ -24,6 +25,7 @@ from supervisely.nn.prediction_dto import (
 )
 
 from supervisely.nn.artifacts.yolov8 import YOLOv8
+from src.workflow import Workflow
 
 load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
@@ -75,6 +77,12 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             "device": self.device,
             **model_params,
         }
+
+        # -------------------------------------- Add Workflow Input -------------------------------------- #
+        workflow_serve = Workflow(api)
+        workflow_serve.add_input(model_params)
+        # ----------------------------------------------- - ---------------------------------------------- #
+        
         return deploy_params
 
     def load_model_meta(self, model_source: str, weights_save_path: str):
@@ -366,7 +374,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self, images_np: List[np.ndarray], settings: Dict[str, Any]
     ) -> List[List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]]:
         # RGB to BGR
-        images_np = [image[:, :, ::-1] for image in images_np]
+        images_np = [cv2.cvtColor(img, cv2.COLOR_RGB2BGR) for img in images_np]
         retina_masks = self.task_type == "instance segmentation"
         predictions = self.model(
             source=images_np,

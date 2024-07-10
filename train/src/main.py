@@ -60,7 +60,7 @@ from fastapi import Response, Request
 import uuid
 import matplotlib.pyplot as plt
 
-
+from src.workflow import Workflow
 ConfusionMatrix.plot = custom_plot
 plt.switch_backend("Agg")
 
@@ -1045,6 +1045,7 @@ def start_training():
         use_cache=use_cache,
         progress=progress_bar_download_project,
     )
+
     # remove unselected classes
     selected_classes = classes_table.get_selected_classes()
     try:
@@ -1158,7 +1159,8 @@ def start_training():
         else:
             progress.set_current_value(value, report=False)
         weights_pbar.update(progress.current)
-
+    
+    file_info = None
     if weights_type == "Pretrained models":
         selected_index = models_table.get_selected_row_index()
         selected_dict = models_data[selected_index]
@@ -1224,6 +1226,11 @@ def start_training():
             )
         pretrained = True
         model = YOLO(weights_dst_path)
+
+    # ---------------------------------- Init And Set Workflow Input --------------------------------- #
+    workflow_yolo = Workflow(api)    
+    workflow_yolo.add_input(project_info, file_info)
+    # ----------------------------------------------- - ---------------------------------------------- #
 
     # add callbacks to model
     def on_train_batch_end(trainer):
@@ -1573,6 +1580,10 @@ def start_training():
             remote_dir=remote_artifacts_dir,
         )
         sly.logger.info("Training artifacts uploaded successfully")
+
+    # ------------------------------------- Set Workflow Outputs ------------------------------------- #
+    workflow_yolo.add_output(model_filename, team_files_dir, best_filename)
+    # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():
         file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
