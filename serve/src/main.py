@@ -3,11 +3,13 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Union, Literal
 from threading import Event
 
+import numpy as np
 import torch
 from dotenv import load_dotenv
 from ultralytics import YOLO
 
 import supervisely as sly
+from supervisely.nn.inference import ModelInfo, TaskType
 from src.keypoints_template import dict_to_template, human_template
 from src.models import yolov8_models
 from supervisely.app.widgets import (
@@ -139,7 +141,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :param checkpoint_url: The URL where the model can be downloaded.
         :type checkpoint_url: str
         """
+        self.device = device
         self.task_type = task_type
+
         local_weights_path = os.path.join(self.model_dir, checkpoint_name)
         if not sly.fs.file_exists(local_weights_path):
             self.download(
@@ -148,15 +152,18 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             )
 
         self.model = YOLO(local_weights_path)
-        if device.startswith("cuda"):
-            if device == "cuda":
-                self.device = 0
-            else:
-                self.device = int(device[-1])
-        else:
-            self.device = "cpu"
         self.model.to(self.device)
         self.load_model_meta(model_source, local_weights_path)
+
+        train_args = self.model.ckpt["train_args"]
+        model_name_path = os.path.basename(train_args["model"]).split(".")[0]
+        model_name, architecture = parse_name(model_name_path)
+        self.model_info = ModelInfo(
+            model_name=model_name,
+            architecture=architecture,
+            task_type=task_type,
+            model_source=model_source,
+        )
 
     def get_info(self):
         info = super().get_info()
@@ -356,11 +363,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             yield self._to_dto(prediction, settings)
 
     def predict_batch(
-        self, source: List, settings: Dict[str, Any]
+        self, images_np: List[np.ndarray], settings: Dict[str, Any]
     ) -> List[List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]]:
+        # RGB to BGR
+        images_np = [image[:, :, ::-1] for image in images_np]
         retina_masks = self.task_type == "instance segmentation"
         predictions = self.model(
-            source=source,
+            source=images_np,
             conf=settings["conf"],
             iou=settings["iou"],
             half=settings["half"],
@@ -371,21 +380,18 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         )
         return [self._to_dto(prediction, settings) for prediction in predictions]
 
-    def predict(
-        self, image_path: str, settings: Dict[str, Any]
-    ) -> List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]:
-        retina_masks = self.task_type == "instance segmentation"
-        predictions = self.model(
-            source=image_path,
-            conf=settings["conf"],
-            iou=settings["iou"],
-            half=settings["half"],
-            device=self.device,
-            max_det=settings["max_det"],
-            agnostic_nms=settings["agnostic_nms"],
-            retina_masks=retina_masks,
-        )
-        return self._to_dto(predictions[0], settings)
+
+def parse_name(model_name: str):
+    v8 = int(model_name[5])
+    postfix = model_name[6:].split("-")
+    variant = postfix[0].upper()
+    if len(postfix) > 1:
+        task = postfix[1]
+        name = f"YOLOv{v8}-{variant} {task}"
+    else:
+        name = f"YOLOv{v8}-{variant}"
+    architecture = f"YOLOv{v8}"
+    return name, architecture
 
 
 m = YOLOv8Model(
