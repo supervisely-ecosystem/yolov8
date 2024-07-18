@@ -1502,6 +1502,10 @@ def start_training():
             additional_gallery.append(tf_mask_f1_curve_info.full_storage_url)
 
     # rename best checkpoint file
+    if not os.path.isfile(watch_file):
+        sly.logger.warning("The file with results does not exist, training was not completed successfully.")
+        app.stop()
+        return
     results = pd.read_csv(watch_file)
     results.columns = [col.replace(" ", "") for col in results.columns]
     results["fitness"] = (0.1 * results["metrics/mAP50(B)"]) + (0.9 * results["metrics/mAP50-95(B)"])
