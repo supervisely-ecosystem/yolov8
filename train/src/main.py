@@ -20,7 +20,8 @@ from supervisely.app.widgets import (
     Button,
     Field,
     Progress,
-    SelectDataset,
+    # SelectDataset,
+    SelectDatasetTree,
     ClassesTable,
     DoneLabel,
     Editor,
@@ -105,7 +106,8 @@ sly.logger.info(f"App root directory: {g.app_root_directory}")
 
 
 ### 1. Dataset selection
-dataset_selector = SelectDataset(project_id=project_id, multiselect=True, select_all_datasets=True)
+# dataset_selector = SelectDataset(project_id=project_id, multiselect=True, select_all_datasets=True)
+dataset_selector = SelectDatasetTree(project_id=project_id, multiselect=True, select_all_datasets=True, flat=True)
 use_cache_text = Text("Use cached data stored on the agent to optimize project downlaod")
 use_cache_checkbox = Checkbox(use_cache_text, checked=True)
 select_data_button = Button("Select data")
