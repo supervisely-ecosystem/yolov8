@@ -20,7 +20,8 @@ from supervisely.app.widgets import (
     Button,
     Field,
     Progress,
-    SelectDataset,
+    # SelectDataset,
+    SelectDatasetTree,
     ClassesTable,
     DoneLabel,
     Editor,
@@ -67,6 +68,7 @@ plt.switch_backend("Agg")
 
 # function for updating global variables
 def update_globals(new_dataset_ids):
+    sly.logger.debug(f"Updating globals with new dataset_ids: {new_dataset_ids}")
     global dataset_ids, project_id, workspace_id, project_info, project_meta
     dataset_ids = new_dataset_ids
     if dataset_ids and all(ds_id is not None for ds_id in dataset_ids):
@@ -105,7 +107,8 @@ sly.logger.info(f"App root directory: {g.app_root_directory}")
 
 
 ### 1. Dataset selection
-dataset_selector = SelectDataset(project_id=project_id, multiselect=True, select_all_datasets=True)
+# dataset_selector = SelectDataset(project_id=project_id, multiselect=True, select_all_datasets=True)
+dataset_selector = SelectDatasetTree(project_id=project_id, multiselect=True, select_all_datasets=True, flat=True)
 use_cache_text = Text("Use cached data stored on the agent to optimize project downlaod")
 use_cache_checkbox = Checkbox(use_cache_text, checked=True)
 select_data_button = Button("Select data")
@@ -585,6 +588,7 @@ server = app.get_server()
 
 @dataset_selector.value_changed
 def on_dataset_selected(new_dataset_ids):
+    sly.logger.debug(f"Selected datasets widget value changed to: {new_dataset_ids}")
     if new_dataset_ids == []:
         select_data_button.hide()
     elif new_dataset_ids != [] and reselect_data_button.is_hidden():
@@ -598,6 +602,8 @@ def on_dataset_selected(new_dataset_ids):
 
 @select_data_button.click
 def select_input_data():
+    update_globals(dataset_selector.get_selected_ids())
+    sly.logger.debug(f"Select data button clicked, selected datasets: {dataset_ids}")
     project_shapes = [cls.geometry_type.geometry_name() for cls in project_meta.obj_classes]
     if "bitmap" in project_shapes or "polygon" in project_shapes:
         task_type_select.set_value("instance segmentation")
