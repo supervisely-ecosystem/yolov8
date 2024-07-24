@@ -68,6 +68,7 @@ plt.switch_backend("Agg")
 
 # function for updating global variables
 def update_globals(new_dataset_ids):
+    sly.logger.debug(f"Updating globals with new dataset_ids: {new_dataset_ids}")
     global dataset_ids, project_id, workspace_id, project_info, project_meta
     dataset_ids = new_dataset_ids
     if dataset_ids and all(ds_id is not None for ds_id in dataset_ids):
@@ -601,6 +602,7 @@ def on_dataset_selected(new_dataset_ids):
 
 @select_data_button.click
 def select_input_data():
+    sly.logger.debug(f"Select data button clicked, selected datasets: {dataset_ids}")
     project_shapes = [cls.geometry_type.geometry_name() for cls in project_meta.obj_classes]
     if "bitmap" in project_shapes or "polygon" in project_shapes:
         task_type_select.set_value("instance segmentation")
