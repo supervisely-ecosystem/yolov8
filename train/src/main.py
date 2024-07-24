@@ -602,6 +602,7 @@ def on_dataset_selected(new_dataset_ids):
 
 @select_data_button.click
 def select_input_data():
+    update_globals(dataset_selector.get_selected_ids())
     sly.logger.debug(f"Select data button clicked, selected datasets: {dataset_ids}")
     project_shapes = [cls.geometry_type.geometry_name() for cls in project_meta.obj_classes]
     if "bitmap" in project_shapes or "polygon" in project_shapes:
