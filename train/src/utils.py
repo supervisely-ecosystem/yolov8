@@ -13,7 +13,6 @@ def verify_train_val_sets(train_set, val_set):
         raise ValueError("Val set is empty, check or change split configuration")
 
 
-
 # monkey patching for ConfusionMatrix plot
 def custom_plot(self, normalize=True, save_dir="", names=(), on_plot=None):
     """Modified plot function to handle long class names"""
@@ -26,8 +25,9 @@ def custom_plot(self, normalize=True, save_dir="", names=(), on_plot=None):
 
     import seaborn  # scope for faster 'import ultralytics'
 
-
-    array = self.matrix / ((self.matrix.sum(0).reshape(1, -1) + 1e-9) if normalize else 1)  # normalize columns
+    array = self.matrix / (
+        (self.matrix.sum(0).reshape(1, -1) + 1e-9) if normalize else 1
+    )  # normalize columns
     array[array < 0.005] = np.nan  # don't annotate (would appear as 0.00)
 
     fig, ax = plt.subplots(1, 1, figsize=(12, 9), tight_layout=True)
@@ -40,7 +40,9 @@ def custom_plot(self, normalize=True, save_dir="", names=(), on_plot=None):
     labels = (0 < nn < 99) and (nn == nc)  # apply names to ticklabels
     ticklabels = (list(names) + ["background"]) if labels else "auto"
     with warnings.catch_warnings():
-        warnings.simplefilter("ignore")  # suppress empty matrix RuntimeWarning: All-NaN slice encountered
+        warnings.simplefilter(
+            "ignore"
+        )  # suppress empty matrix RuntimeWarning: All-NaN slice encountered
         seaborn.heatmap(
             array,
             ax=ax,
@@ -62,3 +64,17 @@ def custom_plot(self, normalize=True, save_dir="", names=(), on_plot=None):
     plt.close(fig)
     if on_plot:
         on_plot(plot_fname)
+
+
+def deploy_the_best_model():
+    from serve.src.main import YOLOv8Model
+
+    m = YOLOv8Model(
+        model_dir="app_data",
+        use_gui=True,
+        custom_inference_settings=os.path.join(
+            root_source_path, "serve", "custom_settings.yaml"
+        ),
+    )
+
+    pass

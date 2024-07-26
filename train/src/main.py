@@ -1,3 +1,5 @@
+# pylint: disable=wrong-import-position
+
 import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -44,7 +46,7 @@ from supervisely.app.widgets import (
     Dialog,
     Switch,
 )
-from src.utils import verify_train_val_sets, custom_plot
+from src.utils import verify_train_val_sets, custom_plot, deploy_the_best_model
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.dataset_cache import download_project
 from ultralytics import YOLO
@@ -1694,6 +1696,8 @@ def start_training():
         )
         sly.logger.info("Training artifacts uploaded successfully")
 
+    # deploy_the_best_model(local_artifacts_dir)
+
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
     workflow_yolo.add_output(model_filename, team_files_dir, best_filename)
     # ----------------------------------------------- - ---------------------------------------------- #
@@ -2318,8 +2322,8 @@ def auto_train(request: Request):
     card_train_artifacts.unlock()
     card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
-    sly.fs.remove_dir(g.app_data_dir)
-    sly.fs.silent_remove("train_batches.txt")
+    # sly.fs.remove_dir(g.app_data_dir)
+    # sly.fs.silent_remove("train_batches.txt")
     # set task output
     sly.output.set_directory(remote_artifacts_dir)
     return {"result": "successfully finished automatic training session"}
