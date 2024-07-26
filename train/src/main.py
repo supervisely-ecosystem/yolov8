@@ -20,7 +20,8 @@ from supervisely.app.widgets import (
     Button,
     Field,
     Progress,
-    SelectDataset,
+    # SelectDataset,
+    SelectDatasetTree,
     ClassesTable,
     DoneLabel,
     Editor,
@@ -68,6 +69,7 @@ plt.switch_backend("Agg")
 
 # function for updating global variables
 def update_globals(new_dataset_ids):
+    sly.logger.debug(f"Updating globals with new dataset_ids: {new_dataset_ids}")
     global dataset_ids, project_id, workspace_id, project_info, project_meta
     dataset_ids = new_dataset_ids
     if dataset_ids and all(ds_id is not None for ds_id in dataset_ids):
@@ -106,8 +108,9 @@ sly.logger.info(f"App root directory: {g.app_root_directory}")
 
 
 ### 1. Dataset selection
-dataset_selector = SelectDataset(
-    project_id=project_id, multiselect=True, select_all_datasets=True
+# dataset_selector = SelectDataset(project_id=project_id, multiselect=True, select_all_datasets=True)
+dataset_selector = SelectDatasetTree(
+    project_id=project_id, multiselect=True, select_all_datasets=True, flat=True
 )
 use_cache_text = Text(
     "Use cached data stored on the agent to optimize project download"
@@ -608,6 +611,7 @@ server = app.get_server()
 
 @dataset_selector.value_changed
 def on_dataset_selected(new_dataset_ids):
+    sly.logger.debug(f"Selected datasets widget value changed to: {new_dataset_ids}")
     if new_dataset_ids == []:
         select_data_button.hide()
     elif new_dataset_ids != [] and reselect_data_button.is_hidden():
@@ -1491,8 +1495,8 @@ def start_training():
             trainer_validator.stop = True
             raise app.StopException("This error is expected.")
 
-    model.add_callback("on_train_batch_end", stop_on_batch_end_if_needed)
-    model.add_callback("on_val_batch_end", stop_on_batch_end_if_needed)
+    # model.add_callback("on_train_batch_end", stop_on_batch_end_if_needed)
+    # model.add_callback("on_val_batch_end", stop_on_batch_end_if_needed)
 
     with app.handle_stop():
         model.train(
@@ -1601,6 +1605,12 @@ def start_training():
             additional_gallery.append(tf_mask_f1_curve_info.full_storage_url)
 
     # rename best checkpoint file
+    if not os.path.isfile(watch_file):
+        sly.logger.warning(
+            "The file with results does not exist, training was not completed successfully."
+        )
+        app.stop()
+        return
     results = pd.read_csv(watch_file)
     results.columns = [col.replace(" ", "") for col in results.columns]
     results["fitness"] = (0.1 * results["metrics/mAP50(B)"]) + (
