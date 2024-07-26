@@ -1731,8 +1731,8 @@ def start_training():
     )
 
     # delete app data since it is no longer needed
-    sly.fs.remove_dir(g.app_data_dir)
-    sly.fs.silent_remove("train_batches.txt")
+    # sly.fs.remove_dir(g.app_data_dir)
+    # sly.fs.silent_remove("train_batches.txt")
     # set task output
     sly.output.set_directory(remote_artifacts_dir)
     # stop app
@@ -2322,8 +2322,8 @@ def auto_train(request: Request):
     card_train_artifacts.unlock()
     card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
-    # sly.fs.remove_dir(g.app_data_dir)
-    # sly.fs.silent_remove("train_batches.txt")
+    sly.fs.remove_dir(g.app_data_dir)
+    sly.fs.silent_remove("train_batches.txt")
     # set task output
     sly.output.set_directory(remote_artifacts_dir)
     return {"result": "successfully finished automatic training session"}
