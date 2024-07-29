@@ -1,0 +1,14 @@
+{
+    "name": "SlyYololv8Evaluation",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.black-formatter"
+            ]
+        }
+    }
+}

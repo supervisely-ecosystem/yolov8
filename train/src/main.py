@@ -46,6 +46,7 @@ from supervisely.app.widgets import (
 )
 from src.utils import verify_train_val_sets, custom_plot
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
+
 from src.dataset_cache import download_project
 from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
@@ -60,10 +61,12 @@ import ruamel.yaml
 from fastapi import Response, Request
 import uuid
 import matplotlib.pyplot as plt
-
+from src.serve import YOLOv8Model
 from src.workflow import Workflow
+
 ConfusionMatrix.plot = custom_plot
 plt.switch_backend("Agg")
+root_source_path = str(Path(__file__).parents[2])
 
 
 # function for updating global variables
@@ -1165,7 +1168,7 @@ def start_training():
         else:
             progress.set_current_value(value, report=False)
         weights_pbar.update(progress.current)
-    
+
     file_info = None
     if weights_type == "Pretrained models":
         selected_index = models_table.get_selected_row_index()
@@ -1234,7 +1237,7 @@ def start_training():
         model = YOLO(weights_dst_path)
 
     # ---------------------------------- Init And Set Workflow Input --------------------------------- #
-    workflow_yolo = Workflow(api)    
+    workflow_yolo = Workflow(api)
     workflow_yolo.add_input(project_info, file_info)
     # ----------------------------------------------- - ---------------------------------------------- #
 
@@ -1590,6 +1593,33 @@ def start_training():
             remote_dir=remote_artifacts_dir,
         )
         sly.logger.info("Training artifacts uploaded successfully")
+
+    m = YOLOv8Model(
+        model_dir=local_artifacts_dir + "/weights",
+        use_gui=False,
+        custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
+    )
+    # current_best_filepath
+
+    if sly.is_production():
+        m.serve()
+    else:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        print("Using device:", device)
+        # deploy_params = m.get_params_from_gui()
+        m.load_model("cuda", "Custom models", "object detection", best_filename, "")
+        image_path = "./demo_data/image_01.jpg"
+        settings = {
+            "conf": 0.25,
+            "iou": 0.7,
+            "half": False,
+            "max_det": 300,
+            "agnostic_nms": False,
+        }
+        results = m.predict(image_path, settings=settings)
+        vis_path = "./demo_data/image_01_prediction.jpg"
+        m.visualize(results, image_path, vis_path, thickness=5)
+        print(f"predictions and visualization have been saved: {vis_path}")
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
     workflow_yolo.add_output(model_filename, team_files_dir, best_filename)
