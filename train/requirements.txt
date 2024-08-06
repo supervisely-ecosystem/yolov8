@@ -1,0 +1,1 @@
+git+https://github.com/supervisely/supervisely.git@model-benchmark-ars-before-merge-with-main-branch
