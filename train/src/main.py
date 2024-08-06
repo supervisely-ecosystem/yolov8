@@ -10,6 +10,10 @@ import supervisely.io.env as env
 import src.globals as g
 from dotenv import load_dotenv
 import yaml
+from supervisely.nn.benchmark.evaluation.object_detection_evaluator import (
+    ObjectDetectionEvaluator,
+)
+
 from supervisely.nn.artifacts.yolov8 import YOLOv8
 from supervisely.app.widgets import (
     Container,
@@ -46,7 +50,8 @@ from supervisely.app.widgets import (
 )
 from src.utils import verify_train_val_sets, custom_plot
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
-
+import supervisely as sly
+from supervisely.nn.inference import Session, SessionJSON
 from src.dataset_cache import download_project
 from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
@@ -555,10 +560,11 @@ card_train_progress.lock()
 
 ### 7. Training artifacts
 train_artifacts_folder = FolderThumbnail()
+text_model_benchmark_report = Text()
 card_train_artifacts = Card(
     title="Training artifacts",
     description="Checkpoints, logs and other visualizations",
-    content=train_artifacts_folder,
+    content=Container([train_artifacts_folder, text_model_benchmark_report]),
     collapsable=True,
     lock_message="Complete the previous step to unlock",
 )
@@ -1599,27 +1605,43 @@ def start_training():
         use_gui=False,
         custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
     )
-    # current_best_filepath
 
-    if sly.is_production():
-        m.serve()
-    else:
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        print("Using device:", device)
-        # deploy_params = m.get_params_from_gui()
-        m.load_model("cuda", "Custom models", "object detection", best_filename, "")
-        image_path = "./demo_data/image_01.jpg"
-        settings = {
-            "conf": 0.25,
-            "iou": 0.7,
-            "half": False,
-            "max_det": 300,
-            "agnostic_nms": False,
-        }
-        results = m.predict(image_path, settings=settings)
-        vis_path = "./demo_data/image_01_prediction.jpg"
-        m.visualize(results, image_path, vis_path, thickness=5)
-        print(f"predictions and visualization have been saved: {vis_path}")
+    if sly.is_development():  # TODO rm when release
+        import shutil
+
+        best_filename = "best_99.pt"
+        src = "/tmp/weights/" + best_filename
+        dest = "/workspaces/yolov8/train/runs/detect/train/weights/" + best_filename
+        shutil.copy(src, dest)
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print("Using device:", device)
+    deploy_params = dict(
+        device=device,
+        model_source="Custom models",
+        task_type="object detection",
+        checkpoint_name=best_filename,
+        # checkpoint_url="",
+    )
+    m._load_model(deploy_params)
+    m.serve()
+
+    session = SessionJSON(api, session_url="http://localhost:8000")
+
+    sly.fs.remove_dir(g.app_data_dir + "/benchmark")
+
+    bm = sly.nn.ObjectDetectionBenchmark(api, project_info.id, output_dir=g.app_data_dir + "/benchmark")
+    bm.run_inference(session)
+    gt_project_path, dt_project_path = bm._download_projects()
+
+    evaluator = ObjectDetectionEvaluator(g.project_dir, dt_project_path, bm.get_eval_results_dir())
+    evaluator.evaluate()
+
+    eval_res_dir = f"/model-benchmark/evaluation/{project_info.id}_{project_info.name}/"
+    bm.upload_eval_results(eval_res_dir)
+
+    bm.visualize()
+    bm.upload_visualizations(eval_res_dir + "visualizations/")
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
     workflow_yolo.add_output(model_filename, team_files_dir, best_filename)
@@ -1628,6 +1650,12 @@ def start_training():
     if not app.is_stopped():
         file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
         train_artifacts_folder.set(file_info)
+        tmplt_file = api.file.get_info_by_path(sly.env.team_id(), eval_res_dir + "visualizations/template.vue")
+
+        text_model_benchmark_report.set(
+            f"<a href='{server_address}model-benchmark?id={tmplt_file.id}' target='_blank'>Open report for the best model</a>",
+            "success",
+        )
         # finish training
         start_training_button.loading = False
         start_training_button.disable()
@@ -1656,6 +1684,7 @@ def start_training():
     sly.fs.silent_remove("train_batches.txt")
     # set task output
     sly.output.set_directory(remote_artifacts_dir)
+    sly.output.set_download
     # stop app
     app.stop()
 

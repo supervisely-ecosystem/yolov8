@@ -10,5 +10,10 @@
                 "ms-python.black-formatter"
             ]
         }
-    }
+    },
+    "runArgs": [
+        "--gpus", "all",
+        "--shm-size=10gb" // gb or mb
+    ]
+
 }

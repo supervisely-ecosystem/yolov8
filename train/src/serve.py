@@ -8,6 +8,7 @@ import torch
 from dotenv import load_dotenv
 from ultralytics import YOLO
 
+from supervisely.nn.inference import CheckpointInfo
 import supervisely as sly
 from src.keypoints_template import dict_to_template, human_template
 from src.models import yolov8_models
@@ -36,52 +37,52 @@ team_id = sly.env.team_id()
 
 class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
-    def initialize_custom_gui(self):
-        """Create custom GUI layout for model selection. This method is called once when the application is started."""
-        self.pretrained_models_table = PretrainedModelsSelector(yolov8_models)
-        yolov8_artifacts = YOLOv8(team_id)
-        custom_checkpoints = yolov8_artifacts.get_list()
-        self.custom_models_table = CustomModelsSelector(
-            team_id,
-            custom_checkpoints,
-            show_custom_checkpoint_path=True,
-            custom_checkpoint_task_types=[
-                "object detection",
-                "instance segmentation",
-                "pose estimation",
-            ],
-        )
+    # def initialize_custom_gui(self):
+    #     """Create custom GUI layout for model selection. This method is called once when the application is started."""
+    #     self.pretrained_models_table = PretrainedModelsSelector(yolov8_models)
+    #     yolov8_artifacts = YOLOv8(team_id)
+    #     custom_checkpoints = yolov8_artifacts.get_list()
+    #     self.custom_models_table = CustomModelsSelector(
+    #         team_id,
+    #         custom_checkpoints,
+    #         show_custom_checkpoint_path=True,
+    #         custom_checkpoint_task_types=[
+    #             "object detection",
+    #             "instance segmentation",
+    #             "pose estimation",
+    #         ],
+    #     )
 
-        self.model_source_tabs = RadioTabs(
-            titles=["Pretrained models", "Custom models"],
-            descriptions=[
-                "Publicly available models",
-                "Models trained by you in Supervisely",
-            ],
-            contents=[self.pretrained_models_table, self.custom_models_table],
-        )
-        return self.model_source_tabs
+    #     self.model_source_tabs = RadioTabs(
+    #         titles=["Pretrained models", "Custom models"],
+    #         descriptions=[
+    #             "Publicly available models",
+    #             "Models trained by you in Supervisely",
+    #         ],
+    #         contents=[self.pretrained_models_table, self.custom_models_table],
+    #     )
+    #     return self.model_source_tabs
 
-    def get_params_from_gui(self) -> dict:
-        model_source = self.model_source_tabs.get_active_tab()
-        self.device = self.gui.get_device()
-        if model_source == "Pretrained models":
-            model_params = self.pretrained_models_table.get_selected_model_params()
-        elif model_source == "Custom models":
-            model_params = self.custom_models_table.get_selected_model_params()
+    # def get_params_from_gui(self) -> dict:
+    #     model_source = self.model_source_tabs.get_active_tab()
+    #     self.device = self.gui.get_device()
+    #     if model_source == "Pretrained models":
+    #         model_params = self.pretrained_models_table.get_selected_model_params()
+    #     elif model_source == "Custom models":
+    #         model_params = self.custom_models_table.get_selected_model_params()
 
-        self.task_type = model_params.get("task_type")
-        deploy_params = {
-            "device": self.device,
-            **model_params,
-        }
+    #     self.task_type = model_params.get("task_type")
+    #     deploy_params = {
+    #         "device": self.device,
+    #         **model_params,
+    #     }
 
-        # -------------------------------------- Add Workflow Input -------------------------------------- #
-        workflow_serve = Workflow(api)
-        workflow_serve.add_input(model_params)
-        # ----------------------------------------------- - ---------------------------------------------- #
+    #     # -------------------------------------- Add Workflow Input -------------------------------------- #
+    #     workflow_serve = Workflow(api)
+    #     workflow_serve.add_input(model_params)
+    #     # ----------------------------------------------- - ---------------------------------------------- #
 
-        return deploy_params
+    #     return deploy_params
 
     def load_model_meta(self, model_source: str, weights_save_path: str):
         self.class_names = list(self.model.names.values())
@@ -121,20 +122,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self._model_meta = sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
         self._get_confidence_tag_meta()
 
-    def load_on_device(
-        self,
-        model_dir: str,
-        device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"] = "cpu",
-    ):
-        pass
-
     def load_model(
         self,
         device: Literal["cpu", "cuda", "cuda:0", "cuda:1", "cuda:2", "cuda:3"],
         model_source: Literal["Pretrained models", "Custom models"],
         task_type: Literal["object detection", "instance segmentation", "pose estimation"],
         checkpoint_name: str,
-        checkpoint_url: str,
+        # checkpoint_url: str,
     ):
         """
         Load model method is used to deploy model.
@@ -153,10 +147,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self.task_type = task_type
         local_weights_path = os.path.join(self.model_dir, checkpoint_name)
         if not sly.fs.file_exists(local_weights_path):
-            self.download(
-                src_path=checkpoint_url,
-                dst_path=local_weights_path,
-            )
+            raise Exception("Not exists chekpoint path")
+            # self.download(
+            #     src_path=checkpoint_url,
+            #     dst_path=local_weights_path,
+            # )
 
         self.model = YOLO(local_weights_path)
         if device.startswith("cuda"):
@@ -168,6 +163,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             self.device = "cpu"
         self.model.to(self.device)
         self.load_model_meta(model_source, local_weights_path)
+        self.checkpoint_info = CheckpointInfo(checkpoint_name, "yolov8", model_source)  # TODO name
 
     def get_info(self):
         info = super().get_info()
@@ -375,30 +371,3 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             retina_masks=retina_masks,
         )
         return self._to_dto(predictions[0], settings)
-
-
-# m = YOLOv8Model(
-#     model_dir="app_data",
-#     use_gui=True,
-#     custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
-# )
-
-# if sly.is_production():
-#     m.serve()
-# else:
-#     device = "cuda" if torch.cuda.is_available() else "cpu"
-#     print("Using device:", device)
-#     deploy_params = m.get_params_from_gui()
-#     m.load_model(**deploy_params)
-#     image_path = "./demo_data/image_01.jpg"
-#     settings = {
-#         "conf": 0.25,
-#         "iou": 0.7,
-#         "half": False,
-#         "max_det": 300,
-#         "agnostic_nms": False,
-#     }
-#     results = m.predict(image_path, settings=settings)
-#     vis_path = "./demo_data/image_01_prediction.jpg"
-#     m.visualize(results, image_path, vis_path, thickness=5)
-#     print(f"predictions and visualization have been saved: {vis_path}")
