@@ -1,1 +1,2 @@
 git+https://github.com/supervisely/supervisely.git@model-benchmark-ars-before-merge-with-main-branch
+setuptools==69.5.1
