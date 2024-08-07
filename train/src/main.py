@@ -1654,7 +1654,7 @@ def start_training():
         file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
         train_artifacts_folder.set(file_info)
 
-        rel = f"model-benchmark?id={template_vis_file.id}"
+        rel = f"/model-benchmark?id={template_vis_file.id}"
         text_model_benchmark_report.set(
             f"<a href='{abs_url(rel)}' target='_blank'>Open report for the best model</a>",
             "success",

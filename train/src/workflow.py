@@ -108,7 +108,7 @@ class Workflow:
                     "customRelationSettings": {
                         "icon": {"icon": "zmdi-folder", "color": "#FFA500", "backgroundColor": "#FFE8BE"},
                         "title": "<h4>Model Benchmark</h4>",
-                        "mainLink": {"url": f"model-benchmark?id={template_vis_file.id}", "title": "Open Report"},
+                        "mainLink": {"url": f"/model-benchmark?id={template_vis_file.id}", "title": "Open Report"},
                     },
                 }
                 self.api.app.workflow.add_output_file(template_vis_file, meta=meta)
