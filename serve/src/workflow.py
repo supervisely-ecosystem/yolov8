@@ -4,7 +4,14 @@ import supervisely as sly
 def check_compatibility(func):
     def wrapper(self, *args, **kwargs):
         if self.is_compatible is None:
-            self.is_compatible = self.check_instance_ver_compatibility()
+            try:
+                self.is_compatible = self.check_instance_ver_compatibility()
+            except Exception as e:
+                sly.logger.error(
+                    "Can not check compatibility with Supervisely instance. "
+                    f"Workflow features will be disabled. Error: {repr(e)}"
+                )
+                self.is_compatible = False
         if not self.is_compatible:
             return
         return func(self, *args, **kwargs)
@@ -34,20 +41,23 @@ class Workflow:
 
     @check_compatibility
     def add_input(self, model_params: dict):
-        checkpoint_url = model_params.get("checkpoint_url")
-        checkpoint_name = model_params.get("checkpoint_name")
-        if checkpoint_name and "v8" in checkpoint_name:
-            model_name = "YOLOv8"
-        elif checkpoint_name and "v9" in checkpoint_name:
-            model_name = "YOLOv9"
-        else:
-            model_name = "Custom Model"
-        meta = {"customNodeSettings": {"title": f"<h4>Serve {model_name}</h4>"}}
-        sly.logger.debug(f"Workflow Input: Checkpoint URL - {checkpoint_url}, Checkpoint Name - {checkpoint_name}")
-        if checkpoint_url and self.api.file.exists(sly.env.team_id(), checkpoint_url):
-            self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
-        else:
-            sly.logger.debug(f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input")
+        try:
+            checkpoint_url = model_params.get("checkpoint_url")
+            checkpoint_name = model_params.get("checkpoint_name")
+            if checkpoint_name and "v8" in checkpoint_name:
+                model_name = "YOLOv8"
+            elif checkpoint_name and "v9" in checkpoint_name:
+                model_name = "YOLOv9"
+            else:
+                model_name = "Custom Model"
+            meta = {"customNodeSettings": {"title": f"<h4>Serve {model_name}</h4>"}}
+            sly.logger.debug(f"Workflow Input: Checkpoint URL - {checkpoint_url}, Checkpoint Name - {checkpoint_name}")
+            if checkpoint_url and self.api.file.exists(sly.env.team_id(), checkpoint_url):
+                self.api.app.workflow.add_input_file(checkpoint_url, model_weight=True, meta=meta)
+            else:
+                sly.logger.debug(f"Checkpoint {checkpoint_url} not found in Team Files. Cannot set workflow input")
+        except Exception as e:
+            sly.logger.debug(f"Failed to add input to the workflow: {repr(e)}")
 
     @check_compatibility
     def add_output(self):
