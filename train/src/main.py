@@ -1607,13 +1607,12 @@ def start_training():
         custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
     )
 
-    if sly.is_development():  # TODO rm when release
-        import shutil
-
-        best_filename = "best_99.pt"
-        src = "/tmp/weights/" + best_filename
-        dest = "/workspaces/yolov8/train/runs/detect/train/weights/" + best_filename
-        shutil.copy(src, dest)
+    # if sly.is_development():  # TODO rm when release
+    #     import shutil
+    #     best_filename = "best_99.pt"
+    #     src = "/tmp/weights/" + best_filename
+    #     dest = "/workspaces/yolov8/train/runs/detect/train/weights/" + best_filename
+    #     shutil.copy(src, dest)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
@@ -1654,9 +1653,10 @@ def start_training():
         file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
         train_artifacts_folder.set(file_info)
 
-        rel = f"/model-benchmark?id={template_vis_file.id}"
+        lnk = f"/model-benchmark?id={template_vis_file.id}"
+        lnk = abs(lnk) if is_development() else lnk
         text_model_benchmark_report.set(
-            f"<a href='{abs_url(rel)}' target='_blank'>Open report for the best model</a>",
+            f"<a href='{lnk}' target='_blank'>Open report for the best model</a>",
             "success",
         )
         # finish training
