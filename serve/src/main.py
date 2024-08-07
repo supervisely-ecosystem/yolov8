@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 from ultralytics import YOLO
 
 import supervisely as sly
-from supervisely.nn.inference import TaskType, CheckpointInfo,  RuntimeType
+from supervisely.nn.inference import TaskType, CheckpointInfo, RuntimeType
 from src.keypoints_template import dict_to_template, human_template
 from src.models import yolov8_models
 from supervisely.app.widgets import (
@@ -174,7 +174,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         model_name, architecture = parse_model_name(checkpoint_name)
         self.checkpoint_info = CheckpointInfo(
             checkpoint_name=checkpoint_name,
-            model_variant=model_name,
             architecture=architecture,
             model_source=model_source,
         )
