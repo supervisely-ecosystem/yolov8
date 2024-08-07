@@ -5,6 +5,8 @@ RUN apt-get update
 RUN pip3 install torch==1.10.1+cu113 --extra-index-url https://download.pytorch.org/whl/cu113
 RUN pip3 install torchvision==0.11.2+cu113 --extra-index-url https://download.pytorch.org/whl/cu113
 RUN pip3 install ultralytics==8.2.26
+RUN pip3 install protobuf==3.20.1
+RUN pip3 install onnx==1.12.0
 
 RUN python3 -m pip install supervisely[tracking]==6.73.150
 RUN python3 -c "from supervisely.nn.tracker import *"
