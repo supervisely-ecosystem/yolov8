@@ -1,6 +1,7 @@
+import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, Generator, List, Union, Literal
+from typing import Any, Dict, Generator, List, Tuple, Union, Literal
 from threading import Event
 
 import numpy as np
@@ -10,7 +11,7 @@ from dotenv import load_dotenv
 from ultralytics import YOLO
 
 import supervisely as sly
-from supervisely.nn.inference import ModelInfo, TaskType
+from supervisely.nn.inference import TaskType, CheckpointInfo,  RuntimeType
 from src.keypoints_template import dict_to_template, human_template
 from src.models import yolov8_models
 from supervisely.app.widgets import (
@@ -150,6 +151,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :type checkpoint_url: str
         """
         self.device = device
+        self.runtime = RuntimeType.PYTORCH
         self.task_type = task_type
 
         local_weights_path = os.path.join(self.model_dir, checkpoint_name)
@@ -162,14 +164,18 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self.model = YOLO(local_weights_path)
         self.model.to(self.device)
         self.load_model_meta(model_source, local_weights_path)
+        if sly.logger.isEnabledFor(logging.DEBUG):
+            self.model.overrides['verbose'] = True
+        else:
+            self.model.overrides['verbose'] = False
 
         train_args = self.model.ckpt["train_args"]
-        model_name_path = os.path.basename(train_args["model"]).split(".")[0]
-        model_name, architecture = parse_name(model_name_path)
-        self.model_info = ModelInfo(
-            model_name=model_name,
+        checkpoint_name = os.path.basename(train_args["model"]).split(".")[0]
+        model_name, architecture = parse_model_name(checkpoint_name)
+        self.checkpoint_info = CheckpointInfo(
+            checkpoint_name=checkpoint_name,
+            model_variant=model_name,
             architecture=architecture,
-            task_type=task_type,
             model_source=model_source,
         )
 
@@ -182,7 +188,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         if self.task_type == "pose estimation":
             info["detector_included"] = True
         return info
-
+    
     def get_classes(self) -> List[str]:
         return self.class_names
 
@@ -369,10 +375,8 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 predictions_generator.close()
                 return
             yield self._to_dto(prediction, settings)
-
-    def predict_batch(
-        self, images_np: List[np.ndarray], settings: Dict[str, Any]
-    ) -> List[List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]]:
+    
+    def predict_benchmark(self, images_np: List[np.ndarray], settings: Dict):
         # RGB to BGR
         images_np = [cv2.cvtColor(img, cv2.COLOR_RGB2BGR) for img in images_np]
         retina_masks = self.task_type == "instance segmentation"
@@ -386,16 +390,25 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             agnostic_nms=settings["agnostic_nms"],
             retina_masks=retina_masks,
         )
-        return [self._to_dto(prediction, settings) for prediction in predictions]
+        n = len(predictions)
+        first_benchmark = predictions[0].speed
+        # YOLOv8 returns avg time per image, so we need to multiply it by the number of images
+        benchmark = {
+            "preprocess": first_benchmark["preprocess"] * n,
+            "inference": first_benchmark["inference"] * n,
+            "postprocess": first_benchmark["postprocess"] * n,
+        }
+        predictions = [self._to_dto(prediction, settings) for prediction in predictions]
+        return predictions, benchmark
 
 
-def parse_name(model_name: str):
+def parse_model_name(model_name: str):
     v8 = int(model_name[5])
     postfix = model_name[6:].split("-")
-    variant = postfix[0].upper()
+    variant = postfix[0].upper().strip()
     if len(postfix) > 1:
         task = postfix[1]
-        name = f"YOLOv{v8}-{variant} {task}"
+        name = f"YOLOv{v8}-{variant}"
     else:
         name = f"YOLOv{v8}-{variant}"
     architecture = f"YOLOv{v8}"
