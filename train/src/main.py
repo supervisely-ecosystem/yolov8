@@ -10,6 +10,7 @@ import supervisely.io.env as env
 import src.globals as g
 from dotenv import load_dotenv
 import yaml
+from supervisely._utils import abs_url, is_development
 from supervisely.nn.benchmark.evaluation.object_detection_evaluator import (
     ObjectDetectionEvaluator,
 )
@@ -1643,17 +1644,19 @@ def start_training():
     bm.visualize()
     bm.upload_visualizations(eval_res_dir + "visualizations/")
 
+    template_vis_file = api.file.get_info_by_path(sly.env.team_id(), eval_res_dir + "visualizations/template.vue")
+
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
-    workflow_yolo.add_output(model_filename, team_files_dir, best_filename)
+    workflow_yolo.add_output(model_filename, team_files_dir, best_filename, template_vis_file)
     # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():
         file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
         train_artifacts_folder.set(file_info)
-        tmplt_file = api.file.get_info_by_path(sly.env.team_id(), eval_res_dir + "visualizations/template.vue")
 
+        rel = f"model-benchmark?id={template_vis_file.id}"
         text_model_benchmark_report.set(
-            f"<a href='{server_address}model-benchmark?id={tmplt_file.id}' target='_blank'>Open report for the best model</a>",
+            f"<a href='{abs_url(rel)}' target='_blank'>Open report for the best model</a>",
             "success",
         )
         # finish training
@@ -1684,7 +1687,6 @@ def start_training():
     sly.fs.silent_remove("train_batches.txt")
     # set task output
     sly.output.set_directory(remote_artifacts_dir)
-    sly.output.set_download
     # stop app
     app.stop()
 
