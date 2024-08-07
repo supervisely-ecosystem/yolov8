@@ -120,9 +120,9 @@ class Workflow:
                     "customNodeSettings": train_app_node,
                     "customRelationSettings": {
                         "icon": {
-                            "icon": "zmdi-check-circle-u",
-                            "color": "#DEL389",
-                            "backgroundColor": "#FFC1CC",
+                            "icon": "zmdi-assignment",
+                            "color": "#674EA7",
+                            "backgroundColor": "#CCCCFF",
                         },
                         "title": "<h4>Model Benchmark</h4>",
                         "mainLink": {
