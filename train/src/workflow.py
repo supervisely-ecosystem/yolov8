@@ -66,7 +66,13 @@ class Workflow:
             sly.logger.debug(f"Failed to add input to the workflow: {repr(e)}")
 
     @check_compatibility
-    def add_output(self, model_filename: str, team_files_dir: str, best_filename: str, template_vis_file: FileInfo):
+    def add_output(
+        self,
+        model_filename: str,
+        team_files_dir: str,
+        best_filename: str,
+        template_vis_file: FileInfo,
+    ):
         try:
             weights_file_path_in_team_files_dir = os.path.join(team_files_dir, "weights", best_filename)
             best_filename_info = self.api.file.get_info_by_path(sly.env.team_id(), weights_file_path_in_team_files_dir)
@@ -95,9 +101,16 @@ class Workflow:
                 meta = {
                     "customNodeSettings": train_app_node,
                     "customRelationSettings": {
-                        "icon": {"icon": "zmdi-folder", "color": "#FFA500", "backgroundColor": "#FFE8BE"},
+                        "icon": {
+                            "icon": "zmdi-folder",
+                            "color": "#FFA500",
+                            "backgroundColor": "#FFE8BE",
+                        },
                         "title": "<h4>Checkpoints</h4>",
-                        "mainLink": {"url": f"/files/{best_filename_info.id}/true", "title": "Open Folder"},
+                        "mainLink": {
+                            "url": f"/files/{best_filename_info.id}/true",
+                            "title": "Open Folder",
+                        },
                     },
                 }
                 sly.logger.debug(f"Workflow Output: meta \n    {meta}")
@@ -106,9 +119,16 @@ class Workflow:
                 meta = {
                     "customNodeSettings": train_app_node,
                     "customRelationSettings": {
-                        "icon": {"icon": "zmdi-folder", "color": "#FFA500", "backgroundColor": "#FFE8BE"},
+                        "icon": {
+                            "icon": "zmdi-check-circle-u",
+                            "color": "#DEL389",
+                            "backgroundColor": "#FFC1CC",
+                        },
                         "title": "<h4>Model Benchmark</h4>",
-                        "mainLink": {"url": f"/model-benchmark?id={template_vis_file.id}", "title": "Open Report"},
+                        "mainLink": {
+                            "url": f"/model-benchmark?id={template_vis_file.id}",
+                            "title": "Open Report",
+                        },
                     },
                 }
                 self.api.app.workflow.add_output_file(template_vis_file, meta=meta)
