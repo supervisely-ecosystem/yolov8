@@ -26,7 +26,9 @@ from supervisely.app.widgets import (
     Input,
     Button,
     Field,
+    Empty,
     Progress,
+    ReportThumbnail,
     # SelectDataset,
     SelectDatasetTree,
     ClassesTable,
@@ -499,6 +501,8 @@ progress_bar_convert_to_yolo = Progress()
 progress_bar_download_model = Progress()
 progress_bar_epochs = Progress()
 progress_bar_iters = Progress(hide_on_finish=False)
+creating_report_f = Field(Empty(), "", "Creating report on model...")
+creating_report_f.hide()
 plot_titles = ["train", "val", "precision & recall"]
 grid_plot = GridPlot(data=plot_titles, columns=3, gap=20)
 grid_plot_f = Field(grid_plot, "Training and validation metrics")
@@ -537,6 +541,7 @@ train_progress_content = Container(
         start_training_button,
         logs_button,
         task_logs,
+        creating_report_f,
         progress_bar_download_project,
         progress_bar_convert_to_yolo,
         progress_bar_download_model,
@@ -564,11 +569,12 @@ card_train_progress.lock()
 
 ### 7. Training artifacts
 train_artifacts_folder = FolderThumbnail()
-text_model_benchmark_report = Text()
+
+model_benchmark_report = ReportThumbnail()
 card_train_artifacts = Card(
     title="Training artifacts",
     description="Checkpoints, logs and other visualizations",
-    content=Container([train_artifacts_folder, text_model_benchmark_report]),
+    content=Container([train_artifacts_folder, model_benchmark_report]),
     collapsable=True,
     lock_message="Complete the previous step to unlock",
 )
@@ -1054,16 +1060,17 @@ def start_training():
     # get number of images in selected datasets
     dataset_infos = [api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids]
     n_images = sum([info.images_count for info in dataset_infos])
-    # download_project(
-    #     api=api,
-    #     project_info=project_info,
-    #     dataset_infos=dataset_infos,
-    #     use_cache=use_cache,
-    #     progress=progress_bar_download_project,
-    # )
-    sly.fs.remove_dir(g.project_dir)
-
-    sly.download_project(api, project_info.id, g.project_dir, save_image_info=True)
+    download_project(
+        api=api,
+        project_info=project_info,
+        dataset_infos=dataset_infos,
+        use_cache=use_cache,
+        progress=progress_bar_download_project,
+    )
+    try: #TODO find out why it fails on the new workspace
+        sly.Project(g.project_dir, sly.OpenMode.READ) 
+    except:   
+        sly.download_project(api, project_info.id, g.project_dir, save_image_info=True)
 
     # remove unselected classes
     selected_classes = classes_table.get_selected_classes()
@@ -1608,6 +1615,9 @@ def start_training():
         )
         sly.logger.info("Training artifacts uploaded successfully")
 
+    # ------------------------------------- Model Benchmark ------------------------------------- #
+    sly.logger.info(f"Creating the report for the best model: {best_filename!r}")
+    creating_report_f.show()
     m = YOLOv8Model(
         model_dir=local_artifacts_dir + "/weights",
         use_gui=False,
@@ -1632,25 +1642,20 @@ def start_training():
     )
     m._load_model(deploy_params)
     m.serve()
-
     session = SessionJSON(api, session_url="http://localhost:8000")
-
     sly.fs.remove_dir(g.app_data_dir + "/benchmark")
-
     bm = sly.nn.ObjectDetectionBenchmark(api, project_info.id, output_dir=g.app_data_dir + "/benchmark")
     bm.run_inference(session)
     gt_project_path, dt_project_path = bm._download_projects()
-
     evaluator = ObjectDetectionEvaluator(g.project_dir, dt_project_path, bm.get_eval_results_dir())
     evaluator.evaluate()
-
     eval_res_dir = f"/model-benchmark/evaluation/{project_info.id}_{project_info.name}/"
     bm.upload_eval_results(eval_res_dir)
-
     bm.visualize()
     bm.upload_visualizations(eval_res_dir + "visualizations/")
-
     template_vis_file = api.file.get_info_by_path(sly.env.team_id(), eval_res_dir + "visualizations/template.vue")
+    creating_report_f.hide()
+    # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
     workflow_yolo.add_output(model_filename, team_files_dir, best_filename, template_vis_file)
@@ -1659,13 +1664,7 @@ def start_training():
     if not app.is_stopped():
         file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
         train_artifacts_folder.set(file_info)
-
-        lnk = f"/model-benchmark?id={template_vis_file.id}"
-        lnk = abs_url(lnk) if is_development() else lnk
-        text_model_benchmark_report.set(
-            f"<a href='{lnk}' target='_blank'>Open report for the best model</a>",
-            "success",
-        )
+        model_benchmark_report.set(template_vis_file)
         # finish training
         start_training_button.loading = False
         start_training_button.disable()
