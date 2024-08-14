@@ -92,7 +92,7 @@ def update_globals(new_dataset_ids):
         project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
         print(f"Project is {project_info.name}, {dataset_ids}")
     elif project_id:
-        workspace_id = api.project.get_info_by_id(project_id).workspace_id
+        workspace_id = api.project.get_info_by_id(project_id, raise_error=True).workspace_id
         project_info = api.project.get_info_by_id(project_id)
         project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
     else:
@@ -501,6 +501,10 @@ progress_bar_convert_to_yolo = Progress()
 progress_bar_download_model = Progress()
 progress_bar_epochs = Progress()
 progress_bar_iters = Progress(hide_on_finish=False)
+making_training_vis_f = Field(Empty(), "", "Making training visualizations...")
+making_training_vis_f.hide()
+uploading_artefacts_f = Field(Empty(), "", "Uploading Artefacts...")
+uploading_artefacts_f.hide()
 creating_report_f = Field(Empty(), "", "Creating report on model...")
 creating_report_f.hide()
 plot_titles = ["train", "val", "precision & recall"]
@@ -1466,6 +1470,7 @@ def start_training():
     watcher.running = False
 
     # visualize model predictions
+    making_training_vis_f.show()
     for i in range(4):
         val_batch_labels_id, val_batch_preds_id = None, None
         labels_path = os.path.join(local_artifacts_dir, f"val_batch{i}_labels.jpg")
@@ -1528,7 +1533,9 @@ def start_training():
         if not app.is_stopped():
             additional_gallery.append(tf_mask_f1_curve_info.full_storage_url)
 
+    making_training_vis_f.hide()
     # rename best checkpoint file
+    uploading_artefacts_f.show()
     if not os.path.isfile(watch_file):
         sly.logger.warning("The file with results does not exist, training was not completed successfully.")
         app.stop()
@@ -1611,7 +1618,7 @@ def start_training():
             remote_dir=remote_artifacts_dir,
         )
         sly.logger.info("Training artifacts uploaded successfully")
-
+    uploading_artefacts_f.hide()
     # ------------------------------------- Model Benchmark ------------------------------------- #
     sly.logger.info(f"Creating the report for the best model: {best_filename!r}")
     creating_report_f.show()
