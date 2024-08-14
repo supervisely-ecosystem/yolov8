@@ -648,6 +648,7 @@ def select_input_data():
         )
     select_data_button.loading = True
     dataset_selector.disable()
+    update_globals(dataset_selector.get_selected_ids())
     use_cache_text.disable()
     classes_table.read_project_from_id(project_id)
     classes_table.select_all()
@@ -1067,10 +1068,6 @@ def start_training():
         use_cache=use_cache,
         progress=progress_bar_download_project,
     )
-    try: #TODO find out why it fails on the new workspace
-        sly.Project(g.project_dir, sly.OpenMode.READ) 
-    except:   
-        sly.download_project(api, project_info.id, g.project_dir, save_image_info=True)
 
     # remove unselected classes
     selected_classes = classes_table.get_selected_classes()
