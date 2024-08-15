@@ -176,7 +176,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         if runtime == RuntimeType.PYTORCH:
             self.model = YOLO(local_weights_path)
             self.model.to(self.device)
-        elif runtime == RuntimeType.ONNX:
+        elif runtime == RuntimeType.ONNXRUNTIME:
             if not local_weights_path.endswith(".onnx"):
                 sly.logger.info("Exporting model to ONNX format...")
                 onnx_path = self._export_onnx(local_weights_path)
