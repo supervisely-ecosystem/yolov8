@@ -62,3 +62,5 @@ class Workflow:
     @check_compatibility
     def add_output(self):
         raise NotImplementedError("add_output is not implemented in this workflow")
+
+
