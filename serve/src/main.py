@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, Generator, List, Union, Literal
 from threading import Event
 
+import numpy as np
 import cv2
 import torch
 from dotenv import load_dotenv
@@ -15,6 +16,9 @@ from supervisely.app.widgets import (
     PretrainedModelsSelector,
     RadioTabs,
     CustomModelsSelector,
+    SelectString,
+    Field,
+    Container,
 )
 from supervisely.nn.prediction_dto import (
     PredictionBBox,
@@ -32,6 +36,12 @@ root_source_path = str(Path(__file__).parents[2])
 
 api = sly.Api.from_env()
 team_id = sly.env.team_id()
+
+
+class RuntimeType:
+    PYTORCH = "PyTorch"
+    ONNXRUNTIME = "ONNXRuntime"
+    TENSORRT = "TensorRT"
 
 
 class YOLOv8Model(sly.nn.inference.ObjectDetection):
@@ -60,7 +70,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             ],
             contents=[self.pretrained_models_table, self.custom_models_table],
         )
-        return self.model_source_tabs
+        self.runtime_select = SelectString(["PyTorch", "ONNXRuntime", "TensorRT"])
+        runtime_field = Field(self.runtime_select, "Runtime", "Select a runtime for inference.")
+        layout = Container([self.model_source_tabs, runtime_field])
+        return layout
 
     def get_params_from_gui(self) -> dict:
         model_source = self.model_source_tabs.get_active_tab()
@@ -69,10 +82,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             model_params = self.pretrained_models_table.get_selected_model_params()
         elif model_source == "Custom models":
             model_params = self.custom_models_table.get_selected_model_params()
-
         self.task_type = model_params.get("task_type")
+        runtime = self.runtime_select.get_value()
         deploy_params = {
             "device": self.device,
+            "runtime": runtime,
             **model_params,
         }
 
@@ -132,6 +146,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         ],
         checkpoint_name: str,
         checkpoint_url: str,
+        runtime: str,
     ):
         """
         Load model method is used to deploy model.
@@ -147,7 +162,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :param checkpoint_url: The URL where the model can be downloaded.
         :type checkpoint_url: str
         """
+        self.device = device
+        self.runtime = runtime
         self.task_type = task_type
+
         local_weights_path = os.path.join(self.model_dir, checkpoint_name)
         if not sly.fs.file_exists(local_weights_path):
             self.download(
@@ -155,15 +173,20 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 dst_path=local_weights_path,
             )
 
-        self.model = YOLO(local_weights_path)
-        if device.startswith("cuda"):
-            if device == "cuda":
-                self.device = 0
-            else:
-                self.device = int(device[-1])
-        else:
-            self.device = "cpu"
-        self.model.to(self.device)
+        if runtime == RuntimeType.PYTORCH:
+            self.model = YOLO(local_weights_path)
+            self.model.to(self.device)
+        elif runtime == RuntimeType.ONNX:
+            if not local_weights_path.endswith(".onnx"):
+                sly.logger.info("Exporting model to ONNX format...")
+                onnx_path = self._export_onnx(local_weights_path)
+            self.model = YOLO(onnx_path)
+        elif runtime == RuntimeType.TENSORRT:
+            if not local_weights_path.endswith(".engine"):
+                sly.logger.info("Exporting model to TensorRT format...")
+                trt_path = self._export_tensorrt(local_weights_path)
+            self.model = YOLO(trt_path)
+
         self.load_model_meta(model_source, local_weights_path)
 
     def get_info(self):
@@ -175,7 +198,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         if self.task_type == "pose estimation":
             info["detector_included"] = True
         return info
-
+    
     def get_classes(self) -> List[str]:
         return self.class_names
 
@@ -362,13 +385,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 predictions_generator.close()
                 return
             yield self._to_dto(prediction, settings)
-
-    def predict_batch(
-        self, images_np: List, settings: Dict[str, Any]
-    ) -> List[List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]]:
+    
+    def predict_benchmark(self, images_np: List[np.ndarray], settings: Dict):
+        # RGB to BGR
+        images_np = [cv2.cvtColor(img, cv2.COLOR_RGB2BGR) for img in images_np]
         retina_masks = self.task_type == "instance segmentation"
         predictions = self.model(
-            source=[cv2.cvtColor(img, cv2.COLOR_RGB2BGR) for img in images_np],
+            source=images_np,
             conf=settings["conf"],
             iou=settings["iou"],
             half=settings["half"],
@@ -377,23 +400,28 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             agnostic_nms=settings["agnostic_nms"],
             retina_masks=retina_masks,
         )
-        return [self._to_dto(prediction, settings) for prediction in predictions]
-
-    def predict(
-        self, image_path: str, settings: Dict[str, Any]
-    ) -> List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]:
-        retina_masks = self.task_type == "instance segmentation"
-        predictions = self.model(
-            source=image_path,
-            conf=settings["conf"],
-            iou=settings["iou"],
-            half=settings["half"],
-            device=self.device,
-            max_det=settings["max_det"],
-            agnostic_nms=settings["agnostic_nms"],
-            retina_masks=retina_masks,
-        )
-        return self._to_dto(predictions[0], settings)
+        n = len(predictions)
+        first_benchmark = predictions[0].speed
+        # YOLOv8 returns avg time per image, so we need to multiply it by the number of images
+        benchmark = {
+            "preprocess": first_benchmark["preprocess"] * n,
+            "inference": first_benchmark["inference"] * n,
+            "postprocess": first_benchmark["postprocess"] * n,
+        }
+        predictions = [self._to_dto(prediction, settings) for prediction in predictions]
+        return predictions, benchmark
+    
+    def _export_onnx(self, weights_path: str):
+        model = YOLO(weights_path)
+        onnx_path = weights_path.replace(".pt", ".onnx")
+        model.export(format="onnx")
+        return onnx_path
+    
+    def _export_tensorrt(self, weights_path: str):
+        model = YOLO(weights_path)
+        trt_path = weights_path.replace(".pt", ".engine")
+        model.export(format="engine")
+        return trt_path
 
 
 m = YOLOv8Model(
