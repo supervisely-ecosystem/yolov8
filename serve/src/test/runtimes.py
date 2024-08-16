@@ -2,17 +2,20 @@ import os
 
 from tqdm import tqdm
 import supervisely as sly
+from dotenv import load_dotenv
 
 from src.models import yolov8_models
 from src.main import YOLOv8Model, RuntimeType
 
+
+load_dotenv("local.env")
+load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 m = YOLOv8Model(
     model_dir="app_data",
     use_gui=False,
     custom_inference_settings="serve/custom_settings.yaml"
 )
-
 
 det_url = yolov8_models[0]['meta']['weights_url']
 seg_url = "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8n-seg.pt"
@@ -24,8 +27,18 @@ models = [
     ("pose estimation", pose_url),
 ]
 
-img_path = "/root/yolov8/tmp.jpg"
-img_np = sly.image.read(img_path)
+img_path = None
+img_np = None
+
+
+def ensure_taco():
+    global img_np, img_path
+    img_path = "app_data/taco.jpg"
+    taco_img_id = 30402303
+    if not os.path.exists(img_path):
+        api = sly.Api()
+        api.image.download_path(taco_img_id, img_path)
+    img_np = sly.image.read(img_path)
 
 
 def test_pretrained():
@@ -47,6 +60,7 @@ def test_pretrained():
 
 
 def test_custom():
+    ensure_taco()
     task = "object detection"
     custom_url = "/yolov8_train/object detection/TACO-10 trainset/57436/weights/best_277.pt"
     for runtime in [RuntimeType.PYTORCH, RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT]:
@@ -61,7 +75,7 @@ def test_custom():
         settings = m.custom_inference_settings_dict
         # settings["conf"] = 0.45
         pred = m.predict_benchmark([img_np], settings)[0][0]
-        m.visualize(pred, img_path, f"result_{runtime}_{task}.jpg", thickness=3)
+        m.visualize(pred, img_path, f"app_data/results/result_taco_{runtime}_{task}.jpg", thickness=5)
 
 
 # test_pretrained()
