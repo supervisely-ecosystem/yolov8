@@ -70,7 +70,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             ],
             contents=[self.pretrained_models_table, self.custom_models_table],
         )
-        self.runtime_select = SelectString(["PyTorch", "ONNXRuntime", "TensorRT"])
+        self.runtime_select = SelectString([RuntimeType.PYTORCH, RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT])
         runtime_field = Field(self.runtime_select, "Runtime", "Select a runtime for inference.")
         layout = Container([self.model_source_tabs, runtime_field])
         return layout
@@ -174,18 +174,12 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             )
 
         if runtime == RuntimeType.PYTORCH:
-            self.model = YOLO(local_weights_path)
+            self.model = self._load_pytorch(local_weights_path)
             self.model.to(self.device)
         elif runtime == RuntimeType.ONNXRUNTIME:
-            if not local_weights_path.endswith(".onnx"):
-                sly.logger.info("Exporting model to ONNX format...")
-                onnx_path = self._export_onnx(local_weights_path)
-            self.model = YOLO(onnx_path)
+            self.model = self._load_onnx(local_weights_path)
         elif runtime == RuntimeType.TENSORRT:
-            if not local_weights_path.endswith(".engine"):
-                sly.logger.info("Exporting model to TensorRT format...")
-                trt_path = self._export_tensorrt(local_weights_path)
-            self.model = YOLO(trt_path)
+            self.model = self._load_tensorrt(local_weights_path)
 
         self.load_model_meta(model_source, local_weights_path)
 
@@ -411,17 +405,25 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         predictions = [self._to_dto(prediction, settings) for prediction in predictions]
         return predictions, benchmark
     
-    def _export_onnx(self, weights_path: str):
+    def _load_pytorch(self, weights_path: str):
         model = YOLO(weights_path)
-        onnx_path = weights_path.replace(".pt", ".onnx")
-        model.export(format="onnx")
-        return onnx_path
+        return model
     
-    def _export_tensorrt(self, weights_path: str):
-        model = YOLO(weights_path)
-        trt_path = weights_path.replace(".pt", ".engine")
-        model.export(format="engine")
-        return trt_path
+    def _load_runtime(self, weights_path: str, format: str):
+        if weights_path.endswith(".pt"):
+            onnx_path = weights_path.replace(".pt", f".{format}")
+            if not os.path.exists(onnx_path):
+                sly.logger.info(f"Exporting model to {format} format...")
+                model = YOLO(weights_path)
+                model.export(format=format)
+        model = YOLO(onnx_path)
+        return model
+    
+    def _load_onnx(self, weights_path: str):
+        return self._load_runtime(weights_path, "onnx")
+    
+    def _load_tensorrt(self, weights_path: str):
+        return self._load_runtime(weights_path, "engine")
 
 
 m = YOLOv8Model(
