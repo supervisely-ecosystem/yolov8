@@ -71,7 +71,7 @@ import ruamel.yaml
 from fastapi import Response, Request
 import uuid
 import matplotlib.pyplot as plt
-from src.serve import YOLOv8Model
+from src.serve import YOLOv8ModelBM
 from src.workflow import Workflow
 
 
@@ -575,6 +575,7 @@ card_train_progress.lock()
 train_artifacts_folder = FolderThumbnail()
 
 model_benchmark_report = ReportThumbnail()
+model_benchmark_report.hide()
 card_train_artifacts = Card(
     title="Training artifacts",
     description="Checkpoints, logs and other visualizations",
@@ -1622,7 +1623,7 @@ def start_training():
     # ------------------------------------- Model Benchmark ------------------------------------- #
     sly.logger.info(f"Creating the report for the best model: {best_filename!r}")
     creating_report_f.show()
-    m = YOLOv8Model(
+    m = YOLOv8ModelBM(
         model_dir=local_artifacts_dir + "/weights",
         use_gui=False,
         custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
@@ -1642,7 +1643,7 @@ def start_training():
         model_source="Custom models",
         task_type="object detection",
         checkpoint_name=best_filename,
-        # checkpoint_url="",
+        checkpoint_url=os.path.join(remote_weights_dir, best_filename),
     )
     m._load_model(deploy_params)
     m.serve()
@@ -1667,13 +1668,13 @@ def start_training():
     template_vis_file = api.file.get_info_by_path(sly.env.team_id(), remote_dir + "template.vue")
     creating_report_f.hide()
     model_benchmark_report.set(template_vis_file)
+    model_benchmark_report.show()
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
     workflow_yolo.add_output(model_filename, team_files_dir, best_filename, template_vis_file)
-    workflow_yolo.add_output(bm.diff_project_info)
-    workflow_yolo.add_output(bm.dt_project_info)
-    workflow_yolo.add_output(eval_res_dir)
+    workflow_yolo.add_output_project(bm.diff_project_info)
+    workflow_yolo.add_output_project(bm.dt_project_info)
     # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():
