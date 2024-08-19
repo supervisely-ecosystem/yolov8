@@ -1653,10 +1653,17 @@ def start_training():
     gt_project_path, dt_project_path = bm._download_projects()
     evaluator = ObjectDetectionEvaluator(g.project_dir, dt_project_path, bm.get_eval_results_dir())
     evaluator.evaluate()
-    eval_res_dir = f"/model-benchmark/evaluation/{project_info.id}_{project_info.name}/"
+
+    task_info = api.task.get_info_by_id(g.app_session_id)
+    task_dir = f"{g.app_session_id}_task_{task_info['meta']['app']['name']}"
+    eval_res_dir = f"/model-benchmark/evaluation/{project.id}_{project.name}/{task_dir}/"
+    eval_res_dir = api.storage.get_free_dir_name(g.team_id, eval_res_dir)
+
     bm.upload_eval_results(eval_res_dir)
     bm.visualize()
-    bm.upload_visualizations(eval_res_dir + "visualizations/")
+    remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
+    report = bm.save_reporn_link(remote_dir)
+
     template_vis_file = api.file.get_info_by_path(sly.env.team_id(), eval_res_dir + "visualizations/template.vue")
     creating_report_f.hide()
     # ----------------------------------------------- - ---------------------------------------------- #
