@@ -1657,7 +1657,7 @@ def start_training():
     task_info = api.task.get_info_by_id(g.app_session_id)
     task_dir = f"{g.app_session_id}_task_{task_info['meta']['app']['name']}"
     eval_res_dir = f"/model-benchmark/evaluation/{project_info.id}_{project_info.name}/{task_dir}/"
-    eval_res_dir = api.storage.get_free_dir_name(g.team_id, eval_res_dir)
+    eval_res_dir = api.storage.get_free_dir_name(sly.env.team_id(), eval_res_dir)
 
     bm.upload_eval_results(eval_res_dir)
     bm.visualize()
