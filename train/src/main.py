@@ -1664,18 +1664,22 @@ def start_training():
     remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
     report = bm.save_reporn_link(remote_dir)
 
-    template_vis_file = api.file.get_info_by_path(sly.env.team_id(), eval_res_dir + "visualizations/template.vue")
+    template_vis_file = api.file.get_info_by_path(sly.env.team_id(), remote_dir + "template.vue")
     creating_report_f.hide()
+    model_benchmark_report.set(template_vis_file)
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
     workflow_yolo.add_output(model_filename, team_files_dir, best_filename, template_vis_file)
+    workflow_yolo.add_output(bm.diff_project_info)
+    workflow_yolo.add_output(bm.dt_project_info)
+    workflow_yolo.add_output(eval_res_dir)
     # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():
         file_info = api.file.get_info_by_path(sly.env.team_id(), team_files_dir + "/results.csv")
         train_artifacts_folder.set(file_info)
-        model_benchmark_report.set(template_vis_file)
+        # model_benchmark_report.set(template_vis_file)
         # finish training
         start_training_button.loading = False
         start_training_button.disable()
