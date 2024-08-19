@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from typing import Literal
 
@@ -7,10 +8,18 @@ from dotenv import load_dotenv
 from supervisely.nn.inference import CheckpointInfo
 from ultralytics import YOLO
 
-from ...serve.src.main import YOLOv8Model
+root_source_path = Path(__file__).parent.parent.parent
+serve_path = root_source_path.joinpath("serve")
+if not serve_path.exists():
+    raise FileNotFoundError(f"Not found serve module for model benchmark evaluation: {serve_path}")
 
-load_dotenv("local.env")
-load_dotenv(os.path.expanduser("~/supervisely.env"))
+sys.path.insert(0, str(serve_path.resolve()))
+
+from serve.src.main import YOLOv8Model
+
+if sly.is_development():
+    load_dotenv("local.env")
+    load_dotenv(os.path.expanduser("~/supervisely.env"))
 
 root_source_path = str(Path(__file__).parents[2])
 

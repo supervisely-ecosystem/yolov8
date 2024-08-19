@@ -71,7 +71,7 @@ import ruamel.yaml
 from fastapi import Response, Request
 import uuid
 import matplotlib.pyplot as plt
-from src.serve import YOLOv8ModelBM
+from src.mb_serve import YOLOv8ModelBM
 from src.workflow import Workflow
 
 
