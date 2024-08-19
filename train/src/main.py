@@ -71,7 +71,7 @@ import ruamel.yaml
 from fastapi import Response, Request
 import uuid
 import matplotlib.pyplot as plt
-from src.mb_serve import YOLOv8ModelBM
+from src.serve import YOLOv8ModelBM
 from src.workflow import Workflow
 
 
@@ -1629,12 +1629,6 @@ def start_training():
         custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
     )
 
-    if sly.is_development():  # TODO rm when release
-        import shutil
-
-        src = "/tmp/weights/best_99.pt"
-        dest = "/workspaces/yolov8/train/runs/detect/train/weights/" + best_filename
-        shutil.copy(src, dest)
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
