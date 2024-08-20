@@ -3,77 +3,74 @@
 import os
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-from pathlib import Path
-import numpy as np
-import yaml
+import math
 import random
+import threading
+import uuid
+from functools import partial
+from pathlib import Path
+from urllib.request import urlopen
+
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import ruamel.yaml
+import src.globals as g
 import supervisely as sly
 import supervisely.io.env as env
-import src.globals as g
-from dotenv import load_dotenv
+import torch
 import yaml
+from dotenv import load_dotenv
+from fastapi import Request, Response
+from src.dataset_cache import download_project
+from src.metrics_watcher import Watcher
+from src.serve import YOLOv8ModelBM
+from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
+from src.utils import custom_plot, deploy_the_best_model, verify_train_val_sets
+from src.workflow import Workflow
 from supervisely._utils import abs_url, is_development
+from supervisely.app.widgets import (  # SelectDataset,
+    Button,
+    Card,
+    Checkbox,
+    ClassesTable,
+    Collapse,
+    Container,
+    Dialog,
+    DoneLabel,
+    Editor,
+    Empty,
+    Field,
+    FileThumbnail,
+    Flexbox,
+    FolderThumbnail,
+    GridGallery,
+    GridPlot,
+    ImageSlider,
+    Input,
+    InputNumber,
+    NotificationBox,
+    Progress,
+    RadioGroup,
+    RadioTable,
+    RadioTabs,
+    ReportThumbnail,
+    SelectDatasetTree,
+    SelectString,
+    SlyTqdm,
+    Stepper,
+    Switch,
+    TaskLogs,
+    Text,
+    TrainValSplits,
+)
+from supervisely.nn.artifacts.yolov8 import YOLOv8
 from supervisely.nn.benchmark.evaluation.object_detection_evaluator import (
     ObjectDetectionEvaluator,
 )
-
-from supervisely.nn.artifacts.yolov8 import YOLOv8
-from supervisely.app.widgets import (
-    Container,
-    Card,
-    SelectString,
-    InputNumber,
-    Input,
-    Button,
-    Field,
-    Empty,
-    Progress,
-    ReportThumbnail,
-    # SelectDataset,
-    SelectDatasetTree,
-    ClassesTable,
-    DoneLabel,
-    Editor,
-    Checkbox,
-    RadioTabs,
-    RadioTable,
-    RadioGroup,
-    NotificationBox,
-    FileThumbnail,
-    GridPlot,
-    FolderThumbnail,
-    TrainValSplits,
-    Flexbox,
-    GridGallery,
-    TaskLogs,
-    Stepper,
-    Text,
-    Collapse,
-    ImageSlider,
-    Dialog,
-    Switch,
-)
-from src.utils import verify_train_val_sets, custom_plot, deploy_the_best_model
-from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
-import supervisely as sly
 from supervisely.nn.inference import Session, SessionJSON
-from src.dataset_cache import download_project
 from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
-import torch
-from src.metrics_watcher import Watcher
-import threading
-import pandas as pd
-from functools import partial
-from urllib.request import urlopen
-import math
-import ruamel.yaml
-from fastapi import Response, Request
-import uuid
-import matplotlib.pyplot as plt
-from src.serve import YOLOv8ModelBM
-from src.workflow import Workflow
-
 
 ConfusionMatrix.plot = custom_plot
 plt.switch_backend("Agg")
@@ -538,6 +535,7 @@ additional_gallery = GridGallery(
 additional_gallery_f = Field(additional_gallery, "Additional training results visualization")
 additional_gallery_f.hide()
 progress_bar_upload_artifacts = Progress()
+model_benchmark_pbar = SlyTqdm()
 train_done = DoneLabel("Training completed. Training artifacts were uploaded to Team Files")
 train_done.hide()
 train_progress_content = Container(
@@ -557,6 +555,7 @@ train_progress_content = Container(
         val_batches_gallery_f,
         additional_gallery_f,
         progress_bar_upload_artifacts,
+        model_benchmark_pbar,
         train_done,
     ]
 )
@@ -1629,7 +1628,6 @@ def start_training():
         custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
     )
 
-
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("Using device:", device)
 
@@ -1646,10 +1644,21 @@ def start_training():
     m.serve()
     session = SessionJSON(api, session_url="http://localhost:8000")
     sly.fs.remove_dir(g.app_data_dir + "/benchmark")
-    bm = sly.nn.ObjectDetectionBenchmark(api, project_info.id, output_dir=g.app_data_dir + "/benchmark")
+    bm = sly.nn.ObjectDetectionBenchmark(
+        api,
+        project_info.id,
+        output_dir=g.app_data_dir + "/benchmark",
+        progress=model_benchmark_pbar,
+    )
     bm.run_inference(session)
     gt_project_path, dt_project_path = bm._download_projects()
-    evaluator = ObjectDetectionEvaluator(g.project_dir, dt_project_path, bm.get_eval_results_dir())
+    evaluator = ObjectDetectionEvaluator(
+        g.project_dir,
+        dt_project_path,
+        bm.get_eval_results_dir(),
+        project_info.items_count,
+        model_benchmark_pbar,
+    )
     evaluator.evaluate()
 
     task_info = api.task.get_info_by_id(g.app_session_id)
