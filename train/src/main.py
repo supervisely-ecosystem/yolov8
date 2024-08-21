@@ -65,9 +65,8 @@ from supervisely.app.widgets import (  # SelectDataset,
     TrainValSplits,
 )
 from supervisely.nn.artifacts.yolov8 import YOLOv8
-from supervisely.nn.benchmark.evaluation.object_detection_evaluator import (
-    ObjectDetectionEvaluator,
-)
+from supervisely.nn.benchmark import ObjectDetectionBenchmark
+from supervisely.nn.benchmark.evaluation import ObjectDetectionEvaluator
 from supervisely.nn.inference import Session, SessionJSON
 from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
@@ -1619,69 +1618,81 @@ def start_training():
         )
         sly.logger.info("Training artifacts uploaded successfully")
     uploading_artefacts_f.hide()
+
+
     # ------------------------------------- Model Benchmark ------------------------------------- #
-    sly.logger.info(f"Creating the report for the best model: {best_filename!r}")
-    creating_report_f.show()
-    m = YOLOv8ModelBM(
-        model_dir=local_artifacts_dir + "/weights",
-        use_gui=False,
-        custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
-    )
+    try:
+        model_benchmark_finished = False
+        sly.logger.info(f"Creating the report for the best model: {best_filename!r}")
+        creating_report_f.show()
+        m = YOLOv8ModelBM(
+            model_dir=local_artifacts_dir + "/weights",
+            use_gui=False,
+            custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
+        )
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-    print("Using device:", device)
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        sly.logger.info("Using device:", device)
 
-    checkpoint_path = os.path.join(remote_weights_dir, best_filename)
-    checkpoint_url = api.file.get_info_by_path(sly.env.team_id(), checkpoint_path)
-    deploy_params = dict(
-        device=device,
-        model_source="Custom models",
-        task_type="object detection",
-        checkpoint_name=best_filename,
-        checkpoint_url=f"/files/{checkpoint_url.id}",
-    )
-    m._load_model(deploy_params)
-    m.serve()
-    session = SessionJSON(api, session_url="http://localhost:8000")
-    sly.fs.remove_dir(g.app_data_dir + "/benchmark")
-    bm = sly.nn.ObjectDetectionBenchmark(
-        api,
-        project_info.id,
-        output_dir=g.app_data_dir + "/benchmark",
-        progress=model_benchmark_pbar,
-    )
-    bm.run_inference(session)
-    gt_project_path, dt_project_path = bm._download_projects()
-    evaluator = ObjectDetectionEvaluator(
-        g.project_dir,
-        dt_project_path,
-        bm.get_eval_results_dir(),
-        project_info.items_count,
-        model_benchmark_pbar,
-    )
-    evaluator.evaluate()
+        checkpoint_path = os.path.join(remote_weights_dir, best_filename)
+        checkpoint_url = api.file.get_info_by_path(sly.env.team_id(), checkpoint_path)
+        deploy_params = dict(
+            device=device,
+            model_source="Custom models",
+            task_type="object detection",
+            checkpoint_name=best_filename,
+            checkpoint_url=f"/files/{checkpoint_url.id}",
+        )
+        m._load_model(deploy_params)
+        m.serve()
+        session = SessionJSON(api, session_url="http://localhost:8000")
+        sly.fs.remove_dir(g.app_data_dir + "/benchmark")
+        bm = ObjectDetectionBenchmark(
+            api,
+            project_info.id,
+            output_dir=g.app_data_dir + "/benchmark",
+            progress=model_benchmark_pbar,
+        )
+        bm.run_inference(session)
+        gt_project_path, dt_project_path = bm._download_projects()
+        evaluator = ObjectDetectionEvaluator(
+            g.project_dir,
+            dt_project_path,
+            bm.get_eval_results_dir(),
+            project_info.items_count,
+            model_benchmark_pbar,
+        )
+        evaluator.evaluate()
 
-    task_info = api.task.get_info_by_id(g.app_session_id)
-    task_dir = f"{g.app_session_id}_task_{task_info['meta']['app']['name']}"
-    eval_res_dir = f"/model-benchmark/evaluation/{project_info.id}_{project_info.name}/{task_dir}/"
-    eval_res_dir = api.storage.get_free_dir_name(sly.env.team_id(), eval_res_dir)
+        task_info = api.task.get_info_by_id(g.app_session_id)
+        task_dir = f"{g.app_session_id}_task_{task_info['meta']['app']['name']}"
+        eval_res_dir = f"/model-benchmark/evaluation/{project_info.id}_{project_info.name}/{task_dir}/"
+        eval_res_dir = api.storage.get_free_dir_name(sly.env.team_id(), eval_res_dir)
 
-    bm.upload_eval_results(eval_res_dir)
-    bm.visualize()
-    remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
-    report = bm.save_reporn_link(remote_dir)
+        bm.upload_eval_results(eval_res_dir)
+        bm.visualize()
+        remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
+        report = bm.save_reporn_link(remote_dir)
 
-    template_vis_file = api.file.get_info_by_path(sly.env.team_id(), remote_dir + "template.vue")
-    creating_report_f.hide()
-    model_benchmark_report.set(template_vis_file)
-    model_benchmark_report.show()
-    model_benchmark_pbar.hide()
+        template_vis_file = api.file.get_info_by_path(sly.env.team_id(), remote_dir + "template.vue")
+        creating_report_f.hide()
+        model_benchmark_report.set(template_vis_file)
+        model_benchmark_report.show()
+        model_benchmark_pbar.hide()
+        model_benchmark_finished = True
+    except Exception as e:
+        sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
+        creating_report_f.hide()
+        model_benchmark_pbar.hide()
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
-    workflow_yolo.add_output(model_filename, team_files_dir, best_filename, template_vis_file)
-    workflow_yolo.add_output_project(bm.diff_project_info)
-    workflow_yolo.add_output_project(bm.dt_project_info)
+    if model_benchmark_finished:
+        workflow_yolo.add_output(model_filename, team_files_dir, best_filename, template_vis_file)
+        workflow_yolo.add_output_project(bm.diff_project_info)
+        workflow_yolo.add_output_project(bm.dt_project_info)
+    else:
+        workflow_yolo.add_output(model_filename, team_files_dir, best_filename)
     # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():

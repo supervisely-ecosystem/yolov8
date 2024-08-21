@@ -1,5 +1,6 @@
 # Description: This file contains versioning features and the Workflow class that is used to add input and output to the workflow.
 
+from typing import Optional
 import supervisely as sly
 import os
 from supervisely.api.file_api import FileInfo
@@ -71,7 +72,7 @@ class Workflow:
         model_filename: str,
         team_files_dir: str,
         best_filename: str,
-        template_vis_file: FileInfo,
+        template_vis_file: Optional[FileInfo] = None,
     ):
         try:
             weights_file_path_in_team_files_dir = os.path.join(team_files_dir, "weights", best_filename)
@@ -116,22 +117,23 @@ class Workflow:
                 sly.logger.debug(f"Workflow Output: meta \n    {meta}")
                 self.api.app.workflow.add_output_file(best_filename_info, model_weight=True, meta=meta)
 
-                meta = {
-                    "customNodeSettings": train_app_node,
-                    "customRelationSettings": {
-                        "icon": {
-                            "icon": "zmdi-assignment",
-                            "color": "#674EA7",
-                            "backgroundColor": "#CCCCFF",
+                if template_vis_file:
+                    meta = {
+                        "customNodeSettings": train_app_node,
+                        "customRelationSettings": {
+                            "icon": {
+                                "icon": "zmdi-assignment",
+                                "color": "#674EA7",
+                                "backgroundColor": "#CCCCFF",
+                            },
+                            "title": "<h4>Model Benchmark</h4>",
+                            "mainLink": {
+                                "url": f"/model-benchmark?id={template_vis_file.id}",
+                                "title": "Open Report",
+                            },
                         },
-                        "title": "<h4>Model Benchmark</h4>",
-                        "mainLink": {
-                            "url": f"/model-benchmark?id={template_vis_file.id}",
-                            "title": "Open Report",
-                        },
-                    },
-                }
-                self.api.app.workflow.add_output_file(template_vis_file, meta=meta)
+                    }
+                    self.api.app.workflow.add_output_file(template_vis_file, meta=meta)
 
             else:
                 sly.logger.debug(
