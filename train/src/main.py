@@ -1675,6 +1675,7 @@ def start_training():
     creating_report_f.hide()
     model_benchmark_report.set(template_vis_file)
     model_benchmark_report.show()
+    model_benchmark_pbar.hide()
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
