@@ -549,13 +549,13 @@ train_progress_content = Container(
         progress_bar_download_model,
         progress_bar_epochs,
         progress_bar_iters,
+        model_benchmark_pbar,
         grid_plot_f,
         plot_notification,
         train_batches_gallery_f,
         val_batches_gallery_f,
         additional_gallery_f,
         progress_bar_upload_artifacts,
-        model_benchmark_pbar,
         train_done,
     ]
 )
