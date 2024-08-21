@@ -3,3 +3,7 @@
 *.pyc
 .DS_Store
 supervisely
+supervisely.env
+local.env
+app_data/
+**/__pycache__/
