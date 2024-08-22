@@ -46,7 +46,6 @@ This app deploys YOLOv8, YOLOv9, and YOLOv10 models (pretrained on COCO, Open Im
 
 - v1.0.60 - Extended support for Open Images V7 and YOLOv9 checkpoints.
 - v1.0.63 - Added multiclass pose estimation support.
-- v1.0.71 - Added `dill` into the Docker image for better dependency management.
 - v1.0.73 - Enabled support for freezing layers to allow more flexible model training.
 - v1.0.87 - Integrated the YOLOv10 checkpoints.
 
