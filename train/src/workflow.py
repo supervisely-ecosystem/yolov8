@@ -22,8 +22,8 @@ def workflow_input(
                 version_in_title = "v10"
         project_version_id = api.project.version.create(
             project_info,
-            f"Train YOLO {version_in_title}",
-            f"This backup was created automatically by Supervisely before the Train YOLO {version_in_title} task with ID: {api.task_id}",
+            f"Train YOLO{version_in_title}",
+            f"This backup was created automatically by Supervisely before the Train YOLO{version_in_title} task with ID: {api.task_id}",
         )
     except Exception as e:
         sly.logger.warning(f"Failed to create a project version: {repr(e)}")
@@ -59,14 +59,14 @@ def workflow_output(
         sly.logger.debug(
             f"Workflow Output: Model filename - {model_filename}, Team Files dir - {team_files_dir}, Best filename - {best_filename}"
         )
+        model_name = "Custom Model"
         if model_filename and "v8" in model_filename:
-            model_name = "YOLO v8"
+            model_name = "YOLOv8"
         elif model_filename and "v9" in model_filename:
-            model_name = "YOLO v9"
+            model_name = "YOLOv9"
         elif model_filename and "v10" in model_filename:
-            model_name = "YOLO v10"
-        else:
-            model_name = "Custom Model"
+            model_name = "YOLOv10"
+            
         if best_filename_info:
             node_settings = sly.WorkflowSettings(
                 title=f"Train {model_name}",
@@ -80,8 +80,8 @@ def workflow_output(
             relation_settings = sly.WorkflowSettings(
                 title="Checkpoints",
                 icon="folder",
-                color="#FFA500",
-                background_color="#FFE8BE",
+                icon_color="#FFA500",
+                icon_bg_color="#FFE8BE",
                 url=f"/files/{best_filename_info.id}/true",
                 url_title="Open Folder",
             )

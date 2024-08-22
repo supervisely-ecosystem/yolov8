@@ -10,11 +10,11 @@ def workflow_input(api: sly.Api, model_params: dict):
         model_name = "Custom Model"
         if checkpoint_name is not None:
             if "v8" in checkpoint_name:
-                model_name = "YOLO v8"
+                model_name = "YOLOv8"
             elif "v9" in checkpoint_name:
-                model_name = "YOLO v9"
+                model_name = "YOLOv9"
             elif "v10" in checkpoint_name:
-                model_name = "YOLO v10"
+                model_name = "YOLOv10"
 
         meta = sly.WorkflowMeta(node_settings=sly.WorkflowSettings(title=f"Serve {model_name}"))
 
