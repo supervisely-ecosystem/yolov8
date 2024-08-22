@@ -1661,11 +1661,11 @@ def start_training():
         bm.run_inference(session)
 
         # 3. Pull results from the server
-        _, dt_project_path = bm.download_projects(save_images=False)
+        gt_project_path, dt_project_path = bm.download_projects(save_images=False)
 
         # 4. Evaluate
         evaluator = ObjectDetectionEvaluator(
-            g.project_dir,
+            gt_project_path,
             dt_project_path,
             bm.get_eval_results_dir(),
             project_info.items_count,
