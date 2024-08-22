@@ -24,7 +24,7 @@ from dotenv import load_dotenv
 from fastapi import Request, Response
 from src.dataset_cache import download_project
 from src.metrics_watcher import Watcher
-from src.serve import YOLOv8ModelBM
+from src.serve import YOLOv8ModelMB
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.utils import custom_plot, get_eval_results_dir_name, verify_train_val_sets
 from src.workflow import Workflow
@@ -1627,7 +1627,7 @@ def start_training():
             creating_report_f.show()
 
             # 0. Serve trained model
-            m = YOLOv8ModelBM(
+            m = YOLOv8ModelMB(
                 model_dir=local_artifacts_dir + "/weights",
                 use_gui=False,
                 custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
@@ -1643,8 +1643,7 @@ def start_training():
                 model_source="Custom models",
                 task_type="object detection",
                 checkpoint_name=best_filename,
-                checkpoint_url=f"/files/{checkpoint_file_info.id}",
-                checkpoint_path=checkpoint_file_info.path
+                checkpoint_url=f"/files/{checkpoint_file_info.id}"
             )
             m._load_model(deploy_params)
             m.serve()
