@@ -1,8 +1,8 @@
 
 <div align="center" markdown>
-<img src="https://github.com/supervisely-ecosystem/yolov8/assets/119248312/48a1e99c-23f9-469e-ac32-3c9614622042"/>  
+<img src="https://github.com/user-attachments/assets/820466a4-8623-4682-bde1-414a46960291"/>  
 
-# Train YOLO (v8, v9)
+# Train YOLOv8 | v9 | v10
 
 <p align="center">
   <a href="#Overview">Overview</a> •
@@ -24,13 +24,25 @@
 
 # Overview
 
-This application now supports different checkpoints from YOLOv8 and YOLOv9 architectures.
+🔥 Application now supports different checkpoints from YOLOv8, YOLOv9 and YOLOv10 architectures.
 
 YOLOv8 is a powerful neural network architecture that provides both decent accuracy of predictions and high speed of inference. In comparison to YOLOv5, YOLOv8 uses an anchor-free head (allowing to speed up the non-max suppression (NMS) process), a new backbone, and new loss functions.
 
-YOLOv9, the latest iteration, builds upon the advancements of YOLOv8 by further improving the model's performance and efficiency. It incorporates extended feature extraction techniques, advanced loss functions and optimized training processes for better accuracy and faster inference times.
+YOLOv9 builds on the advancements of YOLOv8 by further improving the model's performance and efficiency. It incorporates extended feature extraction techniques, advanced loss functions and optimized training processes for better accuracy and faster inference times.
+
+YOLOv10, the latest iteration, introduces consistent dual assignments for NMS-free training and adopts a holistic efficiency-accuracy-driven model design strategy.
 
 This app allows you to train models using both YOLOv8 and YOLOv9 on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
+
+---
+
+**Updates:**
+
+- v1.0.60 - Extended support for Open Images V7 and YOLOv9 checkpoints.
+- v1.0.63 - Added multiclass pose estimation support.
+- v1.0.71 - Added `dill` into the Docker image for better dependency management.
+- v1.0.73 - Enabled support for freezing layers to allow more flexible model training.
+- v1.0.87 - Integrated the YOLOv10 checkpoints.
 
 🔥🔥🔥 Check out our [youtube tutorial](https://youtu.be/Rsr8xWJ6s9I) and the [complete guide in our blog](https://supervisely.com/blog/train-yolov8-on-custom-data-no-code/):   
 
@@ -38,7 +50,7 @@ This app allows you to train models using both YOLOv8 and YOLOv9 on a selected d
 
 # How To Run
 
-Select images project, select GPU device in "Agent" field, click on RUN button:
+Select images project, select GPU device in "Agent" field, click on `RUN` button:
 
 https://user-images.githubusercontent.com/91027877/249008934-293b3176-d5f3-4edb-9816-15bffd3bb869.mp4
 
@@ -55,7 +67,7 @@ You can use your trained models outside Supervisely platform without any depende
 - [Export to YOLOv8 format](https://ecosystem.supervise.ly/apps/export-to-yolov8) - app allows to transform data from Supervisely format to YOLOv8 format.   
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/export-to-yolov8" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/01d6658f-11c3-40a3-8ff5-100a27fa1480" height="70px" margin-bottom="20px"/>  
 
-- [Serve YOLO (v8, v9)](https://ecosystem.supervise.ly/apps/yolov8/serve) - app allows to deploy YOLO (v8, v9) model as REST API service.   
+- [Serve YOLOv8 | v9 | v10](https://ecosystem.supervise.ly/apps/yolov8/serve) - app allows to deploy YOLO (v8, v9) model as REST API service.   
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/yolov8/serve" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/721f5344-013c-4466-bc05-88cc3efef5ca" height="70px" margin-bottom="20px"/>
   
 # Screenshot
