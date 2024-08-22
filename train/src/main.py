@@ -26,7 +26,7 @@ from src.dataset_cache import download_project
 from src.metrics_watcher import Watcher
 from src.serve import YOLOv8ModelBM
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
-from src.utils import custom_plot, deploy_the_best_model, verify_train_val_sets
+from src.utils import custom_plot, get_eval_results_dir, verify_train_val_sets
 from src.workflow import Workflow
 from supervisely._utils import abs_url, is_development
 from supervisely.app.widgets import (  # SelectDataset,
@@ -1619,12 +1619,13 @@ def start_training():
         sly.logger.info("Training artifacts uploaded successfully")
     uploading_artefacts_f.hide()
 
-
     # ------------------------------------- Model Benchmark ------------------------------------- #
     try:
         model_benchmark_finished = False
         sly.logger.info(f"Creating the report for the best model: {best_filename!r}")
         creating_report_f.show()
+
+        # 0. Serve trained model
         m = YOLOv8ModelBM(
             model_dir=local_artifacts_dir + "/weights",
             use_gui=False,
@@ -1647,14 +1648,22 @@ def start_training():
         m.serve()
         session = SessionJSON(api, session_url="http://localhost:8000")
         sly.fs.remove_dir(g.app_data_dir + "/benchmark")
+
+        # 1. Init benchmark (todo: auto-detect task type)
         bm = ObjectDetectionBenchmark(
             api,
             project_info.id,
             output_dir=g.app_data_dir + "/benchmark",
             progress=model_benchmark_pbar,
         )
+
+        # 2. Run inference
         bm.run_inference(session)
-        gt_project_path, dt_project_path = bm._download_projects()
+
+        # 3. Pull results from the server
+        _, dt_project_path = bm.download_projects(save_images=False)
+
+        # 4. Evaluate
         evaluator = ObjectDetectionEvaluator(
             g.project_dir,
             dt_project_path,
@@ -1664,16 +1673,16 @@ def start_training():
         )
         evaluator.evaluate()
 
-        task_info = api.task.get_info_by_id(g.app_session_id)
-        task_dir = f"{g.app_session_id}_task_{task_info['meta']['app']['name']}"
-        eval_res_dir = f"/model-benchmark/evaluation/{project_info.id}_{project_info.name}/{task_dir}/"
-        eval_res_dir = api.storage.get_free_dir_name(sly.env.team_id(), eval_res_dir)
-
+        # 5. Upload evaluation results
+        eval_res_dir = get_eval_results_dir()
         bm.upload_eval_results(eval_res_dir)
+
+        # 6. Prepare visualizations, report and
         bm.visualize()
         remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
-        report = bm.save_reporn_link(remote_dir)
+        report = bm.upload_report_link(remote_dir)
 
+        # 7. UI updates
         template_vis_file = api.file.get_info_by_path(sly.env.team_id(), remote_dir + "template.vue")
         creating_report_f.hide()
         model_benchmark_report.set(template_vis_file)
@@ -1684,6 +1693,15 @@ def start_training():
         sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
         creating_report_f.hide()
         model_benchmark_pbar.hide()
+        try:
+            if bm.dt_project_info:
+                api.project.remove(bm.dt_project_info.id) 
+            if bm.diff_project_info:
+                api.project.remove(bm.diff_project_info.id)
+        except Exception as re:
+            sly.logger.warning(
+                f"Failed to remove unnecessary projects after model benchmark failure. {repr(re)}"
+            )
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
