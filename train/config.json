@@ -11,7 +11,7 @@
     "train"
   ],
   "description": "Dashboard to configure, start and monitor YOLO (v8, v9) training",
-  "docker_image": "supervisely/yolov8:1.0.21",
+  "docker_image": "supervisely/yolov8:1.0.22",
   "instance_version": "6.10.0",
   "entrypoint": "python -m uvicorn src.main:app --app-dir ./train --host 0.0.0.0 --port 8000 --ws websockets",
   "task_location": "workspace_tasks",
@@ -22,9 +22,7 @@
   "icon_cover": true,
   "poster": "https://github.com/supervisely-ecosystem/yolov8/assets/119248312/48a1e99c-23f9-469e-ac32-3c9614622042",
   "context_menu": {
-    "target": [
-      "images_project"
-    ],
+    "target": ["images_project"],
     "context_root": "Neural Networks",
     "context_category": "YOLO"
   },
