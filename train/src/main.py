@@ -1621,74 +1621,77 @@ def start_training():
 
     # ------------------------------------- Model Benchmark ------------------------------------- #
     try:
-        model_benchmark_finished = False
-        sly.logger.info(f"Creating the report for the best model: {best_filename!r}")
-        creating_report_f.show()
+        model_benchmark_done = False
+        if task_type == "object detection":
+            sly.logger.info(f"Creating the report for the best model: {best_filename!r}")
+            creating_report_f.show()
 
-        # 0. Serve trained model
-        m = YOLOv8ModelBM(
-            model_dir=local_artifacts_dir + "/weights",
-            use_gui=False,
-            custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
-        )
+            # 0. Serve trained model
+            m = YOLOv8ModelBM(
+                model_dir=local_artifacts_dir + "/weights",
+                use_gui=False,
+                custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
+            )
 
-        device = "cuda" if torch.cuda.is_available() else "cpu"
-        sly.logger.info("Using device:", device)
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            sly.logger.info("Using device:", device)
 
-        checkpoint_path = os.path.join(remote_weights_dir, best_filename)
-        checkpoint_url = api.file.get_info_by_path(sly.env.team_id(), checkpoint_path)
-        deploy_params = dict(
-            device=device,
-            model_source="Custom models",
-            task_type="object detection",
-            checkpoint_name=best_filename,
-            checkpoint_url=f"/files/{checkpoint_url.id}",
-        )
-        m._load_model(deploy_params)
-        m.serve()
-        session = SessionJSON(api, session_url="http://localhost:8000")
-        sly.fs.remove_dir(g.app_data_dir + "/benchmark")
+            checkpoint_path = os.path.join(remote_weights_dir, best_filename)
+            checkpoint_url = api.file.get_info_by_path(sly.env.team_id(), checkpoint_path)
+            deploy_params = dict(
+                device=device,
+                model_source="Custom models",
+                task_type="object detection",
+                checkpoint_name=best_filename,
+                checkpoint_url=f"/files/{checkpoint_url.id}",
+            )
+            m._load_model(deploy_params)
+            m.serve()
+            session = SessionJSON(api, session_url="http://localhost:8000")
+            sly.fs.remove_dir(g.app_data_dir + "/benchmark")
 
-        # 1. Init benchmark (todo: auto-detect task type)
-        bm = ObjectDetectionBenchmark(
-            api,
-            project_info.id,
-            output_dir=g.app_data_dir + "/benchmark",
-            progress=model_benchmark_pbar,
-        )
+            # 1. Init benchmark (todo: auto-detect task type)
+            bm = ObjectDetectionBenchmark(
+                api,
+                project_info.id,
+                output_dir=g.app_data_dir + "/benchmark",
+                progress=model_benchmark_pbar,
+            )
 
-        # 2. Run inference
-        bm.run_inference(session)
+            # 2. Run inference
+            bm.run_inference(session)
 
-        # 3. Pull results from the server
-        gt_project_path, dt_project_path = bm.download_projects(save_images=False)
+            # 3. Pull results from the server
+            gt_project_path, dt_project_path = bm.download_projects(save_images=False)
 
-        # 4. Evaluate
-        evaluator = ObjectDetectionEvaluator(
-            gt_project_path,
-            dt_project_path,
-            bm.get_eval_results_dir(),
-            project_info.items_count,
-            model_benchmark_pbar,
-        )
-        evaluator.evaluate()
+            # 4. Evaluate
+            evaluator = ObjectDetectionEvaluator(
+                gt_project_path,
+                dt_project_path,
+                bm.get_eval_results_dir(),
+                project_info.items_count,
+                model_benchmark_pbar,
+            )
+            evaluator.evaluate()
 
-        # 5. Upload evaluation results
-        eval_res_dir = get_eval_results_dir_name(api, g.app_session_id, project_info)
-        bm.upload_eval_results(eval_res_dir)
+            # 5. Upload evaluation results
+            eval_res_dir = get_eval_results_dir_name(api, g.app_session_id, project_info)
+            bm.upload_eval_results(eval_res_dir)
 
-        # 6. Prepare visualizations, report and
-        bm.visualize()
-        remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
-        report = bm.upload_report_link(remote_dir)
+            # 6. Prepare visualizations, report and
+            bm.visualize()
+            remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
+            report = bm.upload_report_link(remote_dir)
 
-        # 7. UI updates
-        template_vis_file = api.file.get_info_by_path(sly.env.team_id(), remote_dir + "template.vue")
-        creating_report_f.hide()
-        model_benchmark_report.set(template_vis_file)
-        model_benchmark_report.show()
-        model_benchmark_pbar.hide()
-        model_benchmark_finished = True
+            # 7. UI updates
+            template_vis_file = api.file.get_info_by_path(sly.env.team_id(), remote_dir + "template.vue")
+            creating_report_f.hide()
+            model_benchmark_report.set(template_vis_file)
+            model_benchmark_report.show()
+            model_benchmark_pbar.hide()
+            model_benchmark_done = True
+            sly.logger.info(f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}")
+            sly.logger.info(f"Differences project name: {bm.diff_project_info.name}. Workspace_id: {bm.diff_project_info.workspace_id}")
     except Exception as e:
         sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
         creating_report_f.hide()
@@ -1705,12 +1708,12 @@ def start_training():
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
-    if model_benchmark_finished:
-        workflow_yolo.add_output(model_filename, team_files_dir, best_filename, template_vis_file)
-        workflow_yolo.add_output_project(bm.diff_project_info)
-        workflow_yolo.add_output_project(bm.dt_project_info)
-    else:
-        workflow_yolo.add_output(model_filename, team_files_dir, best_filename)
+    if not model_benchmark_done:
+        template_vis_file = None
+    # else:
+    #     workflow_yolo.add_output_project(bm.diff_project_info)
+    #     workflow_yolo.add_output_project(bm.dt_project_info)
+    workflow_yolo.add_output(model_filename, team_files_dir, best_filename, template_vis_file)
     # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():
