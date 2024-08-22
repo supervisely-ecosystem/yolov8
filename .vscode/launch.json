@@ -3,7 +3,7 @@
     "configurations": [
         {
             "name": "Advanced mode for Supervisely Team",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "args": [
