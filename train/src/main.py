@@ -1637,13 +1637,14 @@ def start_training():
             sly.logger.info("Using device:", device)
 
             checkpoint_path = os.path.join(remote_weights_dir, best_filename)
-            checkpoint_url = api.file.get_info_by_path(sly.env.team_id(), checkpoint_path)
+            checkpoint_file_info = api.file.get_info_by_path(sly.env.team_id(), checkpoint_path)
             deploy_params = dict(
                 device=device,
                 model_source="Custom models",
                 task_type="object detection",
                 checkpoint_name=best_filename,
-                checkpoint_url=f"/files/{checkpoint_url.id}",
+                checkpoint_url=f"/files/{checkpoint_file_info.id}",
+                checkpoint_path=checkpoint_file_info.path
             )
             m._load_model(deploy_params)
             m.serve()
