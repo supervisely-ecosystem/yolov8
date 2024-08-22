@@ -1669,8 +1669,8 @@ def start_training():
                 gt_project_path,
                 dt_project_path,
                 bm.get_eval_results_dir(),
-                project_info.items_count,
                 model_benchmark_pbar,
+                project_info.items_count,
             )
             evaluator.evaluate()
 
