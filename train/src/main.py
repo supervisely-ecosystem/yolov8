@@ -1634,16 +1634,15 @@ def start_training():
             )
 
             device = "cuda" if torch.cuda.is_available() else "cpu"
-            sly.logger.info("Using device:", device)
+            sly.logger.info(f"Using device: {device}")
 
             checkpoint_path = os.path.join(remote_weights_dir, best_filename)
-            checkpoint_file_info = api.file.get_info_by_path(sly.env.team_id(), checkpoint_path)
             deploy_params = dict(
                 device=device,
                 model_source="Custom models",
                 task_type="object detection",
                 checkpoint_name=best_filename,
-                checkpoint_url=f"/files/{checkpoint_file_info.id}"
+                checkpoint_url=checkpoint_path,
             )
             m._load_model(deploy_params)
             m.serve()
