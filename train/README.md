@@ -32,7 +32,7 @@ YOLOv9 builds on the advancements of YOLOv8 by further improving the model's per
 
 YOLOv10, the latest iteration, introduces consistent dual assignments for NMS-free training and adopts a holistic efficiency-accuracy-driven model design strategy.
 
-This app allows you to train models using both YOLOv8 and YOLOv9 on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
+This app allows you to train models using both YOLOv8, YOLOv9 and YOLOv10 models on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
 
 ---
 
