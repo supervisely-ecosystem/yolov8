@@ -1,9 +1,10 @@
+import os
+import warnings
+from pathlib import Path
+
 import matplotlib.pyplot as plt
 import numpy as np
 import supervisely as sly
-import warnings
-
-from pathlib import Path
 
 
 def verify_train_val_sets(train_set, val_set):
@@ -66,15 +67,21 @@ def custom_plot(self, normalize=True, save_dir="", names=(), on_plot=None):
         on_plot(plot_fname)
 
 
-def deploy_the_best_model():
-    from serve.src.main import YOLOv8Model
+# def deploy_the_best_model():
+#     from serve.src.main import YOLOv8Model
 
-    m = YOLOv8Model(
-        model_dir="app_data",
-        use_gui=True,
-        custom_inference_settings=os.path.join(
-            root_source_path, "serve", "custom_settings.yaml"
-        ),
-    )
+#     m = YOLOv8Model(
+#         model_dir="app_data",
+#         use_gui=True,
+#         custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
+#     )
 
-    pass
+#     pass
+
+
+def get_eval_results_dir(api, task_id, project_info):
+    task_info = api.task.get_info_by_id(task_id)
+    task_dir = f"{task_id}_task_{task_info['meta']['app']['name']}"
+    eval_res_dir = f"/model-benchmark/evaluation/{project_info.id}_{project_info.name}/{task_dir}/"
+    eval_res_dir = api.storage.get_free_dir_name(sly.env.team_id(), eval_res_dir)
+    return eval_res_dir
