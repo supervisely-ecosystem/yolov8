@@ -1,8 +1,8 @@
 {
-  "name": "Serve YOLO (v8, v9)",
+  "name": "Serve YOLOv8 | v9 | v10",
   "type": "app",
   "version": "2.0.0",
-  "description": "Deploy YOLO (v8, v9) as REST API service",
+  "description": "Deploy YOLOv8 | v9 | v10 as REST API service",
   "categories": [
     "neural network",
     "images",
@@ -11,9 +11,9 @@
     "instance segmentation",
     "serve"
   ],
-  "icon": "https://github.com/supervisely-ecosystem/yolov8/assets/119248312/57ab79be-cef7-4961-bed2-4841e7997b0a",
+  "icon": "https://github.com/user-attachments/assets/634b2530-3a40-4c70-9b87-35af49de6338",
   "icon_cover": true,
-  "poster": "https://github.com/supervisely-ecosystem/yolov8/assets/119248312/6386394e-03f6-4f45-b2dc-9c4eeb805cea",
+  "poster": "https://github.com/user-attachments/assets/6cd42ea1-1dda-483e-b907-19ed48e06c45",
   "need_gpu": false,
   "gpu": "preferred",
   "session_tags": [
