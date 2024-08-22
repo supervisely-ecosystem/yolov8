@@ -26,7 +26,7 @@ from src.dataset_cache import download_project
 from src.metrics_watcher import Watcher
 from src.serve import YOLOv8ModelBM
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
-from src.utils import custom_plot, get_eval_results_dir, verify_train_val_sets
+from src.utils import custom_plot, get_eval_results_dir_name, verify_train_val_sets
 from src.workflow import Workflow
 from supervisely._utils import abs_url, is_development
 from supervisely.app.widgets import (  # SelectDataset,
@@ -1674,7 +1674,7 @@ def start_training():
         evaluator.evaluate()
 
         # 5. Upload evaluation results
-        eval_res_dir = get_eval_results_dir()
+        eval_res_dir = get_eval_results_dir_name(api, g.app_session_id, project_info)
         bm.upload_eval_results(eval_res_dir)
 
         # 6. Prepare visualizations, report and
