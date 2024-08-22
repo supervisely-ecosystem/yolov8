@@ -66,7 +66,7 @@ You can use your trained models outside Supervisely platform without any depende
 - [Export to YOLOv8 format](https://ecosystem.supervise.ly/apps/export-to-yolov8) - app allows to transform data from Supervisely format to YOLOv8 format.   
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/export-to-yolov8" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/01d6658f-11c3-40a3-8ff5-100a27fa1480" height="70px" margin-bottom="20px"/>  
 
-- [Serve YOLOv8 | v9 | v10](https://ecosystem.supervise.ly/apps/yolov8/serve) - app allows to deploy YOLO (v8, v9) model as REST API service.   
+- [Serve YOLOv8 | v9 | v10](https://ecosystem.supervise.ly/apps/yolov8/serve) - app allows to deploy YOLOv8 | v9 | v10 model as REST API service.   
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/yolov8/serve" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/721f5344-013c-4466-bc05-88cc3efef5ca" height="70px" margin-bottom="20px"/>
   
 # Screenshot
