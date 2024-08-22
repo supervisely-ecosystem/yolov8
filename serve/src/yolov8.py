@@ -163,12 +163,20 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             self.model.overrides['verbose'] = False
 
         train_args = self.model.ckpt["train_args"]
-        checkpoint_name = os.path.basename(train_args["model"]).split(".")[0]
-        model_name, architecture = parse_model_name(checkpoint_name)
+        if model_source == "Pretrained models":
+            custom_checkpoint_path = None
+            checkpoint_name = os.path.basename(train_args["model"]).split(".")[0]
+        else:
+            custom_checkpoint_path = checkpoint_url
+            file_id = self.api.file.get_info_by_path(self.team_id, checkpoint_url).id
+            checkpoint_url = self.api.file.get_url(file_id)
+        # model_name, architecture = parse_model_name(checkpoint_name)
         self.checkpoint_info = CheckpointInfo(
-            checkpoint_name=checkpoint_name,
-            architecture=architecture,
+            checkpoint_name=checkpoint_name,  # TODO: checkpoint_name is not correct for custom models
+            architecture="YOLO",
             model_source=model_source,
+            checkpoint_url=checkpoint_url,
+            custom_checkpoint_path=custom_checkpoint_path,
         )
 
     def get_info(self):
