@@ -1,16 +1,28 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv("local.env")
+debug_session = bool(os.environ.get("DEBUG_SESSION", False))
+
 from pathlib import Path
 from typing import Any, Dict, Generator, List, Union, Literal
 from threading import Event
 
 import cv2
 import torch
-from dotenv import load_dotenv
 from ultralytics import YOLO
 
 import supervisely as sly
-from src.keypoints_template import dict_to_template, human_template
-from src.models import yolov8_models
+
+if debug_session:
+    import serve.src.workflow as w
+    from serve.src.keypoints_template import dict_to_template, human_template
+    from serve.src.models import yolov8_models
+else:
+    from src.keypoints_template import dict_to_template, human_template
+    from src.models import yolov8_models
+    import src.workflow as w
+
 from supervisely.app.widgets import (
     PretrainedModelsSelector,
     RadioTabs,
@@ -21,15 +33,11 @@ from supervisely.nn.prediction_dto import (
     PredictionKeypoints,
     PredictionMask,
 )
-
 from supervisely.nn.artifacts.yolov8 import YOLOv8
-from src.workflow import Workflow
 
-load_dotenv("local.env")
-load_dotenv(os.path.expanduser("~/supervisely.env"))
 
+load_dotenv("supervisely.env")
 root_source_path = str(Path(__file__).parents[2])
-
 api = sly.Api.from_env()
 team_id = sly.env.team_id()
 
@@ -77,10 +85,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         }
 
         # -------------------------------------- Add Workflow Input -------------------------------------- #
-        workflow_serve = Workflow(api)
-        workflow_serve.add_input(model_params)
+        w.workflow_input(api, model_params)
         # ----------------------------------------------- - ---------------------------------------------- #
-        
+
         return deploy_params
 
     def load_model_meta(self, model_source: str, weights_save_path: str):
@@ -108,7 +115,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         elif self.task_type == "pose estimation":
             if len(self.class_names) == 1:
                 obj_classes = [
-                    sly.ObjClass(name, sly.GraphNodes, geometry_config=self.keypoints_template)
+                    sly.ObjClass(
+                        name, sly.GraphNodes, geometry_config=self.keypoints_template
+                    )
                     for name in self.class_names
                 ]
             elif len(self.class_names) > 1:
@@ -120,7 +129,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     )
                     for name in self.class_names
                 ]
-        self._model_meta = sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
+        self._model_meta = sly.ProjectMeta(
+            obj_classes=sly.ObjClassCollection(obj_classes)
+        )
         self._get_confidence_tag_meta()
 
     def load_model(
@@ -294,13 +305,20 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         for j, (point_coordinate, point_score) in enumerate(
                             zip(point_coordinates, point_scores)
                         ):
-                            if point_score >= point_threshold and point_labels[j] != "fictive":
+                            if (
+                                point_score >= point_threshold
+                                and point_labels[j] != "fictive"
+                            ):
                                 included_labels.append(point_labels[j])
-                                included_point_coordinates.append(point_coordinate.cpu().numpy())
+                                included_point_coordinates.append(
+                                    point_coordinate.cpu().numpy()
+                                )
                     elif keypoints_data.shape[-1] == 2:
                         for j, point_coordinate in enumerate(keypoints):
                             included_labels.append(point_labels[j])
-                            included_point_coordinates.append(point_coordinate.cpu().numpy())
+                            included_point_coordinates.append(
+                                point_coordinate.cpu().numpy()
+                            )
                     if len(included_labels) > 1:
                         dtos.append(
                             sly.nn.PredictionKeypoints(
@@ -331,7 +349,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         point_coordinate, point_score = kpt[:2], kpt[2]
                         if point_score >= point_threshold:
                             included_labels.append(point_labels[j])
-                            included_point_coordinates.append(point_coordinate.cpu().numpy())
+                            included_point_coordinates.append(
+                                point_coordinate.cpu().numpy()
+                            )
                     if len(included_labels) > 1:
                         dtos.append(
                             sly.nn.PredictionKeypoints(

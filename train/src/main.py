@@ -61,7 +61,7 @@ from fastapi import Response, Request
 import uuid
 import matplotlib.pyplot as plt
 
-from src.workflow import Workflow
+import src.workflow as w
 
 ConfusionMatrix.plot = custom_plot
 plt.switch_backend("Agg")
@@ -1301,8 +1301,7 @@ def start_training():
         model = YOLO(weights_dst_path)
 
     # ---------------------------------- Init And Set Workflow Input --------------------------------- #
-    workflow_yolo = Workflow(api)
-    workflow_yolo.add_input(project_info, file_info)
+    w.workflow_input(api, project_info, file_info)
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # add callbacks to model
@@ -1691,7 +1690,7 @@ def start_training():
         sly.logger.info("Training artifacts uploaded successfully")
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
-    workflow_yolo.add_output(model_filename, team_files_dir, best_filename)
+    w.workflow_output(api, model_filename, team_files_dir, best_filename)
     # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():
