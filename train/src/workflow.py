@@ -50,6 +50,7 @@ def workflow_output(
     model_filename: str,
     team_files_dir: str,
     best_filename: str,
+    model_benchmark_report: Optional[sly.api.file_api.FileInfo] = None,
 ):
     try:
         weights_file_path_in_team_files_dir = os.path.join(team_files_dir, "weights", best_filename)
@@ -68,16 +69,16 @@ def workflow_output(
         elif model_filename and "v10" in model_filename:
             model_name = "YOLOv10"
             
+        node_settings = sly.WorkflowSettings(
+            title=f"Train {model_name}",
+            url=(
+                f"/apps/{module_id}/sessions/{api.task_id}"
+                if module_id
+                else f"apps/sessions/{api.task_id}"
+            ),
+            url_title="Show Results",
+        )
         if best_filename_info:
-            node_settings = sly.WorkflowSettings(
-                title=f"Train {model_name}",
-                url=(
-                    f"/apps/{module_id}/sessions/{api.task_id}"
-                    if module_id
-                    else f"apps/sessions/{api.task_id}"
-                ),
-                url_title="Show Results",
-            )
             relation_settings = sly.WorkflowSettings(
                 title="Checkpoints",
                 icon="folder",
@@ -94,6 +95,25 @@ def workflow_output(
         else:
             sly.logger.debug(
                 f"File with checkpoints not found in Team Files. Cannot set workflow output."
+            )
+        
+        if model_benchmark_report:
+            mb_relation_settings = sly.WorkflowSettings(
+                title="Model Benchmark",
+                icon="assignment",
+                icon_color="#674EA7",
+                icon_bg_color="#CCCCFF",
+                url=f"/model-benchmark?id={model_benchmark_report.id}",
+                url_title="Open Report",
+            )
+
+            meta = sly.WorkflowMeta(
+                relation_settings=mb_relation_settings, node_settings=node_settings
+            )
+            api.app.workflow.add_output_file(model_benchmark_report, meta=meta)
+        else:
+            sly.logger.debug(
+                f"File with model benchmark report not found in Team Files. Cannot set workflow output."
             )
     except Exception as e:
         sly.logger.debug(f"Failed to add output to the workflow: {repr(e)}")
