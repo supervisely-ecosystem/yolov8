@@ -1,8 +1,11 @@
 # pylint: disable=wrong-import-position
 
 import os
+from dotenv import load_dotenv
 
+load_dotenv("local.env")
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+debug_session = bool(os.environ.get("DEBUG_SESSION", False))
 import math
 import random
 import threading
@@ -10,23 +13,37 @@ import uuid
 from functools import partial
 from pathlib import Path
 from urllib.request import urlopen
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import ruamel.yaml
-import src.globals as g
 import supervisely as sly
 import supervisely.io.env as env
 import torch
+
+if debug_session:
+    import train.src.globals as g
+    from train.src.utils import (
+        custom_plot,
+        get_eval_results_dir_name,
+        verify_train_val_sets,
+    )
+    from train.src.sly_to_yolov8 import check_bbox_exist_on_images, transform
+    from train.src.dataset_cache import download_project
+    import train.src.workflow as w
+    from train.src.metrics_watcher import Watcher
+    from train.src.serve import YOLOv8ModelMB
+else:
+    import src.globals as g
+    from src.utils import custom_plot, get_eval_results_dir_name, verify_train_val_sets
+    from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
+    from src.dataset_cache import download_project
+    import src.workflow as w
+    from src.metrics_watcher import Watcher
+    from src.serve import YOLOv8ModelMB
 import yaml
 from dotenv import load_dotenv
 from fastapi import Request, Response
-from src.dataset_cache import download_project
-from src.metrics_watcher import Watcher
-from src.serve import YOLOv8ModelMB
-from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
-from src.utils import custom_plot, get_eval_results_dir_name, verify_train_val_sets
 from supervisely._utils import abs_url, is_development
 from supervisely.app.widgets import (  # SelectDataset,
     Button,
@@ -69,19 +86,7 @@ from supervisely.nn.benchmark.evaluation import ObjectDetectionEvaluator
 from supervisely.nn.inference import Session, SessionJSON
 from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
-import torch
-from src.metrics_watcher import Watcher
-import threading
-import pandas as pd
-from functools import partial
-from urllib.request import urlopen
-import math
-import ruamel.yaml
-from fastapi import Response, Request
-import uuid
-import matplotlib.pyplot as plt
 
-import src.workflow as w
 
 ConfusionMatrix.plot = custom_plot
 plt.switch_backend("Agg")
@@ -100,7 +105,9 @@ def update_globals(new_dataset_ids):
         project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
         print(f"Project is {project_info.name}, {dataset_ids}")
     elif project_id:
-        workspace_id = api.project.get_info_by_id(project_id, raise_error=True).workspace_id
+        workspace_id = api.project.get_info_by_id(
+            project_id, raise_error=True
+        ).workspace_id
         project_info = api.project.get_info_by_id(project_id)
         project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
     else:
@@ -110,8 +117,7 @@ def update_globals(new_dataset_ids):
 
 
 # authentication
-load_dotenv("local.env")
-load_dotenv(os.path.expanduser("~/supervisely.env"))
+load_dotenv("supervisely.env")
 api = sly.Api()
 team_id = sly.env.team_id()
 server_address = sly.env.server_address()
@@ -299,11 +305,13 @@ model_tabs_descriptions = [
     "Models trained in Supervsely and located in Team Files",
 ]
 models_table_columns = [
-    key for key in g.det_models_data[0].keys() if key != "weights_url"
+    key
+    for key in g.det_models_data[0].keys()
+    if key not in ["weights_url", "yaml_config"]
 ]
 models_table_rows = []
 for element in g.det_models_data:
-    models_table_rows.append(list(element.values())[:-1])
+    models_table_rows.append(list(element.values())[:-2])
 models_table = RadioTable(
     columns=models_table_columns,
     rows=models_table_rows,
@@ -567,7 +575,9 @@ additional_gallery_f = Field(
 additional_gallery_f.hide()
 progress_bar_upload_artifacts = Progress()
 model_benchmark_pbar = SlyTqdm()
-train_done = DoneLabel("Training completed. Training artifacts were uploaded to Team Files")
+train_done = DoneLabel(
+    "Training completed. Training artifacts were uploaded to Team Files"
+)
 train_done.hide()
 train_progress_content = Container(
     [
@@ -649,7 +659,9 @@ def on_dataset_selected(new_dataset_ids):
         select_data_button.show()
     update_globals(new_dataset_ids)
     if sly.project.download.is_cached(project_id):
-        use_cache_text.text = "Use cached data stored on the agent to optimize project download"
+        use_cache_text.text = (
+            "Use cached data stored on the agent to optimize project download"
+        )
     else:
         use_cache_text.text = (
             "Cache data on the agent to optimize project download for future trainings"
@@ -666,12 +678,14 @@ def select_input_data():
     if "bitmap" in project_shapes or "polygon" in project_shapes:
         task_type_select.set_value("instance segmentation")
         models_table_columns = [
-            key for key in g.seg_models_data[0].keys() if key != "weights_url"
+            key
+            for key in g.seg_models_data[0].keys()
+            if key not in ["weights_url", "yaml_config"]
         ]
         models_table_subtitles = [None] * len(models_table_columns)
         models_table_rows = []
         for element in g.seg_models_data:
-            models_table_rows.append(list(element.values())[:-1])
+            models_table_rows.append(list(element.values())[:-2])
         models_table.set_data(
             columns=models_table_columns,
             rows=models_table_rows,
@@ -680,12 +694,14 @@ def select_input_data():
     elif "graph" in project_shapes:
         task_type_select.set_value("pose estimation")
         models_table_columns = [
-            key for key in g.pose_models_data[0].keys() if key != "weights_url"
+            key
+            for key in g.pose_models_data[0].keys()
+            if key not in ["weights_url", "yaml_config"]
         ]
         models_table_subtitles = [None] * len(models_table_columns)
         models_table_rows = []
         for element in g.pose_models_data:
-            models_table_rows.append(list(element.values())[:-1])
+            models_table_rows.append(list(element.values())[:-2])
         models_table.set_data(
             columns=models_table_columns,
             rows=models_table_rows,
@@ -747,12 +763,14 @@ def select_task(task_type):
     if task_type == "object detection":
         select_classes_button.enable()
         models_table_columns = [
-            key for key in g.det_models_data[0].keys() if key != "weights_url"
+            key
+            for key in g.det_models_data[0].keys()
+            if key not in ["weights_url", "yaml_config"]
         ]
         models_table_subtitles = [None] * len(models_table_columns)
         models_table_rows = []
         for element in g.det_models_data:
-            models_table_rows.append(list(element.values())[:-1])
+            models_table_rows.append(list(element.values())[:-2])
         models_table.set_data(
             columns=models_table_columns,
             rows=models_table_rows,
@@ -769,12 +787,14 @@ def select_task(task_type):
         else:
             select_classes_button.enable()
             models_table_columns = [
-                key for key in g.seg_models_data[0].keys() if key != "weights_url"
+                key
+                for key in g.seg_models_data[0].keys()
+                if key not in ["weights_url", "yaml_config"]
             ]
             models_table_subtitles = [None] * len(models_table_columns)
             models_table_rows = []
             for element in g.seg_models_data:
-                models_table_rows.append(list(element.values())[:-1])
+                models_table_rows.append(list(element.values())[:-2])
             models_table.set_data(
                 columns=models_table_columns,
                 rows=models_table_rows,
@@ -798,12 +818,14 @@ def select_task(task_type):
         else:
             select_classes_button.enable()
             models_table_columns = [
-                key for key in g.pose_models_data[0].keys() if key != "weights_url"
+                key
+                for key in g.pose_models_data[0].keys()
+                if key not in ["weights_url", "yaml_config"]
             ]
             models_table_subtitles = [None] * len(models_table_columns)
             models_table_rows = []
             for element in g.pose_models_data:
-                models_table_rows.append(list(element.values())[:-1])
+                models_table_rows.append(list(element.values())[:-2])
             models_table.set_data(
                 columns=models_table_columns,
                 rows=models_table_rows,
@@ -1294,10 +1316,7 @@ def start_training():
                 )
             model = YOLO(weights_dst_path)
         else:
-            base_name = model_filename.split(".")[0]
-            if base_name.endswith("oiv7"):
-                base_name = base_name[:-5]
-            yaml_config = base_name + ".yaml"
+            yaml_config = selected_dict["yaml_config"]
             pretrained = False
             model = YOLO(yaml_config)
     elif weights_type == "Custom models":
@@ -1513,7 +1532,9 @@ def start_training():
         app_is_stopped = app.is_stopped()
         not_ready_for_api_calls = False
         if not app_is_stopped:
-            not_ready_for_api_calls = api.app.is_ready_for_api_calls(g.app_session_id) is False
+            not_ready_for_api_calls = (
+                api.app.is_ready_for_api_calls(g.app_session_id) is False
+            )
         if (
             (app_is_stopped or not_ready_for_api_calls)
             and sly.is_production()
@@ -1730,14 +1751,18 @@ def start_training():
     try:
         model_benchmark_done = False
         if task_type == "object detection":
-            sly.logger.info(f"Creating the report for the best model: {best_filename!r}")
+            sly.logger.info(
+                f"Creating the report for the best model: {best_filename!r}"
+            )
             creating_report_f.show()
 
             # 0. Serve trained model
             m = YOLOv8ModelMB(
                 model_dir=local_artifacts_dir + "/weights",
                 use_gui=False,
-                custom_inference_settings=os.path.join(root_source_path, "serve", "custom_settings.yaml"),
+                custom_inference_settings=os.path.join(
+                    root_source_path, "serve", "custom_settings.yaml"
+                ),
             )
 
             device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -1781,7 +1806,9 @@ def start_training():
             evaluator.evaluate()
 
             # 5. Upload evaluation results
-            eval_res_dir = get_eval_results_dir_name(api, g.app_session_id, project_info)
+            eval_res_dir = get_eval_results_dir_name(
+                api, g.app_session_id, project_info
+            )
             bm.upload_eval_results(eval_res_dir)
 
             # 6. Prepare visualizations, report and
@@ -1790,21 +1817,27 @@ def start_training():
             report = bm.upload_report_link(remote_dir)
 
             # 7. UI updates
-            benchmark_report_template = api.file.get_info_by_path(sly.env.team_id(), remote_dir + "template.vue")
+            benchmark_report_template = api.file.get_info_by_path(
+                sly.env.team_id(), remote_dir + "template.vue"
+            )
             model_benchmark_done = True
             creating_report_f.hide()
             model_benchmark_report.set(benchmark_report_template)
             model_benchmark_report.show()
             model_benchmark_pbar.hide()
-            sly.logger.info(f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}")
-            sly.logger.info(f"Differences project name: {bm.diff_project_info.name}. Workspace_id: {bm.diff_project_info.workspace_id}")
+            sly.logger.info(
+                f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}"
+            )
+            sly.logger.info(
+                f"Differences project name: {bm.diff_project_info.name}. Workspace_id: {bm.diff_project_info.workspace_id}"
+            )
     except Exception as e:
         sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
         creating_report_f.hide()
         model_benchmark_pbar.hide()
         try:
             if bm.dt_project_info:
-                api.project.remove(bm.dt_project_info.id) 
+                api.project.remove(bm.dt_project_info.id)
             if bm.diff_project_info:
                 api.project.remove(bm.diff_project_info.id)
         except Exception as re:
@@ -1816,7 +1849,9 @@ def start_training():
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
     if not model_benchmark_done:
         benchmark_report_template = None
-    w.workflow_output(api, model_filename, team_files_dir, best_filename, benchmark_report_template)
+    w.workflow_output(
+        api, model_filename, team_files_dir, best_filename, benchmark_report_template
+    )
     # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():

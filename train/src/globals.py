@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv("local.env")
 
+debug_session = bool(os.environ.get("DEBUG_SESSION", False))
 root_source_path = str(Path(__file__).parents[2])
 app_root_directory = str(Path(__file__).parents[1])
 app_data_dir = os.path.join(app_root_directory, "tempfiles")
@@ -26,7 +27,7 @@ det_models_data = sly.json.load_json_file(det_models_data_path)
 seg_models_data = sly.json.load_json_file(seg_models_data_path)
 pose_models_data = sly.json.load_json_file(pose_models_data_path)
 
-if sly.is_production():
+if sly.is_production() or debug_session:
     train_params_filepath = "train/training_params.yml"
 else:
     train_params_filepath = "training_params.yml"  # for debug

@@ -1,7 +1,15 @@
 import os
+from dotenv import load_dotenv
+
+load_dotenv("local.env")
+debug_session = bool(os.environ.get("DEBUG_SESSION", False))
+
 import yaml
 import supervisely as sly
-import src.globals as g
+if debug_session:
+    import train.src.globals as g
+else:
+    import src.globals as g
 import numpy as np
 import math
 
