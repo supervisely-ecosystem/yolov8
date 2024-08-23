@@ -19,7 +19,7 @@
   "session_tags": ["deployed_nn"],
   "community_agent": false,
   "docker_image": "supervisely/yolov8:1.0.22",
-  "instance_version": "6.10.0",
+  "instance_version": "6.11.10",
   "entrypoint": "python -m uvicorn src.main:m.app --app-dir ./serve --host 0.0.0.0 --port 8000 --ws websockets",
   "port": 8000,
   "task_location": "application_sessions",
