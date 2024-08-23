@@ -27,7 +27,6 @@ from src.metrics_watcher import Watcher
 from src.serve import YOLOv8ModelMB
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.utils import custom_plot, get_eval_results_dir_name, verify_train_val_sets
-from src.workflow import Workflow
 from supervisely._utils import abs_url, is_development
 from supervisely.app.widgets import (  # SelectDataset,
     Button,
