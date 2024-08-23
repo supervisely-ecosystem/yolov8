@@ -13,8 +13,7 @@
                 "--port",
                 "8000",
                 "--ws",
-                "websockets",
-                "--reload"
+                "websockets"
             ],
             "jinja": true,
             "justMyCode": false,

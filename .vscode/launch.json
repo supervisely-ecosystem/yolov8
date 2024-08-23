@@ -7,7 +7,9 @@
             "request": "launch",
             "module": "uvicorn",
             "args": [
-                "serve.src.main:m.app",
+                "src.main:m.app",
+                "--app-dir",
+                "serve",
                 "--host",
                 "0.0.0.0",
                 "--port",

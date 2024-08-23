@@ -1,0 +1,19 @@
+{
+    "name": "SlyYololv8Evaluation",
+    "build": {
+        "dockerfile": "Dockerfile"
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-python.black-formatter"
+            ]
+        }
+    },
+    "runArgs": [
+        "--gpus", "all",
+        "--shm-size=10gb" // gb or mb
+    ]
+
+}
