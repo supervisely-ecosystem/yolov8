@@ -1,4 +1,3 @@
-import logging
 import os
 from typing import Any, Dict, Generator, List, Union, Literal
 from threading import Event
@@ -23,17 +22,9 @@ from supervisely.nn.prediction_dto import (
 )
 
 from supervisely.nn.artifacts.yolov8 import YOLOv8
-
-debug_session = bool(os.environ.get("DEBUG_SESSION", False))
-
-if debug_session:
-    import serve.src.workflow as w
-    from serve.src.keypoints_template import dict_to_template, human_template
-    from serve.src.models import yolov8_models
-else:
-    from src.keypoints_template import dict_to_template, human_template
-    from src.models import yolov8_models
-    import src.workflow as w
+from src.keypoints_template import dict_to_template, human_template
+from src.models import yolov8_models
+import src.workflow as w
 
 
 class YOLOv8Model(sly.nn.inference.ObjectDetection):
@@ -183,6 +174,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         )
 
         # This will disable logs from YOLO
+        # import logging
         # if sly.logger.isEnabledFor(logging.DEBUG):
         #     self.model.overrides['verbose'] = True
         # else:

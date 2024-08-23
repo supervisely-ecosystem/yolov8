@@ -7,12 +7,7 @@ from pathlib import Path
 import torch
 
 import supervisely as sly
-
-debug_session = bool(os.environ.get("DEBUG_SESSION", False))
-if debug_session:
-    from serve.src.yolov8 import YOLOv8Model
-else:
-    from src.yolov8 import YOLOv8Model
+from src.yolov8 import YOLOv8Model
 
 
 load_dotenv("supervisely.env")
