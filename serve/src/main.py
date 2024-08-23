@@ -2,31 +2,21 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv("local.env")
-debug_session = bool(os.environ.get("DEBUG_SESSION", False)) # FIXME: move it to serve/yolov8 after resolving merge conflicts
 
 from pathlib import Path
 import torch
-from dotenv import load_dotenv
 
 import supervisely as sly
 
-
-from src.yolov8 import YOLOv8Model
-# if debug_session: # FIXME: move it to serve/yolov8 after resolving merge conflicts
-#     import serve.src.workflow as w
-#     from serve.src.keypoints_template import dict_to_template, human_template
-#     from serve.src.models import yolov8_models
-# else:
-#     from src.keypoints_template import dict_to_template, human_template
-#     from src.models import yolov8_models
-#     import src.workflow as w
-
+debug_session = bool(os.environ.get("DEBUG_SESSION", False))
+if debug_session:
+    from serve.src.yolov8 import YOLOv8Model
+else:
+    from src.yolov8 import YOLOv8Model
 
 
 load_dotenv("supervisely.env")
 root_source_path = str(Path(__file__).parents[2])
-api = sly.Api.from_env()
-team_id = sly.env.team_id()
 
 m = YOLOv8Model(
     model_dir="app_data",

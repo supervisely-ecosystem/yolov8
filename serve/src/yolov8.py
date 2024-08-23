@@ -11,8 +11,6 @@ from ultralytics import YOLO
 
 import supervisely as sly
 from supervisely.nn.inference import TaskType, CheckpointInfo, RuntimeType
-from src.keypoints_template import dict_to_template, human_template
-from src.models import yolov8_models
 from supervisely.app.widgets import (
     PretrainedModelsSelector,
     RadioTabs,
@@ -25,8 +23,17 @@ from supervisely.nn.prediction_dto import (
 )
 
 from supervisely.nn.artifacts.yolov8 import YOLOv8
-from src.workflow import Workflow
 
+debug_session = bool(os.environ.get("DEBUG_SESSION", False))
+
+if debug_session:
+    import serve.src.workflow as w
+    from serve.src.keypoints_template import dict_to_template, human_template
+    from serve.src.models import yolov8_models
+else:
+    from src.keypoints_template import dict_to_template, human_template
+    from src.models import yolov8_models
+    import src.workflow as w
 
 
 class YOLOv8Model(sly.nn.inference.ObjectDetection):
@@ -73,8 +80,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         }
 
         # -------------------------------------- Add Workflow Input -------------------------------------- #
-        workflow_serve = Workflow(self.api)
-        workflow_serve.add_input(model_params)
+        w.workflow_input(self.api, model_params)
         # ----------------------------------------------- - ---------------------------------------------- #
         
         return deploy_params

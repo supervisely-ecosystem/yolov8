@@ -1791,12 +1791,12 @@ def start_training():
             report = bm.upload_report_link(remote_dir)
 
             # 7. UI updates
-            template_vis_file = api.file.get_info_by_path(sly.env.team_id(), remote_dir + "template.vue")
+            benchmark_report_template = api.file.get_info_by_path(sly.env.team_id(), remote_dir + "template.vue")
+            model_benchmark_done = True
             creating_report_f.hide()
-            model_benchmark_report.set(template_vis_file)
+            model_benchmark_report.set(benchmark_report_template)
             model_benchmark_report.show()
             model_benchmark_pbar.hide()
-            model_benchmark_done = True
             sly.logger.info(f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}")
             sly.logger.info(f"Differences project name: {bm.diff_project_info.name}. Workspace_id: {bm.diff_project_info.workspace_id}")
     except Exception as e:
@@ -1815,13 +1815,9 @@ def start_training():
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
-    w.workflow_output(api, model_filename, team_files_dir, best_filename)
-    # if not model_benchmark_done: # FIXME: fix after resolving merge conflicts
-    #     template_vis_file = None
-    # # else:
-    # #     workflow_yolo.add_output_project(bm.diff_project_info)
-    # #     workflow_yolo.add_output_project(bm.dt_project_info)
-    # workflow_yolo.add_output(model_filename, team_files_dir, best_filename, template_vis_file)
+    if not model_benchmark_done:
+        benchmark_report_template = None
+    w.workflow_output(api, model_filename, team_files_dir, best_filename, benchmark_report_template)
     # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():
@@ -1829,7 +1825,6 @@ def start_training():
             sly.env.team_id(), team_files_dir + "/results.csv"
         )
         train_artifacts_folder.set(file_info)
-        # model_benchmark_report.set(template_vis_file)
         # finish training
         start_training_button.loading = False
         start_training_button.disable()
