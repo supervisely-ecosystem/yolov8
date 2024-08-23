@@ -20,7 +20,7 @@
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}",
-                "LOG_LEVEL": "DEBUG",
+                "LOG_LEVEL": "DEBUG"
             }
         }
     ]
