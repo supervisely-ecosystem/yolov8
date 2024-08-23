@@ -1,14 +1,32 @@
 import os
+from dotenv import load_dotenv
 
+load_dotenv("local.env")
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+debug_session = bool(os.environ.get("DEBUG_SESSION", False))
+
 from pathlib import Path
 import numpy as np
 import yaml
 import random
 import supervisely as sly
 import supervisely.io.env as env
-import src.globals as g
-from dotenv import load_dotenv
+
+if debug_session:
+    import train.src.globals as g
+    from train.src.utils import verify_train_val_sets, custom_plot
+    from train.src.sly_to_yolov8 import check_bbox_exist_on_images, transform
+    from train.src.dataset_cache import download_project
+    import train.src.workflow as w
+    from train.src.metrics_watcher import Watcher
+else:
+    import src.globals as g
+    from src.utils import verify_train_val_sets, custom_plot
+    from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
+    from src.dataset_cache import download_project
+    import src.workflow as w
+    from src.metrics_watcher import Watcher
+
 import yaml
 from supervisely.nn.artifacts.yolov8 import YOLOv8
 from supervisely.app.widgets import (
@@ -44,13 +62,9 @@ from supervisely.app.widgets import (
     Dialog,
     Switch,
 )
-from src.utils import verify_train_val_sets, custom_plot
-from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
-from src.dataset_cache import download_project
 from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
 import torch
-from src.metrics_watcher import Watcher
 import threading
 import pandas as pd
 from functools import partial
@@ -61,7 +75,6 @@ from fastapi import Response, Request
 import uuid
 import matplotlib.pyplot as plt
 
-import src.workflow as w
 
 ConfusionMatrix.plot = custom_plot
 plt.switch_backend("Agg")
@@ -89,8 +102,7 @@ def update_globals(new_dataset_ids):
 
 
 # authentication
-load_dotenv("local.env")
-load_dotenv(os.path.expanduser("~/supervisely.env"))
+load_dotenv("supervisely.env")
 api = sly.Api()
 team_id = sly.env.team_id()
 server_address = sly.env.server_address()
@@ -278,11 +290,13 @@ model_tabs_descriptions = [
     "Models trained in Supervsely and located in Team Files",
 ]
 models_table_columns = [
-    key for key in g.det_models_data[0].keys() if key != "weights_url"
+    key
+    for key in g.det_models_data[0].keys()
+    if key not in ["weights_url", "yaml_config"]
 ]
 models_table_rows = []
 for element in g.det_models_data:
-    models_table_rows.append(list(element.values())[:-1])
+    models_table_rows.append(list(element.values())[:-2])
 models_table = RadioTable(
     columns=models_table_columns,
     rows=models_table_rows,
@@ -637,12 +651,14 @@ def select_input_data():
     if "bitmap" in project_shapes or "polygon" in project_shapes:
         task_type_select.set_value("instance segmentation")
         models_table_columns = [
-            key for key in g.seg_models_data[0].keys() if key != "weights_url"
+            key
+            for key in g.seg_models_data[0].keys()
+            if key not in ["weights_url", "yaml_config"]
         ]
         models_table_subtitles = [None] * len(models_table_columns)
         models_table_rows = []
         for element in g.seg_models_data:
-            models_table_rows.append(list(element.values())[:-1])
+            models_table_rows.append(list(element.values())[:-2])
         models_table.set_data(
             columns=models_table_columns,
             rows=models_table_rows,
@@ -651,12 +667,14 @@ def select_input_data():
     elif "graph" in project_shapes:
         task_type_select.set_value("pose estimation")
         models_table_columns = [
-            key for key in g.pose_models_data[0].keys() if key != "weights_url"
+            key
+            for key in g.pose_models_data[0].keys()
+            if key not in ["weights_url", "yaml_config"]
         ]
         models_table_subtitles = [None] * len(models_table_columns)
         models_table_rows = []
         for element in g.pose_models_data:
-            models_table_rows.append(list(element.values())[:-1])
+            models_table_rows.append(list(element.values())[:-2])
         models_table.set_data(
             columns=models_table_columns,
             rows=models_table_rows,
@@ -717,12 +735,14 @@ def select_task(task_type):
     if task_type == "object detection":
         select_classes_button.enable()
         models_table_columns = [
-            key for key in g.det_models_data[0].keys() if key != "weights_url"
+            key
+            for key in g.det_models_data[0].keys()
+            if key not in ["weights_url", "yaml_config"]
         ]
         models_table_subtitles = [None] * len(models_table_columns)
         models_table_rows = []
         for element in g.det_models_data:
-            models_table_rows.append(list(element.values())[:-1])
+            models_table_rows.append(list(element.values())[:-2])
         models_table.set_data(
             columns=models_table_columns,
             rows=models_table_rows,
@@ -739,12 +759,14 @@ def select_task(task_type):
         else:
             select_classes_button.enable()
             models_table_columns = [
-                key for key in g.seg_models_data[0].keys() if key != "weights_url"
+                key
+                for key in g.seg_models_data[0].keys()
+                if key not in ["weights_url", "yaml_config"]
             ]
             models_table_subtitles = [None] * len(models_table_columns)
             models_table_rows = []
             for element in g.seg_models_data:
-                models_table_rows.append(list(element.values())[:-1])
+                models_table_rows.append(list(element.values())[:-2])
             models_table.set_data(
                 columns=models_table_columns,
                 rows=models_table_rows,
@@ -768,12 +790,14 @@ def select_task(task_type):
         else:
             select_classes_button.enable()
             models_table_columns = [
-                key for key in g.pose_models_data[0].keys() if key != "weights_url"
+                key
+                for key in g.pose_models_data[0].keys()
+                if key not in ["weights_url", "yaml_config"]
             ]
             models_table_subtitles = [None] * len(models_table_columns)
             models_table_rows = []
             for element in g.pose_models_data:
-                models_table_rows.append(list(element.values())[:-1])
+                models_table_rows.append(list(element.values())[:-2])
             models_table.set_data(
                 columns=models_table_columns,
                 rows=models_table_rows,
@@ -1265,10 +1289,7 @@ def start_training():
                 )
             model = YOLO(weights_dst_path)
         else:
-            base_name = model_filename.split(".")[0]
-            if base_name.endswith("oiv7"):
-                base_name = base_name[:-5]
-            yaml_config = base_name + ".yaml"
+            yaml_config = selected_dict["yaml_config"]
             pretrained = False
             model = YOLO(yaml_config)
     elif weights_type == "Custom models":
