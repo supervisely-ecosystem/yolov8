@@ -1,13 +1,13 @@
 
 <div align="center" markdown>
-<img src="https://github.com/supervisely-ecosystem/yolov8/assets/119248312/6386394e-03f6-4f45-b2dc-9c4eeb805cea"/>  
+<img src="https://github.com/user-attachments/assets/6cd42ea1-1dda-483e-b907-19ed48e06c45"/>  
 
-# Serve YOLO (v8, v9)
+# Serve YOLOv8 | v9 | v10
 
 <p align="center">
   <a href="#Overview">Overview</a> •
   <a href="#How-To-Run">How To Run</a> •
-  <a href="#example-apply-yolov8-to-image-in-labeling-tool">Example: apply YOLO (v8, v9) to image in labeling tool</a> •
+  <a href="#example-apply-yolov8-to-image-in-labeling-tool">Example: apply YOLOv8 | v9 | v10 to image in labeling tool</a> •
   <a href="#Related-apps">Related Apps</a> •
   <a href="#Acknowledgment">Acknowledgment</a>
 </p>
@@ -22,13 +22,32 @@
 
 # Overview
 
-This application now supports different checkpoints from YOLOv8 and YOLOv9 architectures.
+🔥 Application now supports different checkpoints from YOLOv8, YOLOv9 and YOLOv10 architectures.
 
 YOLOv8 is a powerful neural network architecture that provides both decent accuracy of predictions and high speed of inference. In comparison to YOLOv5, YOLOv8 uses an anchor-free head (allowing to speed up the non-max suppression (NMS) process), a new backbone, and new loss functions.
 
-YOLOv9, the latest iteration, builds upon the advancements of YOLOv8 by further improving the model's performance and efficiency. It incorporates extended feature extraction techniques, advanced loss functions and optimized training processes for better accuracy and faster inference times.
+YOLOv9 builds on the advancements of YOLOv8 by further improving the model's performance and efficiency. It incorporates extended feature extraction techniques, advanced loss functions and optimized training processes for better accuracy and faster inference times.
 
-This app allows you to train models using both YOLOv8 and YOLOv9 on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
+YOLOv10, the latest iteration, introduces consistent dual assignments for NMS-free training and adopts a holistic efficiency-accuracy-driven model design strategy.
+
+----
+
+This app deploys YOLOv8, YOLOv9, and YOLOv10 models (pretrained on COCO, Open Images V7, or custom datasets) as a REST API service. Supported task types include object detection, instance segmentation and pose estimation. Serve app is the simplest way how any model can be integrated into Supervisely. Once model is deployed, user gets the following benefits:
+
+1. Use out-of-the-box applications for inference.
+2. Integrate the model directly into the annotation toolbox for images and videos.
+3. Apply the model to image projects or datasets.
+4. Apply to videos via [Apply NN to Videos Project](https://ecosystem.supervisely.com/apps/apply-nn-to-videos-project) app
+5. Use NN predictions in [Supervisely Ecosystem](https://ecosystem.supervisely.com/) apps for visualization, analysis, performance evaluation, and more.
+6. Interact with the Neural Network via custom Python scripts (see the developer section).
+7. App illustrates how to use NN weights. For example: you can train model in Supervisely, download its weights and use them the way you want.
+
+**Updates:**
+
+- v1.0.60 - Extended support for Open Images V7 and YOLOv9 checkpoints.
+- v1.0.63 - Added multiclass pose estimation support.
+- v1.0.73 - Enabled support for freezing layers to allow more flexible model training.
+- v1.0.87 - Integrated the YOLOv10 checkpoints.
 
 🔥🔥🔥 Check out our [youtube tutorial](https://youtu.be/Rsr8xWJ6s9I) and the [complete guide in our blog](https://supervisely.com/blog/train-yolov8-on-custom-data-no-code/):   
 
@@ -38,7 +57,7 @@ This app allows you to train models using both YOLOv8 and YOLOv9 on a selected d
 
 ## Pretrained models
 
-**Step 1.** Select task type, pretrained model architecture and press the **Serve** button. Please, note that list of models in the table below depends on selected task type
+**Step 1.** Select task type, pretrained model architecture and press the `Serve` button. Please, note that list of models in the table below depends on selected task type
 
 ![yolov8_pretrained_models](https://user-images.githubusercontent.com/91027877/249001243-2a15502d-8fb6-4059-afac-808ad938dd61.png)
 
@@ -48,13 +67,13 @@ This app allows you to train models using both YOLOv8 and YOLOv9 on a selected d
 
 ## Custom models
 
-Copy model file path from Team Files and select task type:
+Copy model file path from **Team Files** and select task type:
 
 https://user-images.githubusercontent.com/91027877/249001911-d92ac00e-bfa7-448d-bfd5-599b4ca3e415.mp4
 
-# Example: apply YOLO (v8, v9) to image in labeling tool
+# Example: apply YOLOv8 | v9 | v10 to image in labeling tool
 
-Run **NN Image Labeling** app, connect to YOLO (v8, v9) app session, and click on "Apply model to image", or if you want to apply model only to the region within the bounding box, select the bbox and click on "Apply model to ROI":
+Run **NN Image Labeling** app, connect to "YOLOv8 | v9 | v10 app" session, and click on `Apply model to image`, or if you want to apply model only to the region within the bounding box, select the bbox and click on `Apply model to ROI`:
 
 https://user-images.githubusercontent.com/91027877/249003695-a1c0e6bb-8783-448f-86c0-0d8a4eccfae0.mp4
 
@@ -70,7 +89,7 @@ https://user-images.githubusercontent.com/91027877/249004380-e8a4758b-0356-4efc-
 - [Apply NN to Videos Project](https://ecosystem.supervise.ly/apps/apply-nn-to-videos-project) - app allows to label your videos using served Supervisely models.  
   <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/apply-nn-to-videos-project" src="https://imgur.com/LDo8K1A.png" height="70px" margin-bottom="20px" />
 
-- [Train YOLO (v8, v9)](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/yolov8/train) - app allows to create custom YOLO (v8, v9) weights through training process.
+- [Train YOLOv8 | v9 | v10](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/yolov8/train) - app allows to create custom YOLO (v8, v9) weights through training process.
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/yolov8/train" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/82348f9a-38fc-4736-885c-d6786e37a218" height="70px" margin-bottom="20px"/>
 
 - [Export to YOLOv8 format](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/export-to-yolov8) - transform annotations from Supervisely format to YOLOv8 format.

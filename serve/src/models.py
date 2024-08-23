@@ -281,4 +281,59 @@ yolov8_models = [
             "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov9e-seg.pt",
         },
     },
+    {
+        "Model": "YOLOv10n-det",
+        "Size (pixels)": "640",
+        "mAP": "39.5",
+        "params (M)": "2.3",
+        "FLOPs (B)": "6.7",
+        "meta": {
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10n.pt",
+        },
+    },
+    {
+        "Model": "YOLOv10s-det",
+        "Size (pixels)": "640",
+        "mAP": "46.8",
+        "params (M)": "7.2",
+        "FLOPs (B)": "21.6",
+        "meta": {
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10s.pt",
+        },
+    },
+    {
+        "Model": "YOLOv10m-det",
+        "Size (pixels)": "640",
+        "mAP": "51.3",
+        "params (M)": "15.4",
+        "FLOPs (B)": "59.1",
+        "meta": {
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10m.pt",
+        },
+    },
+    {
+        "Model": "YOLOv10l-det",
+        "Size (pixels)": "640",
+        "mAP": "53.4",
+        "params (M)": "24.4",
+        "FLOPs (B)": "120.3",
+        "meta": {
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10l.pt",
+        },
+    },
+    {
+        "Model": "YOLOv10x-det",
+        "Size (pixels)": "640",
+        "mAP": "54.4",
+        "params (M)": "29.5",
+        "FLOPs (B)": "160.4",
+        "meta": {
+            "task_type": "object detection",
+            "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10x.pt",
+        },
+    },
 ]

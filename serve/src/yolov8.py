@@ -401,6 +401,37 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         predictions = [self._to_dto(prediction, settings) for prediction in predictions]
         return predictions, benchmark
 
+    def predict_batch(
+        self, images_np: List, settings: Dict[str, Any]
+    ) -> List[List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]]:
+        retina_masks = self.task_type == "instance segmentation"
+        predictions = self.model(
+            source=[cv2.cvtColor(img, cv2.COLOR_RGB2BGR) for img in images_np],
+            conf=settings["conf"],
+            iou=settings["iou"],
+            half=settings["half"],
+            device=self.device,
+            max_det=settings["max_det"],
+            agnostic_nms=settings["agnostic_nms"],
+            retina_masks=retina_masks,
+        )
+        return [self._to_dto(prediction, settings) for prediction in predictions]
+
+    def predict(
+        self, image_path: str, settings: Dict[str, Any]
+    ) -> List[Union[PredictionMask, PredictionBBox, PredictionKeypoints]]:
+        retina_masks = self.task_type == "instance segmentation"
+        predictions = self.model(
+            source=image_path,
+            conf=settings["conf"],
+            iou=settings["iou"],
+            half=settings["half"],
+            device=self.device,
+            max_det=settings["max_det"],
+            agnostic_nms=settings["agnostic_nms"],
+            retina_masks=retina_masks,
+        )
+        return self._to_dto(predictions[0], settings)
 
 def parse_model_name(model_name: str):
     v8 = int(model_name[5])
