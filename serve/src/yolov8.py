@@ -29,6 +29,7 @@ import src.workflow as w
 
 class YOLOv8Model(sly.nn.inference.ObjectDetection):
     team_id = sly.env.team_id()
+    in_train = False
 
     def initialize_custom_gui(self):
         """Create custom GUI layout for model selection. This method is called once when the application is started."""
@@ -71,7 +72,8 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         }
 
         # -------------------------------------- Add Workflow Input -------------------------------------- #
-        w.workflow_input(self.api, model_params)
+        if not self.in_train:
+            w.workflow_input(self.api, model_params)
         # ----------------------------------------------- - ---------------------------------------------- #
         
         return deploy_params

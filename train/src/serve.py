@@ -6,4 +6,4 @@ from serve.src.yolov8 import YOLOv8Model
 
 
 class YOLOv8ModelMB(YOLOv8Model):
-    pass
+    in_train = True
