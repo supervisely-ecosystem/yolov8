@@ -164,12 +164,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self.model.to(self.device)
         self.load_model_meta(model_source, local_weights_path)
 
-        # This will disable logs from YOLO
-        # if sly.logger.isEnabledFor(logging.DEBUG):
-        #     self.model.overrides['verbose'] = True
-        # else:
-        #     self.model.overrides['verbose'] = False
-
+        # Set checkpoint info
         train_args = self.model.ckpt["train_args"]
         if model_source == "Pretrained models":
             custom_checkpoint_path = None
@@ -186,6 +181,12 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             checkpoint_url=checkpoint_url,
             custom_checkpoint_path=custom_checkpoint_path,
         )
+
+        # This will disable logs from YOLO
+        # if sly.logger.isEnabledFor(logging.DEBUG):
+        #     self.model.overrides['verbose'] = True
+        # else:
+        #     self.model.overrides['verbose'] = False
 
     def get_info(self):
         info = super().get_info()
