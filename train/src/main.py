@@ -1118,7 +1118,8 @@ def change_logs_visibility():
 
 @start_training_button.click
 def start_training():
-    start_training_button.disable()
+    start_training_button.loading = True
+
     task_type = task_type_select.get_value()
     use_cache = use_cache_checkbox.is_checked()
 
@@ -1143,8 +1144,6 @@ def start_training():
 
     if os.path.exists(local_artifacts_dir):
         sly.fs.remove_dir(local_artifacts_dir)
-    start_training_button.enable()
-    start_training_button.loading = True
     # get number of images in selected datasets
     dataset_infos = [
         api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids
