@@ -1,11 +1,7 @@
-# pylint: disable=wrong-import-position
-
 import os
 from dotenv import load_dotenv
 
-load_dotenv("local.env")
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
-debug_session = bool(os.environ.get("DEBUG_SESSION", False))
 import math
 import random
 import threading
@@ -20,27 +16,13 @@ import ruamel.yaml
 import supervisely as sly
 import supervisely.io.env as env
 import torch
-
-if debug_session:
-    import train.src.globals as g
-    from train.src.utils import (
-        custom_plot,
-        get_eval_results_dir_name,
-        verify_train_val_sets,
-    )
-    from train.src.sly_to_yolov8 import check_bbox_exist_on_images, transform
-    from train.src.dataset_cache import download_project
-    import train.src.workflow as w
-    from train.src.metrics_watcher import Watcher
-    from train.src.serve import YOLOv8ModelMB
-else:
-    import src.globals as g
-    from src.utils import custom_plot, get_eval_results_dir_name, verify_train_val_sets
-    from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
-    from src.dataset_cache import download_project
-    import src.workflow as w
-    from src.metrics_watcher import Watcher
-    from src.serve import YOLOv8ModelMB
+import src.globals as g
+from src.utils import custom_plot, get_eval_results_dir_name, verify_train_val_sets
+from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
+from src.dataset_cache import download_project
+import src.workflow as w
+from src.metrics_watcher import Watcher
+from src.serve import YOLOv8ModelMB
 import yaml
 from dotenv import load_dotenv
 from fastapi import Request, Response
@@ -117,6 +99,7 @@ def update_globals(new_dataset_ids):
 
 
 # authentication
+load_dotenv("local.env")
 load_dotenv("supervisely.env")
 api = sly.Api()
 team_id = sly.env.team_id()

@@ -22,15 +22,18 @@ else:
 
 det_models_data_path = os.path.join(root_source_path, "models", "det_models_data.json")
 seg_models_data_path = os.path.join(root_source_path, "models", "seg_models_data.json")
-pose_models_data_path = os.path.join(root_source_path, "models", "pose_models_data.json")
+pose_models_data_path = os.path.join(
+    root_source_path, "models", "pose_models_data.json"
+)
 det_models_data = sly.json.load_json_file(det_models_data_path)
 seg_models_data = sly.json.load_json_file(seg_models_data_path)
 pose_models_data = sly.json.load_json_file(pose_models_data_path)
 
-if sly.is_production() or debug_session:
-    train_params_filepath = "train/training_params.yml"
-else:
-    train_params_filepath = "training_params.yml"  # for debug
+# if sly.is_production():
+#     train_params_filepath = "train/training_params.yml"
+# else:
+#     train_params_filepath = "training_params.yml"  # for debug
+train_params_filepath = "train/training_params.yml"
 train_counter, val_counter = 0, 0
 center_matches = {}
 keypoints_template = None

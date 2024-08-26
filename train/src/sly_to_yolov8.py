@@ -1,15 +1,7 @@
 import os
-from dotenv import load_dotenv
-
-load_dotenv("local.env")
-debug_session = bool(os.environ.get("DEBUG_SESSION", False))
-
 import yaml
 import supervisely as sly
-if debug_session:
-    import train.src.globals as g
-else:
-    import src.globals as g
+import src.globals as g
 import numpy as np
 import math
 
@@ -23,12 +15,17 @@ def check_bbox_exist_on_images(api, selected_classes, datasets, project_meta, pr
         all_images[dataset_id] = images
         images_cnt += len(images)
 
-    with progress(message="Checking if images contain bounding boxes...", total=images_cnt) as pbar:
+    with progress(
+        message="Checking if images contain bounding boxes...", total=images_cnt
+    ) as pbar:
         for dataset_id, images in all_images.items():
             for batch in sly.batched(list(images)):
                 image_ids = [image_info.id for image_info in batch]
                 ann_jsons = api.annotation.download_json_batch(dataset_id, image_ids)
-                anns = [sly.Annotation.from_json(ann_json, project_meta) for ann_json in ann_jsons]
+                anns = [
+                    sly.Annotation.from_json(ann_json, project_meta)
+                    for ann_json in ann_jsons
+                ]
                 for img_info, ann in zip(batch, anns):
                     bbox_exist = False
                     for label in ann.labels:
@@ -51,7 +48,9 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
         y_center = round(center.row / img_size[0], 6)
         width = round(rect_geometry.width / img_size[1], 6)
         height = round(rect_geometry.height / img_size[0], 6)
-        result = "{} {} {} {} {}".format(class_number, x_center, y_center, width, height)
+        result = "{} {} {} {} {}".format(
+            class_number, x_center, y_center, width, height
+        )
     elif task_type == "pose estimation":
         bbox_found = False
         if label.binding_key:
@@ -72,10 +71,15 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
             # find corresponding bbox for graph
             graph_center = label.geometry.to_bbox().center
             graph_center = [graph_center.col, graph_center.row]
-            boxes_list = [label.geometry for label in labels_list if isinstance(label.geometry, sly.Rectangle)]
+            boxes_list = [
+                label.geometry
+                for label in labels_list
+                if isinstance(label.geometry, sly.Rectangle)
+            ]
             if len(boxes_list) == 0:
                 sly.logger.warn(
-                    "Failed to find bounding boxes for graphs, " "boxes will be created by transforming graphs to boxes"
+                    "Failed to find bounding boxes for graphs, "
+                    "boxes will be created by transforming graphs to boxes"
                 )
                 class_number = class_names.index(label.obj_class.name)
                 rect_geometry = label.geometry.to_bbox()
@@ -101,7 +105,9 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
                 box_x, box_y = int(box_x), int(box_y)
                 box_center = [box_x, box_y]
                 if box_center not in g.center_matches.values():
-                    g.center_matches[f"{graph_center[0]} {graph_center[1]}"] = box_center
+                    g.center_matches[f"{graph_center[0]} {graph_center[1]}"] = (
+                        box_center
+                    )
                     class_number = class_names.index(label.obj_class.name)
                     x_center = round(box_center[0] / img_size[1], 6)
                     y_center = round(box_center[1] / img_size[0], 6)
@@ -132,7 +138,9 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
                 point_x, point_y = 0, 0
             keypoints.extend([point_x, point_y, visibility])
         keypoints_str = " ".join(str(point) for point in keypoints)
-        result = f"{class_number} {x_center} {y_center} {width} {height} {keypoints_str}"
+        result = (
+            f"{class_number} {x_center} {y_center} {width} {height} {keypoints_str}"
+        )
     elif task_type == "instance segmentation":
         class_number = class_names.index(label.obj_class.name)
         if type(label.geometry) is sly.Bitmap:
@@ -144,7 +152,9 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
                 if i == 0:
                     points = label.geometry.exterior_np
                 else:
-                    points = np.concatenate((points, label.geometry.exterior_np), axis=0)
+                    points = np.concatenate(
+                        (points, label.geometry.exterior_np), axis=0
+                    )
         else:
             points = label.geometry.exterior_np
         points = np.flip(points, axis=1)
@@ -161,7 +171,10 @@ def _create_data_config(output_dir, meta: sly.ProjectMeta, task_type):
     class_names = []
     class_colors = []
     for obj_class in meta.obj_classes:
-        if task_type == "pose estimation" and obj_class.geometry_type.geometry_name() != "graph":
+        if (
+            task_type == "pose estimation"
+            and obj_class.geometry_type.geometry_name() != "graph"
+        ):
             continue
         class_names.append(obj_class.name)
         class_colors.append(obj_class.color)
@@ -203,9 +216,13 @@ def _transform_annotation(ann, class_names, save_path, task_type):
     yolov8_ann = []
     for label in ann.labels:
         if label.obj_class.name in class_names:
-            if task_type == "pose estimation" and isinstance(label.geometry, sly.Rectangle):
+            if task_type == "pose estimation" and isinstance(
+                label.geometry, sly.Rectangle
+            ):
                 continue
-            transformed_label = _transform_label(class_names, ann.img_size, label, task_type, ann.labels)
+            transformed_label = _transform_label(
+                class_names, ann.img_size, label, task_type, ann.labels
+            )
             if transformed_label:
                 yolov8_ann.append(transformed_label)
 
@@ -223,12 +240,18 @@ def _transform_set(set_name, data_yaml, project_meta, items, progress_cb, task_t
     classes_names = data_yaml["names"]
 
     used_names = set()
-    with progress_cb(message=f"Converting {set_name} set to YOLOv8 format...", total=len(items)) as pbar:
+    with progress_cb(
+        message=f"Converting {set_name} set to YOLOv8 format...", total=len(items)
+    ) as pbar:
         for batch in sly.batched(items, batch_size=max(int(len(items) / 50), 10)):
             for item in batch:
-                sly.logger.debug(f"Converting image located at {item.img_path} to supervisely format...")
+                sly.logger.debug(
+                    f"Converting image located at {item.img_path} to supervisely format..."
+                )
                 ann = sly.Annotation.load_json_file(item.ann_path, project_meta)
-                _item_name = sly._utils.generate_free_name(used_names, sly.fs.get_file_name(item.name))
+                _item_name = sly._utils.generate_free_name(
+                    used_names, sly.fs.get_file_name(item.name)
+                )
                 used_names.add(_item_name)
 
                 _ann_name = f"{_item_name}.txt"

@@ -1,18 +1,8 @@
 import os
-from dotenv import load_dotenv
-
-load_dotenv("local.env")
-debug_session = bool(os.environ.get("DEBUG_SESSION", False))
-
 from typing import List
 import supervisely as sly
 from supervisely.app.widgets import Progress
-
-if debug_session:
-    import train.src.globals as g
-else:
-    import src.globals as g
-
+import src.globals as g
 from supervisely.project.download import (
     download_to_cache,
     copy_from_cache,
