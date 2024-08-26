@@ -158,17 +158,16 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self.load_model_meta(model_source, local_weights_path)
 
         # Set checkpoint info
-        train_args = self.model.ckpt["train_args"]
         if model_source == "Pretrained models":
             custom_checkpoint_path = None
-            checkpoint_name = os.path.basename(train_args["model"]).split(".")[0]
+            checkpoint_name = os.path.splitext(checkpoint_name)[0]
+            # maybe do not downcase the checkpoint_name ?
         else:
             custom_checkpoint_path = checkpoint_url
             file_id = self.api.file.get_info_by_path(self.team_id, checkpoint_url).id
             checkpoint_url = self.api.file.get_url(file_id)
-        # model_name, architecture = parse_model_name(checkpoint_name)
         self.checkpoint_info = CheckpointInfo(
-            checkpoint_name=checkpoint_name,  # TODO: checkpoint_name is not correct for custom models
+            checkpoint_name=checkpoint_name,
             architecture="YOLO",
             model_source=model_source,
             checkpoint_url=checkpoint_url,
