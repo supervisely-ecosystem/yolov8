@@ -1118,6 +1118,10 @@ def change_logs_visibility():
 
 @start_training_button.click
 def start_training():
+    if g.IN_PROGRESS is True:
+        return
+    g.IN_PROGRESS = True
+
     start_training_button.loading = True
 
     task_type = task_type_select.get_value()
@@ -2465,6 +2469,7 @@ def auto_train(request: Request):
     train_artifacts_folder.set(file_info)
 
     # finish training
+    g.IN_PROGRESS = False
     start_training_button.loading = False
     start_training_button.disable()
     logs_button.disable()

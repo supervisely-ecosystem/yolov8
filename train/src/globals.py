@@ -35,3 +35,5 @@ train_counter, val_counter = 0, 0
 center_matches = {}
 keypoints_template = None
 keypoints_classes = []
+
+IN_PROGRESS = False
