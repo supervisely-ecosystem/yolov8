@@ -16,7 +16,7 @@ if sly.is_production():
     app_session_id = sly.io.env.task_id()
     root_model_checkpoint_dir = sly.app.get_synced_data_dir()
 else:
-    app_session_id = 60466  # for debug
+    app_session_id = sly.env.task_id(raise_not_found=False)  # for debug
     root_model_checkpoint_dir = os.path.join(app_root_directory, "runs")
 
 
@@ -29,11 +29,11 @@ det_models_data = sly.json.load_json_file(det_models_data_path)
 seg_models_data = sly.json.load_json_file(seg_models_data_path)
 pose_models_data = sly.json.load_json_file(pose_models_data_path)
 
-# if sly.is_production():
-#     train_params_filepath = "train/training_params.yml"
-# else:
-#     train_params_filepath = "training_params.yml"  # for debug
-train_params_filepath = "train/training_params.yml"
+if sly.is_production():
+    train_params_filepath = "train/training_params.yml"
+else:
+    train_params_filepath = "training_params.yml"  # for debug
+# train_params_filepath = "train/training_params.yml"
 train_counter, val_counter = 0, 0
 center_matches = {}
 keypoints_template = None

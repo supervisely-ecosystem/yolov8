@@ -100,8 +100,10 @@ def update_globals(new_dataset_ids):
 
 # authentication
 load_dotenv("local.env")
-load_dotenv("supervisely.env")
-api = sly.Api()
+# load_dotenv("~/supervisely.env")
+
+api = sly.Api.from_env()
+# api = sly.Api()
 team_id = sly.env.team_id()
 server_address = sly.env.server_address()
 
@@ -1785,6 +1787,7 @@ def start_training():
                 bm.get_eval_results_dir(),
                 model_benchmark_pbar,
                 project_info.items_count,
+                validation_set=val_set,
             )
             evaluator.evaluate()
 
