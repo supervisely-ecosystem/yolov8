@@ -1147,7 +1147,6 @@ def start_training():
 
     sly.logger.info(f"Local artifacts dir: {local_artifacts_dir}")
 
-
     if os.path.exists(local_artifacts_dir):
         sly.fs.remove_dir(local_artifacts_dir)
     # get number of images in selected datasets
