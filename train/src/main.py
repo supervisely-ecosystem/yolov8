@@ -1118,10 +1118,6 @@ def change_logs_visibility():
 
 @start_training_button.click
 def start_training():
-    if g.IN_PROGRESS is True:
-        return
-    g.IN_PROGRESS = True
-
     start_training_button.loading = True
 
     task_type = task_type_select.get_value()
@@ -1146,12 +1142,19 @@ def start_training():
 
     sly.logger.info(f"Local artifacts dir: {local_artifacts_dir}")
 
+
     if os.path.exists(local_artifacts_dir):
         sly.fs.remove_dir(local_artifacts_dir)
     # get number of images in selected datasets
     dataset_infos = [
         api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids
     ]
+
+    if g.IN_PROGRESS is True:
+        start_training_button.loading = True
+        return
+    g.IN_PROGRESS = True
+
     n_images = sum([info.images_count for info in dataset_infos])
     download_project(
         api=api,
