@@ -1770,6 +1770,7 @@ def start_training():
                 project_info.id,
                 output_dir=g.app_data_dir + "/benchmark",
                 progress=model_benchmark_pbar,
+                classes_whitelist=selected_classes,
             )
 
             # 2. Run inference
@@ -1785,6 +1786,7 @@ def start_training():
                 bm.get_eval_results_dir(),
                 model_benchmark_pbar,
                 project_info.items_count,
+                classes_whitelist=selected_classes,
             )
             evaluator.evaluate()
 
