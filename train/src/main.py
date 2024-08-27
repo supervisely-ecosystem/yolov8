@@ -1154,7 +1154,6 @@ def start_training():
     dataset_infos = [
         api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids
     ]
-
     n_images = sum([info.images_count for info in dataset_infos])
     download_project(
         api=api,
