@@ -1120,6 +1120,11 @@ def change_logs_visibility():
 def start_training():
     start_training_button.loading = True
 
+    if g.IN_PROGRESS is True:
+        start_training_button.disable()
+        return
+    g.IN_PROGRESS = True
+
     task_type = task_type_select.get_value()
     use_cache = use_cache_checkbox.is_checked()
 
@@ -1149,11 +1154,6 @@ def start_training():
     dataset_infos = [
         api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids
     ]
-
-    if g.IN_PROGRESS is True:
-        start_training_button.disable()
-        return
-    g.IN_PROGRESS = True
 
     n_images = sum([info.images_count for info in dataset_infos])
     download_project(
