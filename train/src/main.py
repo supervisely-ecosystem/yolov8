@@ -1151,7 +1151,7 @@ def start_training():
     ]
 
     if g.IN_PROGRESS is True:
-        start_training_button.loading = True
+        start_training_button.disable()
         return
     g.IN_PROGRESS = True
 
