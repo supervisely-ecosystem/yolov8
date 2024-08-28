@@ -161,17 +161,19 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         if model_source == "Pretrained models":
             custom_checkpoint_path = None
             checkpoint_name = os.path.splitext(checkpoint_name)[0]
-            # maybe do not downcase the checkpoint_name ?
+            model_name, architecture = parse_model_name(checkpoint_name)
         else:
             custom_checkpoint_path = checkpoint_url
             file_id = self.api.file.get_info_by_path(self.team_id, checkpoint_url).id
             checkpoint_url = self.api.file.get_url(file_id)
+            model_name, architecture = None, None
         self.checkpoint_info = CheckpointInfo(
             checkpoint_name=checkpoint_name,
-            architecture="YOLO",
-            model_source=model_source,
+            architecture=architecture,
+            model_name=model_name,
             checkpoint_url=checkpoint_url,
             custom_checkpoint_path=custom_checkpoint_path,
+            model_source=model_source,
         )
 
         # This will disable logs from YOLO
@@ -404,15 +406,14 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         return predictions, benchmark
 
 
-def parse_model_name(model_name: str):
-    v8 = int(model_name[5])
-    postfix = model_name[6:].split("-")
-    variant = postfix[0].upper().strip()
-    if len(postfix) > 1:
-        task = postfix[1]
-        name = f"YOLOv{v8}-{variant}"
-    else:
-        name = f"YOLOv{v8}-{variant}"
-    architecture = f"YOLOv{v8}"
-    return name, architecture
+def parse_model_name(checkpoint_name: str):
+    import re
+    # yolov8n
+    p = r"yolov(\d+)(\w)"
+    match = re.match(p, checkpoint_name)
+    version = match.group(1)
+    variant = match.group(2)
+    model_name = f"YOLOv{version}{variant}"
+    architecture = f"YOLOv{version}"
+    return model_name, architecture
 
