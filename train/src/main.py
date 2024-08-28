@@ -1771,10 +1771,20 @@ def start_training():
             sly.fs.remove_dir(g.app_data_dir + "/benchmark")
 
             # 1. Init benchmark (todo: auto-detect task type)
+            image_names_per_dataset = {}
+            for item in val_set:
+                image_names_per_dataset.setdefault(item.dataset_name, []).append(item.name)
+            image_infos = []
+            ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
+            for dataset_name, image_names in image_names_per_dataset.items():
+                ds_info = ds_infos_dict[dataset_name]
+                image_infos.extend(api.image.get_list(ds_info.id, filters=[{"field": "name", "operator": "in", "value": image_names}]))
+
             bm = ObjectDetectionBenchmark(
                 api,
                 project_info.id,
                 output_dir=g.app_data_dir + "/benchmark",
+                gt_images_ids=[img_info.id for img_info in image_infos],
                 progress=model_benchmark_pbar,
             )
 
@@ -1790,7 +1800,7 @@ def start_training():
                 dt_project_path,
                 bm.get_eval_results_dir(),
                 model_benchmark_pbar,
-                project_info.items_count,
+                len(image_infos),
             )
             evaluator.evaluate()
 
