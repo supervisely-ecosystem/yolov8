@@ -12,4 +12,10 @@ RUN python3 -c "from supervisely.nn.tracker import *"
 RUN python3 -m pip install supervisely[model-benchmark]==6.73.166
 RUN pip3 install dill==0.3.8
 
-LABEL python_sdk_version=6.73.166
+RUN apt-get -y install curl
+
+RUN apt -y install wireguard iproute2
+RUN apt-get -y install wget
+RUN apt-get install nano
+
+LABEL "role"="development"

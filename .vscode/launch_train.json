@@ -3,23 +3,26 @@
     "configurations": [
         {
             "name": "Uvicorn",
-            "type": "python",
+            "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
             "args": [
                 "src.main:app",
+                "--app-dir",
+                "train",
                 "--host",
                 "0.0.0.0",
                 "--port",
                 "8000",
                 "--ws",
-                "websockets"
+                "websockets",
+                "--reload"
             ],
             "jinja": true,
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}",
-                "LOG_LEVEL": "DEBUG",
+                "LOG_LEVEL": "DEBUG"
             }
         }
     ]
