@@ -14,6 +14,9 @@ from supervisely.app.widgets import (
     PretrainedModelsSelector,
     RadioTabs,
     CustomModelsSelector,
+    SelectString,
+    Field,
+    Container,
 )
 from supervisely.nn.prediction_dto import (
     PredictionBBox,
@@ -46,7 +49,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 "pose estimation",
             ],
         )
-
         self.model_source_tabs = RadioTabs(
             titles=["Pretrained models", "Custom models"],
             descriptions=[
@@ -55,7 +57,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             ],
             contents=[self.pretrained_models_table, self.custom_models_table],
         )
-        return self.model_source_tabs
+        self.runtime_select = SelectString([RuntimeType.PYTORCH, RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT])
+        runtime_field = Field(self.runtime_select, "Runtime", "Select a runtime for inference.")
+        layout = Container([self.model_source_tabs, runtime_field])
+        return layout
 
     def get_params_from_gui(self) -> dict:
         model_source = self.model_source_tabs.get_active_tab()
@@ -127,6 +132,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         ],
         checkpoint_name: str,
         checkpoint_url: str,
+        runtime: str,
     ):
         """
         Load model method is used to deploy model.
@@ -141,9 +147,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :type checkpoint_name: str
         :param checkpoint_url: The URL where the model can be downloaded.
         :type checkpoint_url: str
+        :param runtime: The runtime used for inference. Supported runtimes are PyTorch, ONNXRuntime, and TensorRT.
+        :type runtime: str
         """
         self.device = device
-        self.runtime = RuntimeType.PYTORCH
+        self.runtime = runtime
         self.task_type = task_type
 
         local_weights_path = os.path.join(self.model_dir, checkpoint_name)
@@ -153,8 +161,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 dst_path=local_weights_path,
             )
 
-        self.model = YOLO(local_weights_path)
-        self.model.to(self.device)
+        if runtime == RuntimeType.PYTORCH:
+            self.model = self._load_pytorch(local_weights_path)
+        elif runtime == RuntimeType.ONNXRUNTIME:
+            self.model = self._load_onnx(local_weights_path)
+        elif runtime == RuntimeType.TENSORRT:
+            self.model = self._load_tensorrt(local_weights_path)
+
         self.load_model_meta(model_source, local_weights_path)
 
         # Set checkpoint info
@@ -402,6 +415,27 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         }
         predictions = [self._to_dto(prediction, settings) for prediction in predictions]
         return predictions, benchmark
+    
+    def _load_pytorch(self, weights_path: str):
+        model = YOLO(weights_path)
+        model.to(self.device)
+        return model
+    
+    def _load_runtime(self, weights_path: str, format: str):
+        if weights_path.endswith(".pt"):
+            onnx_path = weights_path.replace(".pt", f".{format}")
+            if not os.path.exists(onnx_path):
+                sly.logger.info(f"Exporting model to {format} format...")
+                model = YOLO(weights_path)
+                model.export(format=format)
+        model = YOLO(onnx_path)
+        return model
+    
+    def _load_onnx(self, weights_path: str):
+        return self._load_runtime(weights_path, "onnx")
+    
+    def _load_tensorrt(self, weights_path: str):
+        return self._load_runtime(weights_path, "engine")
 
 
 def parse_model_name(model_name: str):
@@ -415,4 +449,3 @@ def parse_model_name(model_name: str):
         name = f"YOLOv{v8}-{variant}"
     architecture = f"YOLOv{v8}"
     return name, architecture
-
