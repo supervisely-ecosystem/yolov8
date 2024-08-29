@@ -61,6 +61,7 @@ from supervisely.app.widgets import (  # SelectDataset,
     TaskLogs,
     Text,
     TrainValSplits,
+    Tooltip,
 )
 from supervisely.nn.artifacts.yolov8 import YOLOv8
 from supervisely.nn.benchmark import ObjectDetectionBenchmark
@@ -68,6 +69,10 @@ from supervisely.nn.benchmark.evaluation import ObjectDetectionEvaluator
 from supervisely.nn.inference import Session, SessionJSON
 from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
+from src.early_stopping.custom_yolo import YOLO as CustomYOLO
+
+# from src.custom_trainer import BaseTrainer as CustomBaseTrainer
+# from src.custom_torch_utils import EarlyStopping as CustomEarlyStopping
 
 
 ConfusionMatrix.plot = custom_plot
@@ -505,6 +510,23 @@ card_train_params.lock()
 
 ### 6. Training progress
 start_training_button = Button("start training")
+stop_training_button = Button(text="stop training", button_type="danger")
+stop_training_tooltip = Tooltip(
+    text="all training artefacts will be saved",
+    content=stop_training_button,
+    placement="right",
+)
+stop_training_button.hide()
+start_stop_container = Container(
+    widgets=[
+        start_training_button,
+        stop_training_tooltip,
+        Empty(),
+    ],
+    direction="horizontal",
+    overflow="wrap",
+    fractions=[1, 1, 4],
+)
 logs_button = Button(
     text="Show logs",
     plain=True,
@@ -564,7 +586,7 @@ train_done = DoneLabel(
 train_done.hide()
 train_progress_content = Container(
     [
-        start_training_button,
+        start_stop_container,
         logs_button,
         task_logs,
         creating_report_f,
@@ -1099,6 +1121,12 @@ def change_logs_visibility():
         logs_button.icon = "zmdi zmdi-caret-down-circle"
 
 
+@stop_training_button.click
+def stop_training_process():
+    sly.logger.info("Stopping training process...")
+    g.stop_event.set()
+
+
 @start_training_button.click
 def start_training():
     start_training_button.loading = True
@@ -1107,6 +1135,8 @@ def start_training():
         start_training_button.disable()
         return
     g.IN_PROGRESS = True
+
+    stop_training_button.show()
 
     task_type = task_type_select.get_value()
     use_cache = use_cache_checkbox.is_checked()
@@ -1274,6 +1304,9 @@ def start_training():
         weights_pbar.update(progress.current)
 
     file_info = None
+
+    g.stop_event = threading.Event()
+
     if weights_type == "Pretrained models":
         selected_index = models_table.get_selected_row_index()
         selected_dict = models_data[selected_index]
@@ -1303,11 +1336,11 @@ def start_training():
                     save_path=weights_dst_path,
                     progress=progress_cb,
                 )
-            model = YOLO(weights_dst_path)
+            model = CustomYOLO(weights_dst_path, stop_event=g.stop_event)
         else:
             yaml_config = selected_dict["yaml_config"]
             pretrained = False
-            model = YOLO(yaml_config)
+            model = CustomYOLO(yaml_config, stop_event=g.stop_event)
     elif weights_type == "Custom models":
         custom_link = model_path_input.get_value()
         model_filename = "custom_model.pt"
@@ -1335,7 +1368,7 @@ def start_training():
                 progress_cb=progress_cb,
             )
         pretrained = True
-        model = YOLO(weights_dst_path)
+        model = CustomYOLO(weights_dst_path, stop_event=g.stop_event)
 
     # ---------------------------------- Init And Set Workflow Input --------------------------------- #
     w.workflow_input(api, project_info, file_info)
@@ -1536,7 +1569,13 @@ def start_training():
     # model.add_callback("on_train_batch_end", stop_on_batch_end_if_needed)
     # model.add_callback("on_val_batch_end", stop_on_batch_end_if_needed)
 
-    with app.handle_stop():
+    # @mock.patch("ultralytics.models.yolo.model.YOLO", CustomYOLO)
+    # @mock.patch("ultralytics.engine.trainer.BaseTrainer", CustomBaseTrainer)
+    # @mock.patch("ultralytics.utils.torch_utils.EarlyStopping", CustomEarlyStopping)
+    # @mock.patch("ultralytics.engine.trainer.EarlyStopping", CustomEarlyStopping)
+    # @mock.patch("ultralytics.models.yolo.detect.train.BaseTrainer", CustomBaseTrainer)
+    # @mock.patch("ultralytics.models.yolo.detect.train.yolo", CustomYOLO)
+    def train_model():
         model.train(
             data=data_path,
             epochs=n_epochs_input.get_value(),
@@ -1552,6 +1591,10 @@ def start_training():
             **additional_params,
         )
 
+    train_thread = threading.Thread(target=train_model, args=())
+    train_thread.start()
+    train_thread.join()
+
     # if app.is_stopped():
     #     print("Stopping the app...")
     #     sly.fs.remove_dir(g.app_data_dir)
@@ -1562,6 +1605,8 @@ def start_training():
         progress_bar_iters.hide()
         progress_bar_epochs.hide()
     watcher.running = False
+
+    stop_training_button.hide()
 
     # visualize model predictions
     making_training_vis_f.show()

@@ -40,3 +40,5 @@ keypoints_template = None
 keypoints_classes = []
 
 IN_PROGRESS = False
+
+stop_event = None
