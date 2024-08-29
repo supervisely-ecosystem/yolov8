@@ -71,9 +71,6 @@ from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
 from src.early_stopping.custom_yolo import YOLO as CustomYOLO
 
-# from src.custom_trainer import BaseTrainer as CustomBaseTrainer
-# from src.custom_torch_utils import EarlyStopping as CustomEarlyStopping
-
 
 ConfusionMatrix.plot = custom_plot
 plt.switch_backend("Agg")
@@ -516,7 +513,7 @@ stop_training_tooltip = Tooltip(
     content=stop_training_button,
     placement="right",
 )
-stop_training_button.hide()
+stop_training_tooltip.hide()
 start_stop_container = Container(
     widgets=[
         start_training_button,
@@ -1123,6 +1120,7 @@ def change_logs_visibility():
 
 @stop_training_button.click
 def stop_training_process():
+    stop_training_tooltip.loading = True
     sly.logger.info("Stopping training process...")
     g.stop_event.set()
 
@@ -1136,7 +1134,7 @@ def start_training():
         return
     g.IN_PROGRESS = True
 
-    stop_training_button.show()
+    stop_training_tooltip.show()
 
     task_type = task_type_select.get_value()
     use_cache = use_cache_checkbox.is_checked()
@@ -1569,12 +1567,6 @@ def start_training():
     # model.add_callback("on_train_batch_end", stop_on_batch_end_if_needed)
     # model.add_callback("on_val_batch_end", stop_on_batch_end_if_needed)
 
-    # @mock.patch("ultralytics.models.yolo.model.YOLO", CustomYOLO)
-    # @mock.patch("ultralytics.engine.trainer.BaseTrainer", CustomBaseTrainer)
-    # @mock.patch("ultralytics.utils.torch_utils.EarlyStopping", CustomEarlyStopping)
-    # @mock.patch("ultralytics.engine.trainer.EarlyStopping", CustomEarlyStopping)
-    # @mock.patch("ultralytics.models.yolo.detect.train.BaseTrainer", CustomBaseTrainer)
-    # @mock.patch("ultralytics.models.yolo.detect.train.yolo", CustomYOLO)
     def train_model():
         model.train(
             data=data_path,
@@ -1606,8 +1598,6 @@ def start_training():
         progress_bar_epochs.hide()
     watcher.running = False
 
-    stop_training_button.hide()
-
     # visualize model predictions
     making_training_vis_f.show()
     for i in range(4):
@@ -1636,6 +1626,9 @@ def start_training():
             val_batches_gallery.sync_images([val_batch_labels_id, val_batch_preds_id])
         if i == 0:
             val_batches_gallery_f.show()
+
+    stop_training_tooltip.loading = False
+    stop_training_tooltip.hide()
 
     # visualize additional training results
     confusion_matrix_path = os.path.join(
