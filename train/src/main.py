@@ -1134,8 +1134,6 @@ def start_training():
         return
     g.IN_PROGRESS = True
 
-    stop_training_tooltip.show()
-
     task_type = task_type_select.get_value()
     use_cache = use_cache_checkbox.is_checked()
 
@@ -1583,6 +1581,8 @@ def start_training():
             **additional_params,
         )
 
+    stop_training_tooltip.show()
+    
     train_thread = threading.Thread(target=train_model, args=())
     train_thread.start()
     train_thread.join()

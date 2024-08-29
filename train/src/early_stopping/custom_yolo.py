@@ -14,6 +14,12 @@ from ultralytics.utils import ROOT, yaml_load
 from src.early_stopping.custom_det_trainer import (
     DetectionTrainer as CustomDetectionTrainer,
 )
+from src.early_stopping.custom_seg_trainer import (
+    SegmentationTrainer as CustomSegmentationTrainer,
+)
+from src.early_stopping.custom_pose_trainer import (
+    PoseTrainer as CustomPoseTrainer,
+)
 from src.early_stopping.custom_model import Model as CustomModel
 
 
@@ -55,13 +61,13 @@ class YOLO(CustomModel):
             },
             "segment": {
                 "model": SegmentationModel,
-                "trainer": yolo.segment.SegmentationTrainer,
+                "trainer": CustomSegmentationTrainer,
                 "validator": yolo.segment.SegmentationValidator,
                 "predictor": yolo.segment.SegmentationPredictor,
             },
             "pose": {
                 "model": PoseModel,
-                "trainer": yolo.pose.PoseTrainer,
+                "trainer": CustomPoseTrainer,
                 "validator": yolo.pose.PoseValidator,
                 "predictor": yolo.pose.PosePredictor,
             },
