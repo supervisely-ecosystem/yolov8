@@ -1761,7 +1761,7 @@ def start_training():
             deploy_params = dict(
                 device=device,
                 model_source="Custom models",
-                task_type="object detection",
+                task_type=task_type,
                 checkpoint_name=best_filename,
                 checkpoint_url=checkpoint_path,
             )
