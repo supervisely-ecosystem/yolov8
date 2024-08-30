@@ -7,9 +7,9 @@ RUN pip3 install ultralytics==8.2.79
 RUN pip3 install protobuf==3.20.1
 RUN pip3 install onnx==1.12.0
 
-RUN python3 -m pip install supervisely[tracking]==6.73.166
+RUN python3 -m pip install supervisely[tracking]==6.73.173
 RUN python3 -c "from supervisely.nn.tracker import *"
-RUN python3 -m pip install supervisely[model-benchmark]==6.73.166
+RUN python3 -m pip install supervisely[model-benchmark]==6.73.173
 RUN pip3 install dill==0.3.8
 
-LABEL python_sdk_version=6.73.166
+LABEL python_sdk_version=6.73.173
