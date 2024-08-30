@@ -63,9 +63,9 @@ from supervisely.app.widgets import (  # SelectDataset,
     TrainValSplits,
 )
 from supervisely.nn.artifacts.yolov8 import YOLOv8
-from supervisely.nn.benchmark import ObjectDetectionBenchmark
-from supervisely.nn.benchmark.evaluation import ObjectDetectionEvaluator
-from supervisely.nn.inference import Session, SessionJSON
+from supervisely.nn.benchmark import ObjectDetectionBenchmark, InstanceSegmentationBenchmark
+from supervisely.nn.inference import SessionJSON
+from supervisely.nn import TaskType
 from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
 
@@ -1739,7 +1739,7 @@ def start_training():
     # ------------------------------------- Model Benchmark ------------------------------------- #
     try:
         model_benchmark_done = False
-        if task_type == "object detection":
+        if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
             sly.logger.info(
                 f"Creating the report for the best model: {best_filename!r}"
             )
@@ -1780,14 +1780,26 @@ def start_training():
                 ds_info = ds_infos_dict[dataset_name]
                 image_infos.extend(api.image.get_list(ds_info.id, filters=[{"field": "name", "operator": "in", "value": image_names}]))
 
-            bm = ObjectDetectionBenchmark(
-                api,
-                project_info.id,
-                output_dir=g.app_data_dir + "/benchmark",
-                gt_images_ids=[img_info.id for img_info in image_infos],
-                progress=model_benchmark_pbar,
-                classes_whitelist=selected_classes,
-            )
+            if task_type == TaskType.OBJECT_DETECTION:
+                bm = ObjectDetectionBenchmark(
+                    api,
+                    project_info.id,
+                    output_dir=g.app_data_dir + "/benchmark",
+                    gt_images_ids=[img_info.id for img_info in image_infos],
+                    progress=model_benchmark_pbar,
+                    classes_whitelist=selected_classes,
+                )
+            elif task_type == TaskType.INSTANCE_SEGMENTATION:
+                bm = InstanceSegmentationBenchmark(
+                    api,
+                    project_info.id,
+                    output_dir=g.app_data_dir + "/benchmark",
+                    gt_images_ids=[img_info.id for img_info in image_infos],
+                    progress=model_benchmark_pbar,
+                    classes_whitelist=selected_classes,
+                )
+            else:
+                raise ValueError(f"Model benchmark for task type {task_type} is not implemented (coming soon)")
 
             # 2. Run inference
             bm.run_inference(session)
@@ -1796,15 +1808,7 @@ def start_training():
             gt_project_path, dt_project_path = bm.download_projects(save_images=False)
 
             # 4. Evaluate
-            evaluator = ObjectDetectionEvaluator(
-                gt_project_path,
-                dt_project_path,
-                bm.get_eval_results_dir(),
-                model_benchmark_pbar,
-                len(image_infos),
-                classes_whitelist=selected_classes,
-            )
-            evaluator.evaluate()
+            bm._evaluate(gt_project_path, dt_project_path)
 
             # 5. Upload evaluation results
             eval_res_dir = get_eval_results_dir_name(
