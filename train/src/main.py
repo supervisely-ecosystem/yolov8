@@ -1771,21 +1771,31 @@ def start_training():
             sly.fs.remove_dir(g.app_data_dir + "/benchmark")
 
             # 1. Init benchmark (todo: auto-detect task type)
-            image_names_per_dataset = {}
-            for item in val_set:
-                image_names_per_dataset.setdefault(item.dataset_name, []).append(item.name)
-            image_infos = []
-            ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
-            for dataset_name, image_names in image_names_per_dataset.items():
-                ds_info = ds_infos_dict[dataset_name]
-                image_infos.extend(api.image.get_list(ds_info.id, filters=[{"field": "name", "operator": "in", "value": image_names}]))
+            benchmark_dataset_ids = None
+            benchmark_images_ids = None
+
+            split_method = train_val_split._content.get_active_tab()
+            
+            if split_method == "Based on datasets":
+                benchmark_dataset_ids = train_val_split._val_ds_select.get_selected_ids()
+            else:
+                ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
+                image_names_per_dataset = {}
+                for item in val_set:
+                    image_names_per_dataset.setdefault(item.dataset_name, []).append(item.name)
+                image_infos = []
+                for dataset_name, image_names in image_names_per_dataset.items():
+                    ds_info = ds_infos_dict[dataset_name]
+                    image_infos.extend(api.image.get_list(ds_info.id, filters=[{"field": "name", "operator": "in", "value": image_names}]))
+                benchmark_images_ids = [img_info.id for img_info in image_infos]
 
             if task_type == TaskType.OBJECT_DETECTION:
                 bm = ObjectDetectionBenchmark(
                     api,
                     project_info.id,
                     output_dir=g.app_data_dir + "/benchmark",
-                    gt_images_ids=[img_info.id for img_info in image_infos],
+                    gt_dataset_ids=benchmark_dataset_ids,
+                    gt_images_ids=benchmark_images_ids,
                     progress=model_benchmark_pbar,
                     classes_whitelist=selected_classes,
                 )
@@ -1794,7 +1804,8 @@ def start_training():
                     api,
                     project_info.id,
                     output_dir=g.app_data_dir + "/benchmark",
-                    gt_images_ids=[img_info.id for img_info in image_infos],
+                    gt_dataset_ids=benchmark_dataset_ids,
+                    gt_images_ids=benchmark_images_ids,
                     progress=model_benchmark_pbar,
                     classes_whitelist=selected_classes,
                 )
