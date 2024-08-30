@@ -1786,6 +1786,7 @@ def start_training():
                 output_dir=g.app_data_dir + "/benchmark",
                 gt_images_ids=[img_info.id for img_info in image_infos],
                 progress=model_benchmark_pbar,
+                classes_whitelist=selected_classes,
             )
 
             # 2. Run inference
@@ -1801,6 +1802,7 @@ def start_training():
                 bm.get_eval_results_dir(),
                 model_benchmark_pbar,
                 len(image_infos),
+                classes_whitelist=selected_classes,
             )
             evaluator.evaluate()
 
