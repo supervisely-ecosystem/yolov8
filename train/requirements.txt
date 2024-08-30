@@ -1,2 +1,1 @@
---update
-git+https://github.com/supervisely/supervisely
+supervisely==6.73.173
