@@ -1,1 +1,2 @@
-git+https://github.com/supervisely/supervisely.git@model-benchmark-stage-2
+-U
+git+https://github.com/supervisely/supervisely
