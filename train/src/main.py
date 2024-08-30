@@ -64,9 +64,9 @@ from supervisely.app.widgets import (  # SelectDataset,
     Tooltip,
 )
 from supervisely.nn.artifacts.yolov8 import YOLOv8
-from supervisely.nn.benchmark import ObjectDetectionBenchmark
-from supervisely.nn.benchmark.evaluation import ObjectDetectionEvaluator
-from supervisely.nn.inference import Session, SessionJSON
+from supervisely.nn.benchmark import ObjectDetectionBenchmark, InstanceSegmentationBenchmark
+from supervisely.nn.inference import SessionJSON
+from supervisely.nn import TaskType
 from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
 from src.early_stopping.custom_yolo import YOLO as CustomYOLO
@@ -1777,7 +1777,7 @@ def start_training():
     # ------------------------------------- Model Benchmark ------------------------------------- #
     try:
         model_benchmark_done = False
-        if task_type == "object detection":
+        if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
             sly.logger.info(
                 f"Creating the report for the best model: {best_filename!r}"
             )
@@ -1799,7 +1799,7 @@ def start_training():
             deploy_params = dict(
                 device=device,
                 model_source="Custom models",
-                task_type="object detection",
+                task_type=task_type,
                 checkpoint_name=best_filename,
                 checkpoint_url=checkpoint_path,
             )
@@ -1809,12 +1809,46 @@ def start_training():
             sly.fs.remove_dir(g.app_data_dir + "/benchmark")
 
             # 1. Init benchmark (todo: auto-detect task type)
-            bm = ObjectDetectionBenchmark(
-                api,
-                project_info.id,
-                output_dir=g.app_data_dir + "/benchmark",
-                progress=model_benchmark_pbar,
-            )
+            benchmark_dataset_ids = None
+            benchmark_images_ids = None
+
+            split_method = train_val_split._content.get_active_tab()
+            
+            if split_method == "Based on datasets":
+                benchmark_dataset_ids = train_val_split._val_ds_select.get_selected_ids()
+            else:
+                ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
+                image_names_per_dataset = {}
+                for item in val_set:
+                    image_names_per_dataset.setdefault(item.dataset_name, []).append(item.name)
+                image_infos = []
+                for dataset_name, image_names in image_names_per_dataset.items():
+                    ds_info = ds_infos_dict[dataset_name]
+                    image_infos.extend(api.image.get_list(ds_info.id, filters=[{"field": "name", "operator": "in", "value": image_names}]))
+                benchmark_images_ids = [img_info.id for img_info in image_infos]
+
+            if task_type == TaskType.OBJECT_DETECTION:
+                bm = ObjectDetectionBenchmark(
+                    api,
+                    project_info.id,
+                    output_dir=g.app_data_dir + "/benchmark",
+                    gt_dataset_ids=benchmark_dataset_ids,
+                    gt_images_ids=benchmark_images_ids,
+                    progress=model_benchmark_pbar,
+                    classes_whitelist=selected_classes,
+                )
+            elif task_type == TaskType.INSTANCE_SEGMENTATION:
+                bm = InstanceSegmentationBenchmark(
+                    api,
+                    project_info.id,
+                    output_dir=g.app_data_dir + "/benchmark",
+                    gt_dataset_ids=benchmark_dataset_ids,
+                    gt_images_ids=benchmark_images_ids,
+                    progress=model_benchmark_pbar,
+                    classes_whitelist=selected_classes,
+                )
+            else:
+                raise ValueError(f"Model benchmark for task type {task_type} is not implemented (coming soon)")
 
             # 2. Run inference
             bm.run_inference(session)
@@ -1823,14 +1857,7 @@ def start_training():
             gt_project_path, dt_project_path = bm.download_projects(save_images=False)
 
             # 4. Evaluate
-            evaluator = ObjectDetectionEvaluator(
-                gt_project_path,
-                dt_project_path,
-                bm.get_eval_results_dir(),
-                model_benchmark_pbar,
-                project_info.items_count,
-            )
-            evaluator.evaluate()
+            bm._evaluate(gt_project_path, dt_project_path)
 
             # 5. Upload evaluation results
             eval_res_dir = get_eval_results_dir_name(
