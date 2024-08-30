@@ -1,2 +1,2 @@
--U
+--update
 git+https://github.com/supervisely/supervisely
