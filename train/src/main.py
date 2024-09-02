@@ -64,7 +64,10 @@ from supervisely.app.widgets import (  # SelectDataset,
     Tooltip,
 )
 from supervisely.nn.artifacts.yolov8 import YOLOv8
-from supervisely.nn.benchmark import ObjectDetectionBenchmark, InstanceSegmentationBenchmark
+from supervisely.nn.benchmark import (
+    ObjectDetectionBenchmark,
+    InstanceSegmentationBenchmark,
+)
 from supervisely.nn.inference import SessionJSON
 from supervisely.nn import TaskType
 from ultralytics import YOLO
@@ -1222,9 +1225,11 @@ def start_training():
                 geometry_config = cls.geometry_config
                 cls2config[cls.name] = geometry_config
                 for key, value in geometry_config["nodes"].items():
-                    if key not in total_config["nodes"]:
-                        total_config["nodes"][key] = value
-                        nodes_order.append(key)
+                    label = value["label"]
+                    g.node_id2label[key] = label
+                    if label not in total_config["nodes"]:
+                        total_config["nodes"][label] = value
+                        nodes_order.append(label)
         if len(total_config["nodes"]) == 17:
             total_config["nodes"][uuid.uuid4().hex[:6]] = {
                 "label": "fictive",
@@ -1582,7 +1587,7 @@ def start_training():
         )
 
     stop_training_tooltip.show()
-    
+
     train_thread = threading.Thread(target=train_model, args=())
     train_thread.start()
     train_thread.join()
@@ -1813,18 +1818,33 @@ def start_training():
             benchmark_images_ids = None
 
             split_method = train_val_split._content.get_active_tab()
-            
+
             if split_method == "Based on datasets":
-                benchmark_dataset_ids = train_val_split._val_ds_select.get_selected_ids()
+                benchmark_dataset_ids = (
+                    train_val_split._val_ds_select.get_selected_ids()
+                )
             else:
                 ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
                 image_names_per_dataset = {}
                 for item in val_set:
-                    image_names_per_dataset.setdefault(item.dataset_name, []).append(item.name)
+                    image_names_per_dataset.setdefault(item.dataset_name, []).append(
+                        item.name
+                    )
                 image_infos = []
                 for dataset_name, image_names in image_names_per_dataset.items():
                     ds_info = ds_infos_dict[dataset_name]
-                    image_infos.extend(api.image.get_list(ds_info.id, filters=[{"field": "name", "operator": "in", "value": image_names}]))
+                    image_infos.extend(
+                        api.image.get_list(
+                            ds_info.id,
+                            filters=[
+                                {
+                                    "field": "name",
+                                    "operator": "in",
+                                    "value": image_names,
+                                }
+                            ],
+                        )
+                    )
                 benchmark_images_ids = [img_info.id for img_info in image_infos]
 
             if task_type == TaskType.OBJECT_DETECTION:
@@ -1848,7 +1868,9 @@ def start_training():
                     classes_whitelist=selected_classes,
                 )
             else:
-                raise ValueError(f"Model benchmark for task type {task_type} is not implemented (coming soon)")
+                raise ValueError(
+                    f"Model benchmark for task type {task_type} is not implemented (coming soon)"
+                )
 
             # 2. Run inference
             bm.run_inference(session)
