@@ -127,13 +127,17 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
                     height = round(rect_geometry.height / img_size[0], 6)
         graph_nodes = label.geometry.nodes
         keypoints = []
-        for node_id in g.keypoints_template["nodes"].keys():
-            if node_id in graph_nodes.keys():
-                visibility = 2
-                graph_node = graph_nodes[node_id]
-                point_x = round(graph_node.location.col / img_size[1], 6)
-                point_y = round(graph_node.location.row / img_size[0], 6)
-            else:
+        for node_label in g.keypoints_template["nodes"].keys():
+            found_node = False
+            for node_id in graph_nodes.keys():
+                if node_label == g.node_id2label.get(node_id):
+                    visibility = 2
+                    graph_node = graph_nodes[node_id]
+                    point_x = round(graph_node.location.col / img_size[1], 6)
+                    point_y = round(graph_node.location.row / img_size[0], 6)
+                    found_node = True
+                    break
+            if not found_node:
                 visibility = 0
                 point_x, point_y = 0, 0
             keypoints.extend([point_x, point_y, visibility])

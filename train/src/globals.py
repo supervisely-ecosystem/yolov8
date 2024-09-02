@@ -38,6 +38,7 @@ train_counter, val_counter = 0, 0
 center_matches = {}
 keypoints_template = None
 keypoints_classes = []
+node_id2label = {}
 
 IN_PROGRESS = False
 
