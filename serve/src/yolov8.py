@@ -75,7 +75,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         if not self.in_train:
             w.workflow_input(self.api, model_params)
         # ----------------------------------------------- - ---------------------------------------------- #
-        
+
         return deploy_params
 
     def load_model_meta(self, model_source: str, weights_save_path: str):
@@ -103,7 +103,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         elif self.task_type == "pose estimation":
             if len(self.class_names) == 1:
                 obj_classes = [
-                    sly.ObjClass(name, sly.GraphNodes, geometry_config=self.keypoints_template)
+                    sly.ObjClass(
+                        name, sly.GraphNodes, geometry_config=self.keypoints_template
+                    )
                     for name in self.class_names
                 ]
             elif len(self.class_names) > 1:
@@ -115,7 +117,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     )
                     for name in self.class_names
                 ]
-        self._model_meta = sly.ProjectMeta(obj_classes=sly.ObjClassCollection(obj_classes))
+        self._model_meta = sly.ProjectMeta(
+            obj_classes=sly.ObjClassCollection(obj_classes)
+        )
         self._get_confidence_tag_meta()
 
     def load_model(
@@ -190,7 +194,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         if self.task_type == "pose estimation":
             info["detector_included"] = True
         return info
-    
+
     def get_classes(self) -> List[str]:
         return self.class_names
 
@@ -240,11 +244,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             label = sly.Label(sly.GraphNodes(nodes), obj_class)
         return label
 
-    def node_id_to_point(self, keypoints):
-        nid2point = {}
+    def node_label_to_point(self, keypoints):
+        n_label2point = {}
         for node, keypoint in zip(self.nodes_order, keypoints):
-            nid2point[node] = keypoint
-        return nid2point
+            n_label2point[node] = keypoint
+        return n_label2point
 
     def _to_dto(
         self, prediction, settings: dict
@@ -309,13 +313,20 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         for j, (point_coordinate, point_score) in enumerate(
                             zip(point_coordinates, point_scores)
                         ):
-                            if point_score >= point_threshold and point_labels[j] != "fictive":
+                            if (
+                                point_score >= point_threshold
+                                and point_labels[j] != "fictive"
+                            ):
                                 included_labels.append(point_labels[j])
-                                included_point_coordinates.append(point_coordinate.cpu().numpy())
+                                included_point_coordinates.append(
+                                    point_coordinate.cpu().numpy()
+                                )
                     elif keypoints_data.shape[-1] == 2:
                         for j, point_coordinate in enumerate(keypoints):
                             included_labels.append(point_labels[j])
-                            included_point_coordinates.append(point_coordinate.cpu().numpy())
+                            included_point_coordinates.append(
+                                point_coordinate.cpu().numpy()
+                            )
                     if len(included_labels) > 1:
                         dtos.append(
                             sly.nn.PredictionKeypoints(
@@ -338,15 +349,19 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     point_labels = [
                         value["label"] for value in keypoints_template["nodes"].values()
                     ]
-                    node_ids = list(keypoints_template["nodes"].keys())
-                    nid2point = self.node_id_to_point(keypoints)
+                    node_labels = [
+                        node["label"] for node in keypoints_template["nodes"].values()
+                    ]
+                    n_label2point = self.node_label_to_point(keypoints)
                     included_labels, included_point_coordinates = [], []
-                    for j, node_id in enumerate(node_ids):
-                        kpt = nid2point[node_id]
+                    for j, node_label in enumerate(node_labels):
+                        kpt = n_label2point[node_label]
                         point_coordinate, point_score = kpt[:2], kpt[2]
                         if point_score >= point_threshold:
                             included_labels.append(point_labels[j])
-                            included_point_coordinates.append(point_coordinate.cpu().numpy())
+                            included_point_coordinates.append(
+                                point_coordinate.cpu().numpy()
+                            )
                     if len(included_labels) > 1:
                         dtos.append(
                             sly.nn.PredictionKeypoints(
@@ -377,7 +392,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 predictions_generator.close()
                 return
             yield self._to_dto(prediction, settings)
-    
+
     def predict_benchmark(self, images_np: List[np.ndarray], settings: Dict):
         # RGB to BGR
         images_np = [cv2.cvtColor(img, cv2.COLOR_RGB2BGR) for img in images_np]
@@ -415,4 +430,3 @@ def parse_model_name(model_name: str):
         name = f"YOLOv{v8}-{variant}"
     architecture = f"YOLOv{v8}"
     return name, architecture
-
