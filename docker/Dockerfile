@@ -7,6 +7,14 @@ RUN pip3 install ultralytics==8.2.79
 RUN pip3 install protobuf==3.20.1
 RUN pip3 install onnx==1.12.0
 
+# Expected environment after installation:
+# CUDA 12.1
+# cuDNN 8.9.2
+# TensorRT 10.3.0
+RUN pip uninstall onnxruntime -y
+RUN pip install cmake onnxsim==0.4.36 onnx==1.12.0 onnxruntime-gpu==1.18.0
+RUN pip install nvidia-tensorrt
+
 RUN python3 -m pip install supervisely[tracking]==6.73.173
 RUN python3 -c "from supervisely.nn.tracker import *"
 RUN python3 -m pip install supervisely[model-benchmark]==6.73.173
