@@ -73,6 +73,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self.task_type = model_params.get("task_type")
         deploy_params = {
             "device": self.device,
+            "runtime": self.runtime_select.get_value(),
             **model_params,
         }
 
@@ -169,6 +170,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             self.model = self._load_pytorch(local_weights_path)
         elif runtime == RuntimeType.ONNXRUNTIME:
             self.model = self._load_onnx(local_weights_path)
+            self._check_onnx_device(device)
         elif runtime == RuntimeType.TENSORRT:
             self.model = self._load_tensorrt(local_weights_path)
 
@@ -186,7 +188,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             model_name, architecture = None, None
         self.checkpoint_info = CheckpointInfo(
             checkpoint_name=checkpoint_name,
-            model_name=model_name,
+            # model_name=model_name,
             architecture=architecture,
             custom_checkpoint_path=custom_checkpoint_path,
             model_source=model_source,
@@ -452,6 +454,14 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     
     def _load_tensorrt(self, weights_path: str):
         return self._load_runtime(weights_path, "engine")
+
+    def _check_onnx_device(self, device: str):
+        import onnxruntime as ort
+        providers = ort.get_available_providers()
+        if device.startswith("cuda") and "CUDAExecutionProvider" not in providers:
+            raise ValueError(f"Selected {device} device, but CUDAExecutionProvider is not available")
+        elif device == "cpu" and "CPUExecutionProvider" not in providers:
+            raise ValueError(f"Selected {device} device, but CPUExecutionProvider is not available")
 
 
 def parse_model_name(checkpoint_name: str):
