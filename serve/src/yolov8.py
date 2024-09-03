@@ -173,6 +173,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             self._check_onnx_device(device)
         elif runtime == RuntimeType.TENSORRT:
             self.model = self._load_tensorrt(local_weights_path)
+            self._check_tensorrt_device(device)
 
         self.load_model_meta(model_source, local_weights_path)
 
@@ -462,6 +463,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             raise ValueError(f"Selected {device} device, but CUDAExecutionProvider is not available")
         elif device == "cpu" and "CPUExecutionProvider" not in providers:
             raise ValueError(f"Selected {device} device, but CPUExecutionProvider is not available")
+
+    def _check_tensorrt_device(self, device: str):
+        if "cuda" not in device:
+            raise ValueError(f"Selected {device} device, but TensorRT only supports CUDA devices")
 
 
 def parse_model_name(checkpoint_name: str):
