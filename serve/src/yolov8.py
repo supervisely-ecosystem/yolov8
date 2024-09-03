@@ -185,7 +185,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             custom_checkpoint_path = checkpoint_url
             file_id = self.api.file.get_info_by_path(self.team_id, checkpoint_url).id
             checkpoint_url = self.api.file.get_url(file_id)
-            model_name, architecture = None, None
+            model_name, architecture = None, None  # TODO: get this for custom checkpoint
         self.checkpoint_info = CheckpointInfo(
             checkpoint_name=checkpoint_name,
             # model_name=model_name,
