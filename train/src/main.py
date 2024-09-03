@@ -61,13 +61,18 @@ from supervisely.app.widgets import (  # SelectDataset,
     TaskLogs,
     Text,
     TrainValSplits,
+    Tooltip,
 )
 from supervisely.nn.artifacts.yolov8 import YOLOv8
-from supervisely.nn.benchmark import ObjectDetectionBenchmark
-from supervisely.nn.benchmark.evaluation import ObjectDetectionEvaluator
-from supervisely.nn.inference import Session, SessionJSON
+from supervisely.nn.benchmark import (
+    ObjectDetectionBenchmark,
+    InstanceSegmentationBenchmark,
+)
+from supervisely.nn.inference import SessionJSON
+from supervisely.nn import TaskType
 from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
+from src.early_stopping.custom_yolo import YOLO as CustomYOLO
 
 
 ConfusionMatrix.plot = custom_plot
@@ -505,6 +510,23 @@ card_train_params.lock()
 
 ### 6. Training progress
 start_training_button = Button("start training")
+stop_training_button = Button(text="stop training", button_type="danger")
+stop_training_tooltip = Tooltip(
+    text="all training artefacts will be saved",
+    content=stop_training_button,
+    placement="right",
+)
+stop_training_tooltip.hide()
+start_stop_container = Container(
+    widgets=[
+        start_training_button,
+        stop_training_tooltip,
+        Empty(),
+    ],
+    direction="horizontal",
+    overflow="wrap",
+    fractions=[1, 1, 4],
+)
 logs_button = Button(
     text="Show logs",
     plain=True,
@@ -564,7 +586,7 @@ train_done = DoneLabel(
 train_done.hide()
 train_progress_content = Container(
     [
-        start_training_button,
+        start_stop_container,
         logs_button,
         task_logs,
         creating_report_f,
@@ -1099,6 +1121,13 @@ def change_logs_visibility():
         logs_button.icon = "zmdi zmdi-caret-down-circle"
 
 
+@stop_training_button.click
+def stop_training_process():
+    stop_training_tooltip.loading = True
+    sly.logger.info("Stopping training process...")
+    g.stop_event.set()
+
+
 @start_training_button.click
 def start_training():
     start_training_button.loading = True
@@ -1196,9 +1225,11 @@ def start_training():
                 geometry_config = cls.geometry_config
                 cls2config[cls.name] = geometry_config
                 for key, value in geometry_config["nodes"].items():
-                    if key not in total_config["nodes"]:
-                        total_config["nodes"][key] = value
-                        nodes_order.append(key)
+                    label = value["label"]
+                    g.node_id2label[key] = label
+                    if label not in total_config["nodes"]:
+                        total_config["nodes"][label] = value
+                        nodes_order.append(label)
         if len(total_config["nodes"]) == 17:
             total_config["nodes"][uuid.uuid4().hex[:6]] = {
                 "label": "fictive",
@@ -1274,6 +1305,9 @@ def start_training():
         weights_pbar.update(progress.current)
 
     file_info = None
+
+    g.stop_event = threading.Event()
+
     if weights_type == "Pretrained models":
         selected_index = models_table.get_selected_row_index()
         selected_dict = models_data[selected_index]
@@ -1303,11 +1337,11 @@ def start_training():
                     save_path=weights_dst_path,
                     progress=progress_cb,
                 )
-            model = YOLO(weights_dst_path)
+            model = CustomYOLO(weights_dst_path, stop_event=g.stop_event)
         else:
             yaml_config = selected_dict["yaml_config"]
             pretrained = False
-            model = YOLO(yaml_config)
+            model = CustomYOLO(yaml_config, stop_event=g.stop_event)
     elif weights_type == "Custom models":
         custom_link = model_path_input.get_value()
         model_filename = "custom_model.pt"
@@ -1335,7 +1369,7 @@ def start_training():
                 progress_cb=progress_cb,
             )
         pretrained = True
-        model = YOLO(weights_dst_path)
+        model = CustomYOLO(weights_dst_path, stop_event=g.stop_event)
 
     # ---------------------------------- Init And Set Workflow Input --------------------------------- #
     w.workflow_input(api, project_info, file_info)
@@ -1536,7 +1570,7 @@ def start_training():
     # model.add_callback("on_train_batch_end", stop_on_batch_end_if_needed)
     # model.add_callback("on_val_batch_end", stop_on_batch_end_if_needed)
 
-    with app.handle_stop():
+    def train_model():
         model.train(
             data=data_path,
             epochs=n_epochs_input.get_value(),
@@ -1551,6 +1585,12 @@ def start_training():
             project=checkpoint_dir,
             **additional_params,
         )
+
+    stop_training_tooltip.show()
+
+    train_thread = threading.Thread(target=train_model, args=())
+    train_thread.start()
+    train_thread.join()
 
     # if app.is_stopped():
     #     print("Stopping the app...")
@@ -1591,6 +1631,9 @@ def start_training():
             val_batches_gallery.sync_images([val_batch_labels_id, val_batch_preds_id])
         if i == 0:
             val_batches_gallery_f.show()
+
+    stop_training_tooltip.loading = False
+    stop_training_tooltip.hide()
 
     # visualize additional training results
     confusion_matrix_path = os.path.join(
@@ -1739,7 +1782,7 @@ def start_training():
     # ------------------------------------- Model Benchmark ------------------------------------- #
     try:
         model_benchmark_done = False
-        if task_type == "object detection":
+        if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
             sly.logger.info(
                 f"Creating the report for the best model: {best_filename!r}"
             )
@@ -1761,7 +1804,7 @@ def start_training():
             deploy_params = dict(
                 device=device,
                 model_source="Custom models",
-                task_type="object detection",
+                task_type=task_type,
                 checkpoint_name=best_filename,
                 checkpoint_url=checkpoint_path,
             )
@@ -1771,12 +1814,63 @@ def start_training():
             sly.fs.remove_dir(g.app_data_dir + "/benchmark")
 
             # 1. Init benchmark (todo: auto-detect task type)
-            bm = ObjectDetectionBenchmark(
-                api,
-                project_info.id,
-                output_dir=g.app_data_dir + "/benchmark",
-                progress=model_benchmark_pbar,
-            )
+            benchmark_dataset_ids = None
+            benchmark_images_ids = None
+
+            split_method = train_val_split._content.get_active_tab()
+
+            if split_method == "Based on datasets":
+                benchmark_dataset_ids = (
+                    train_val_split._val_ds_select.get_selected_ids()
+                )
+            else:
+                ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
+                image_names_per_dataset = {}
+                for item in val_set:
+                    image_names_per_dataset.setdefault(item.dataset_name, []).append(
+                        item.name
+                    )
+                image_infos = []
+                for dataset_name, image_names in image_names_per_dataset.items():
+                    ds_info = ds_infos_dict[dataset_name]
+                    image_infos.extend(
+                        api.image.get_list(
+                            ds_info.id,
+                            filters=[
+                                {
+                                    "field": "name",
+                                    "operator": "in",
+                                    "value": image_names,
+                                }
+                            ],
+                        )
+                    )
+                benchmark_images_ids = [img_info.id for img_info in image_infos]
+
+            if task_type == TaskType.OBJECT_DETECTION:
+                bm = ObjectDetectionBenchmark(
+                    api,
+                    project_info.id,
+                    output_dir=g.app_data_dir + "/benchmark",
+                    gt_dataset_ids=benchmark_dataset_ids,
+                    gt_images_ids=benchmark_images_ids,
+                    progress=model_benchmark_pbar,
+                    classes_whitelist=selected_classes,
+                )
+            elif task_type == TaskType.INSTANCE_SEGMENTATION:
+                bm = InstanceSegmentationBenchmark(
+                    api,
+                    project_info.id,
+                    output_dir=g.app_data_dir + "/benchmark",
+                    gt_dataset_ids=benchmark_dataset_ids,
+                    gt_images_ids=benchmark_images_ids,
+                    progress=model_benchmark_pbar,
+                    classes_whitelist=selected_classes,
+                )
+            else:
+                raise ValueError(
+                    f"Model benchmark for task type {task_type} is not implemented (coming soon)"
+                )
 
             # 2. Run inference
             bm.run_inference(session)
@@ -1785,14 +1879,7 @@ def start_training():
             gt_project_path, dt_project_path = bm.download_projects(save_images=False)
 
             # 4. Evaluate
-            evaluator = ObjectDetectionEvaluator(
-                gt_project_path,
-                dt_project_path,
-                bm.get_eval_results_dir(),
-                model_benchmark_pbar,
-                project_info.items_count,
-            )
-            evaluator.evaluate()
+            bm._evaluate(gt_project_path, dt_project_path)
 
             # 5. Upload evaluation results
             eval_res_dir = get_eval_results_dir_name(
