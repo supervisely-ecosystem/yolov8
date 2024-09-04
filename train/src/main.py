@@ -2115,7 +2115,7 @@ def auto_train(request: Request):
             selected_index = 0
         else:
             selected_model = state["model"]
-            for i, element in models_data:
+            for i, element in enumerate(models_data):
                 if selected_model in element.values():
                     selected_index = i
                     break
