@@ -2236,6 +2236,9 @@ def auto_train(request: Request):
             return False
 
     def on_results_file_changed(filepath, pbar):
+        results = pd.read_csv(filepath)
+        results.columns = [col.replace(" ", "") for col in results.columns]
+        print(results.tail(1))
         x = results["epoch"].iat[-1]
         # visualize train batch
         batch = f"train_batch{x-1}.jpg"
