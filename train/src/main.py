@@ -2115,10 +2115,17 @@ def auto_train(request: Request):
             selected_index = 0
         else:
             selected_model = state["model"]
+            found_index = False
             for i, element in enumerate(models_data):
                 if selected_model in element.values():
                     selected_index = i
+                    found_index = True
                     break
+            if not found_index:
+                sly.logger.info(
+                    f"Unable to find requested model: {selected_model}, switching to default"
+                )
+                selected_index = 0
         selected_dict = models_data[selected_index]
         weights_url = selected_dict["weights_url"]
         model_filename = weights_url.split("/")[-1]
