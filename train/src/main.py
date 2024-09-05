@@ -421,6 +421,9 @@ n_frozen_layers_input_f = Field(
     content=n_frozen_layers_input, title="Number of layers to freeze"
 )
 n_frozen_layers_input_f.hide()
+run_model_benchmark_checkbox = Checkbox(
+    content="Generate Model benchmark report after training", checked=True
+)
 additional_config_items = [
     RadioGroup.Item(value="custom"),
     RadioGroup.Item(value="import template from Team Files"),
@@ -1780,166 +1783,167 @@ def start_training():
     uploading_artefacts_f.hide()
 
     # ------------------------------------- Model Benchmark ------------------------------------- #
-    try:
-        model_benchmark_done = False
-        if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
-            sly.logger.info(
-                f"Creating the report for the best model: {best_filename!r}"
-            )
-            creating_report_f.show()
-
-            # 0. Serve trained model
-            m = YOLOv8ModelMB(
-                model_dir=local_artifacts_dir + "/weights",
-                use_gui=False,
-                custom_inference_settings=os.path.join(
-                    root_source_path, "serve", "custom_settings.yaml"
-                ),
-            )
-
-            device = "cuda" if torch.cuda.is_available() else "cpu"
-            sly.logger.info(f"Using device: {device}")
-
-            checkpoint_path = os.path.join(remote_weights_dir, best_filename)
-            deploy_params = dict(
-                device=device,
-                model_source="Custom models",
-                task_type=task_type,
-                checkpoint_name=best_filename,
-                checkpoint_url=checkpoint_path,
-            )
-            m._load_model(deploy_params)
-            m.serve()
-            session = SessionJSON(api, session_url="http://localhost:8000")
-            sly.fs.remove_dir(g.app_data_dir + "/benchmark")
-
-            # 1. Init benchmark (todo: auto-detect task type)
-            benchmark_dataset_ids = None
-            benchmark_images_ids = None
-            train_dataset_ids = None
-            train_images_ids = None
-
-            split_method = train_val_split._content.get_active_tab()
-
-            if split_method == "Based on datasets":
-                benchmark_dataset_ids = (
-                    train_val_split._val_ds_select.get_selected_ids()
-                )
-                train_dataset_ids = train_val_split._train_ds_select.get_selected_ids()
-            else:
-                def get_image_infos_by_split(split: list):
-                    ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
-                    image_names_per_dataset = {}
-                    for item in split:
-                        image_names_per_dataset.setdefault(item.dataset_name, []).append(
-                            item.name
-                        )
-                    image_infos = []
-                    for dataset_name, image_names in image_names_per_dataset.items():
-                        ds_info = ds_infos_dict[dataset_name]
-                        image_infos.extend(
-                            api.image.get_list(
-                                ds_info.id,
-                                filters=[
-                                    {
-                                        "field": "name",
-                                        "operator": "in",
-                                        "value": image_names,
-                                    }
-                                ],
-                            )
-                        )
-                    return image_infos
-                val_image_infos = get_image_infos_by_split(val_set)
-                train_image_infos = get_image_infos_by_split(train_set)
-                benchmark_images_ids = [img_info.id for img_info in val_image_infos]
-                train_images_ids = [img_info.id for img_info in train_image_infos]
-
-            if task_type == TaskType.OBJECT_DETECTION:
-                bm = ObjectDetectionBenchmark(
-                    api,
-                    project_info.id,
-                    output_dir=g.app_data_dir + "/benchmark",
-                    gt_dataset_ids=benchmark_dataset_ids,
-                    gt_images_ids=benchmark_images_ids,
-                    progress=model_benchmark_pbar,
-                    classes_whitelist=selected_classes,
-                )
-            elif task_type == TaskType.INSTANCE_SEGMENTATION:
-                bm = InstanceSegmentationBenchmark(
-                    api,
-                    project_info.id,
-                    output_dir=g.app_data_dir + "/benchmark",
-                    gt_dataset_ids=benchmark_dataset_ids,
-                    gt_images_ids=benchmark_images_ids,
-                    progress=model_benchmark_pbar,
-                    classes_whitelist=selected_classes,
-                )
-            else:
-                raise ValueError(
-                    f"Model benchmark for task type {task_type} is not implemented (coming soon)"
-                )
-            
-            train_info = {
-                "app_session_id": g.app_session_id,
-                "train_dataset_ids": train_dataset_ids,
-                "train_images_ids": train_images_ids,
-                "image_count": len(train_set),
-            }
-            bm.train_info = train_info
-
-            # 2. Run inference
-            bm.run_inference(session)
-
-            # 3. Pull results from the server
-            gt_project_path, dt_project_path = bm.download_projects(save_images=False)
-
-            # 4. Evaluate
-            bm._evaluate(gt_project_path, dt_project_path)
-
-            # 5. Upload evaluation results
-            eval_res_dir = get_eval_results_dir_name(
-                api, g.app_session_id, project_info
-            )
-            bm.upload_eval_results(eval_res_dir)
-
-            # 6. Speed test
-            bm.run_speedtest(session, project_info.id)
-            bm.upload_speedtest_results(eval_res_dir + "/speedtest/")
-
-            # 7. Prepare visualizations, report and upload
-            bm.visualize()
-            remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
-            report = bm.upload_report_link(remote_dir)
-
-            # 8. UI updates
-            benchmark_report_template = api.file.get_info_by_path(
-                sly.env.team_id(), remote_dir + "template.vue"
-            )
-            model_benchmark_done = True
-            creating_report_f.hide()
-            model_benchmark_report.set(benchmark_report_template)
-            model_benchmark_report.show()
-            model_benchmark_pbar.hide()
-            sly.logger.info(
-                f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}"
-            )
-            sly.logger.info(
-                f"Differences project name: {bm.diff_project_info.name}. Workspace_id: {bm.diff_project_info.workspace_id}"
-            )
-    except Exception as e:
-        sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
-        creating_report_f.hide()
-        model_benchmark_pbar.hide()
+    if run_model_benchmark_checkbox.is_checked():
         try:
-            if bm.dt_project_info:
-                api.project.remove(bm.dt_project_info.id)
-            if bm.diff_project_info:
-                api.project.remove(bm.diff_project_info.id)
-        except Exception as re:
-            sly.logger.warning(
-                f"Failed to remove unnecessary projects after model benchmark failure. {repr(re)}"
-            )
+            model_benchmark_done = False
+            if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
+                sly.logger.info(
+                    f"Creating the report for the best model: {best_filename!r}"
+                )
+                creating_report_f.show()
+
+                # 0. Serve trained model
+                m = YOLOv8ModelMB(
+                    model_dir=local_artifacts_dir + "/weights",
+                    use_gui=False,
+                    custom_inference_settings=os.path.join(
+                        root_source_path, "serve", "custom_settings.yaml"
+                    ),
+                )
+
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                sly.logger.info(f"Using device: {device}")
+
+                checkpoint_path = os.path.join(remote_weights_dir, best_filename)
+                deploy_params = dict(
+                    device=device,
+                    model_source="Custom models",
+                    task_type=task_type,
+                    checkpoint_name=best_filename,
+                    checkpoint_url=checkpoint_path,
+                )
+                m._load_model(deploy_params)
+                m.serve()
+                session = SessionJSON(api, session_url="http://localhost:8000")
+                sly.fs.remove_dir(g.app_data_dir + "/benchmark")
+
+                # 1. Init benchmark (todo: auto-detect task type)
+                benchmark_dataset_ids = None
+                benchmark_images_ids = None
+                train_dataset_ids = None
+                train_images_ids = None
+
+                split_method = train_val_split._content.get_active_tab()
+
+                if split_method == "Based on datasets":
+                    benchmark_dataset_ids = (
+                        train_val_split._val_ds_select.get_selected_ids()
+                    )
+                    train_dataset_ids = train_val_split._train_ds_select.get_selected_ids()
+                else:
+                    def get_image_infos_by_split(split: list):
+                        ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
+                        image_names_per_dataset = {}
+                        for item in split:
+                            image_names_per_dataset.setdefault(item.dataset_name, []).append(
+                                item.name
+                            )
+                        image_infos = []
+                        for dataset_name, image_names in image_names_per_dataset.items():
+                            ds_info = ds_infos_dict[dataset_name]
+                            image_infos.extend(
+                                api.image.get_list(
+                                    ds_info.id,
+                                    filters=[
+                                        {
+                                            "field": "name",
+                                            "operator": "in",
+                                            "value": image_names,
+                                        }
+                                    ],
+                                )
+                            )
+                        return image_infos
+                    val_image_infos = get_image_infos_by_split(val_set)
+                    train_image_infos = get_image_infos_by_split(train_set)
+                    benchmark_images_ids = [img_info.id for img_info in val_image_infos]
+                    train_images_ids = [img_info.id for img_info in train_image_infos]
+
+                if task_type == TaskType.OBJECT_DETECTION:
+                    bm = ObjectDetectionBenchmark(
+                        api,
+                        project_info.id,
+                        output_dir=g.app_data_dir + "/benchmark",
+                        gt_dataset_ids=benchmark_dataset_ids,
+                        gt_images_ids=benchmark_images_ids,
+                        progress=model_benchmark_pbar,
+                        classes_whitelist=selected_classes,
+                    )
+                elif task_type == TaskType.INSTANCE_SEGMENTATION:
+                    bm = InstanceSegmentationBenchmark(
+                        api,
+                        project_info.id,
+                        output_dir=g.app_data_dir + "/benchmark",
+                        gt_dataset_ids=benchmark_dataset_ids,
+                        gt_images_ids=benchmark_images_ids,
+                        progress=model_benchmark_pbar,
+                        classes_whitelist=selected_classes,
+                    )
+                else:
+                    raise ValueError(
+                        f"Model benchmark for task type {task_type} is not implemented (coming soon)"
+                    )
+                
+                train_info = {
+                    "app_session_id": g.app_session_id,
+                    "train_dataset_ids": train_dataset_ids,
+                    "train_images_ids": train_images_ids,
+                    "image_count": len(train_set),
+                }
+                bm.train_info = train_info
+
+                # 2. Run inference
+                bm.run_inference(session)
+
+                # 3. Pull results from the server
+                gt_project_path, dt_project_path = bm.download_projects(save_images=False)
+
+                # 4. Evaluate
+                bm._evaluate(gt_project_path, dt_project_path)
+
+                # 5. Upload evaluation results
+                eval_res_dir = get_eval_results_dir_name(
+                    api, g.app_session_id, project_info
+                )
+                bm.upload_eval_results(eval_res_dir)
+
+                # 6. Speed test
+                bm.run_speedtest(session, project_info.id)
+                bm.upload_speedtest_results(eval_res_dir + "/speedtest/")
+
+                # 7. Prepare visualizations, report and upload
+                bm.visualize()
+                remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
+                report = bm.upload_report_link(remote_dir)
+
+                # 8. UI updates
+                benchmark_report_template = api.file.get_info_by_path(
+                    sly.env.team_id(), remote_dir + "template.vue"
+                )
+                model_benchmark_done = True
+                creating_report_f.hide()
+                model_benchmark_report.set(benchmark_report_template)
+                model_benchmark_report.show()
+                model_benchmark_pbar.hide()
+                sly.logger.info(
+                    f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}"
+                )
+                sly.logger.info(
+                    f"Differences project name: {bm.diff_project_info.name}. Workspace_id: {bm.diff_project_info.workspace_id}"
+                )
+        except Exception as e:
+            sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
+            creating_report_f.hide()
+            model_benchmark_pbar.hide()
+            try:
+                if bm.dt_project_info:
+                    api.project.remove(bm.dt_project_info.id)
+                if bm.diff_project_info:
+                    api.project.remove(bm.diff_project_info.id)
+            except Exception as re:
+                sly.logger.warning(
+                    f"Failed to remove unnecessary projects after model benchmark failure. {repr(re)}"
+                )
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
