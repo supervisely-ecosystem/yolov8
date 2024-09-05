@@ -1816,6 +1816,8 @@ def start_training():
             # 1. Init benchmark (todo: auto-detect task type)
             benchmark_dataset_ids = None
             benchmark_images_ids = None
+            train_dataset_ids = None
+            train_images_ids = None
 
             split_method = train_val_split._content.get_active_tab()
 
@@ -1823,29 +1825,35 @@ def start_training():
                 benchmark_dataset_ids = (
                     train_val_split._val_ds_select.get_selected_ids()
                 )
+                train_dataset_ids = train_val_split._train_ds_select.get_selected_ids()
             else:
-                ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
-                image_names_per_dataset = {}
-                for item in val_set:
-                    image_names_per_dataset.setdefault(item.dataset_name, []).append(
-                        item.name
-                    )
-                image_infos = []
-                for dataset_name, image_names in image_names_per_dataset.items():
-                    ds_info = ds_infos_dict[dataset_name]
-                    image_infos.extend(
-                        api.image.get_list(
-                            ds_info.id,
-                            filters=[
-                                {
-                                    "field": "name",
-                                    "operator": "in",
-                                    "value": image_names,
-                                }
-                            ],
+                def get_image_infos_by_split(split: list):
+                    ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
+                    image_names_per_dataset = {}
+                    for item in split:
+                        image_names_per_dataset.setdefault(item.dataset_name, []).append(
+                            item.name
                         )
-                    )
-                benchmark_images_ids = [img_info.id for img_info in image_infos]
+                    image_infos = []
+                    for dataset_name, image_names in image_names_per_dataset.items():
+                        ds_info = ds_infos_dict[dataset_name]
+                        image_infos.extend(
+                            api.image.get_list(
+                                ds_info.id,
+                                filters=[
+                                    {
+                                        "field": "name",
+                                        "operator": "in",
+                                        "value": image_names,
+                                    }
+                                ],
+                            )
+                        )
+                    return image_infos
+                val_image_infos = get_image_infos_by_split(val_set)
+                train_image_infos = get_image_infos_by_split(train_set)
+                benchmark_images_ids = [img_info.id for img_info in val_image_infos]
+                train_images_ids = [img_info.id for img_info in train_image_infos]
 
             if task_type == TaskType.OBJECT_DETECTION:
                 bm = ObjectDetectionBenchmark(
@@ -1871,6 +1879,14 @@ def start_training():
                 raise ValueError(
                     f"Model benchmark for task type {task_type} is not implemented (coming soon)"
                 )
+            
+            train_info = {
+                "app_session_id": g.app_session_id,
+                "train_dataset_ids": train_dataset_ids,
+                "train_images_ids": train_images_ids,
+                "image_count": len(train_set),
+            }
+            bm.train_info = train_info
 
             # 2. Run inference
             bm.run_inference(session)
@@ -1887,12 +1903,16 @@ def start_training():
             )
             bm.upload_eval_results(eval_res_dir)
 
-            # 6. Prepare visualizations, report and
+            # 6. Speed test
+            bm.run_speedtest(session, project_info.id)
+            bm.upload_speedtest_results(eval_res_dir + "/speedtest/")
+
+            # 7. Prepare visualizations, report and upload
             bm.visualize()
             remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
             report = bm.upload_report_link(remote_dir)
 
-            # 7. UI updates
+            # 8. UI updates
             benchmark_report_template = api.file.get_info_by_path(
                 sly.env.team_id(), remote_dir + "template.vue"
             )
