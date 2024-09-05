@@ -2224,13 +2224,13 @@ def auto_train(request: Request):
         selected_model = models_table.get_selected_row()[0]
     else:
         selected_model = state["model"]
+    selected_model_name = selected_model.split(" ")[0]  # "YOLOv8n-det"
     if selected_model.endswith("det"):
         selected_model = selected_model[:-4]
     if "train_mode" in state and state["train_mode"] == "scratch":
         model_filename = selected_model.lower() + ".yaml"
         pretrained = False
         model = YOLO(model_filename)
-        # TODO
     else:
         model_filename = selected_model.lower() + ".pt"
         pretrained = True
@@ -2258,7 +2258,6 @@ def auto_train(request: Request):
                 progress=progress_cb,
             )
         model = YOLO(weights_dst_path)
-        # TODO
 
     # add callbacks to model
     def on_train_batch_end(trainer):
@@ -2554,6 +2553,18 @@ def auto_train(request: Request):
         weights_dict = torch.load(weights_filepath)
         weights_dict["geometry_config"] = geometry_config
         torch.save(weights_dict, weights_filepath)
+
+    # add model name to saved weights
+    def add_sly_metadata_to_ckpt(ckpt_path):
+        loaded = torch.load(ckpt_path)
+        loaded["sly_metadata"] = {"model_name": selected_model_name}
+        torch.save(loaded, ckpt_path)
+    best_path = os.path.join(local_artifacts_dir, "weights", best_filename)
+    last_path = os.path.join(local_artifacts_dir, "weights", "last.pt")
+    if os.path.exists(best_path):
+        add_sly_metadata_to_ckpt(best_path)
+    if os.path.exists(last_path):
+        add_sly_metadata_to_ckpt(last_path)
 
     # save link to app ui
     app_url = f"/apps/sessions/{g.app_session_id}"
