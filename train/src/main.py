@@ -421,9 +421,8 @@ n_frozen_layers_input_f = Field(
     content=n_frozen_layers_input, title="Number of layers to freeze"
 )
 n_frozen_layers_input_f.hide()
-run_model_benchmark_checkbox = Checkbox(content="Run evaluation for model benchmark", checked=True)
+run_model_benchmark_checkbox = Checkbox(content="Run Model Benchmark evaluation", checked=True)
 run_speedtest_checkbox = Checkbox(content="Run speed test", checked=True)
-docs_link = '<a href="https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/" target="_blank">documentation</a>'
 model_benchmark_f = Field(
     Container(
         widgets=[
@@ -432,8 +431,10 @@ model_benchmark_f = Field(
         ]
     ),
     title="Model Evaluation Benchmark",
-    description=f"Generate evalutaion dashboard with visualizations and detailed analysis of the model performance after training. The best checkpoint will be used for evaluation. You can also run speed test to evaluate model inference speed. More information about Model Benchmark can be found in the {docs_link}.",
+    description=f"Generate evalutaion dashboard with visualizations and detailed analysis of the model performance after training. The best checkpoint will be used for evaluation. You can also run speed test to evaluate model inference speed.",
 )
+docs_link = '<a href="https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/" target="_blank">documentation</a>'
+model_benchmark_learn_more = Text(f"Learn more about Model Benchmark in the {docs_link}.", status="info")
 additional_config_items = [
     RadioGroup.Item(value="custom"),
     RadioGroup.Item(value="import template from Team Files"),
@@ -500,7 +501,9 @@ train_params_content = Container(
         n_workers_input_f,
         freeze_layers_f,
         n_frozen_layers_input_f,
-        run_model_benchmark_checkbox,
+        model_benchmark_f,
+        model_benchmark_learn_more,
+        Empty(),  # add gap
         additional_config_radio_f,
         additional_config_template_select_f,
         no_templates_notification,
@@ -1033,9 +1036,9 @@ def change_freezing(value):
 @run_model_benchmark_checkbox.value_changed
 def change_model_benchmark(value):
     if value:
-        run_speedtest_checkbox.hide()
-    else:
         run_speedtest_checkbox.show()
+    else:
+        run_speedtest_checkbox.hide()
 
 
 @additional_config_radio.value_changed
