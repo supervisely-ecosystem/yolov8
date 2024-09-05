@@ -2,7 +2,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Advanced mode for Supervisely Team",
+            "name": "Serve App",
             "type": "debugpy",
             "request": "launch",
             "module": "uvicorn",
@@ -20,7 +20,7 @@
             "jinja": true,
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}",
+                "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}:/root/supervisely",
                 "LOG_LEVEL": "DEBUG",
                 "ENV": "production",
                 "TEAM_ID": "440",

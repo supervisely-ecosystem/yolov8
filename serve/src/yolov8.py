@@ -191,6 +191,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             checkpoint_name=checkpoint_name,
             model_name=model_name,
             architecture=architecture,
+            checkpoint_url=checkpoint_url,
             custom_checkpoint_path=custom_checkpoint_path,
             model_source=model_source,
         )

@@ -1371,6 +1371,7 @@ def start_training():
             yaml_config = selected_dict["yaml_config"]
             pretrained = False
             model = CustomYOLO(yaml_config, stop_event=g.stop_event)
+        selected_model_name = selected_dict["Model"].split(" ")[0]  # "YOLOv8n-det"
     elif weights_type == "Custom models":
         custom_link = model_path_input.get_value()
         model_filename = "custom_model.pt"
@@ -1399,6 +1400,11 @@ def start_training():
             )
         pretrained = True
         model = CustomYOLO(weights_dst_path, stop_event=g.stop_event)
+        # TODO
+        try:
+            selected_model_name = model.ckpt["sly_metadata"]["model_name"]
+        except Exception:
+            selected_model_name = "custom_model.pt"
 
     # ---------------------------------- Init And Set Workflow Input --------------------------------- #
     w.workflow_input(api, project_info, file_info)
@@ -1750,6 +1756,18 @@ def start_training():
                 "nodes_order": nodes_order,
             }
         torch.save(weights_dict, weights_filepath)
+    
+    # add model name to saved weights
+    def add_sly_metadata_to_ckpt(ckpt_path):
+        loaded = torch.load(ckpt_path)
+        loaded["sly_metadata"] = {"model_name": selected_model_name}
+        torch.save(loaded, ckpt_path)
+    best_path = os.path.join(local_artifacts_dir, "weights", best_filename)
+    last_path = os.path.join(local_artifacts_dir, "weights", "last.pt")
+    if os.path.exists(best_path):
+        add_sly_metadata_to_ckpt(best_path)
+    if os.path.exists(last_path):
+        add_sly_metadata_to_ckpt(last_path)
 
     # save link to app ui
     app_url = f"/apps/sessions/{g.app_session_id}"
@@ -1932,7 +1950,7 @@ def start_training():
                 eval_res_dir = get_eval_results_dir_name(
                     api, g.app_session_id, project_info
                 )
-                bm.upload_eval_results(eval_res_dir)
+                bm.upload_eval_results(eval_res_dir + "/evaluation/")
 
                 # 6. Speed test
                 if run_speedtest_checkbox.is_checked():
@@ -2212,6 +2230,7 @@ def auto_train(request: Request):
         model_filename = selected_model.lower() + ".yaml"
         pretrained = False
         model = YOLO(model_filename)
+        # TODO
     else:
         model_filename = selected_model.lower() + ".pt"
         pretrained = True
@@ -2239,6 +2258,7 @@ def auto_train(request: Request):
                 progress=progress_cb,
             )
         model = YOLO(weights_dst_path)
+        # TODO
 
     # add callbacks to model
     def on_train_batch_end(trainer):
