@@ -29,6 +29,34 @@
             }
         },
         {
+            "name": "Train App",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "uvicorn",
+            "args": [
+                "src.main:app",
+                "--app-dir",
+                "train",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000",
+                "--ws",
+                "websockets"
+            ],
+            "jinja": true,
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}:/root/supervisely",
+                "LOG_LEVEL": "DEBUG",
+                // "ENV": "production",
+                "TEAM_ID": "440",
+                "DEBUG_WITH_SLY_NET": "1",
+                "PROJECT_ID": "41442",
+                "WORKSPACE_ID": "1076",
+            }
+        },
+        {
             "name": "test runtimes",
             "type": "debugpy",
             "request": "launch",

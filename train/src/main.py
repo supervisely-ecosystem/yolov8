@@ -1932,8 +1932,9 @@ def start_training():
                 bm.upload_eval_results(eval_res_dir)
 
                 # 6. Speed test
-                bm.run_speedtest(session, project_info.id)
-                bm.upload_speedtest_results(eval_res_dir + "/speedtest/")
+                if run_speedtest_checkbox.is_checked():
+                    bm.run_speedtest(session, project_info.id)
+                    bm.upload_speedtest_results(eval_res_dir + "/speedtest/")
 
                 # 7. Prepare visualizations, report and upload
                 bm.visualize()
