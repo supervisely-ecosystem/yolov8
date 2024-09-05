@@ -421,8 +421,18 @@ n_frozen_layers_input_f = Field(
     content=n_frozen_layers_input, title="Number of layers to freeze"
 )
 n_frozen_layers_input_f.hide()
-run_model_benchmark_checkbox = Checkbox(
-    content="Generate Model benchmark report after training", checked=True
+run_model_benchmark_checkbox = Checkbox(content="Run evaluation for model benchmark", checked=True)
+run_speedtest_checkbox = Checkbox(content="Run speed test", checked=True)
+docs_link = '<a href="https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/" target="_blank">documentation</a>'
+model_benchmark_f = Field(
+    Container(
+        widgets=[
+            run_model_benchmark_checkbox,
+            run_speedtest_checkbox,
+        ]
+    ),
+    title="Model Evaluation Benchmark",
+    description=f"Generate evalutaion dashboard with visualizations and detailed analysis of the model performance after training. The best checkpoint will be used for evaluation. You can also run speed test to evaluate model inference speed. More information about Model Benchmark can be found in the {docs_link}.",
 )
 additional_config_items = [
     RadioGroup.Item(value="custom"),
@@ -1020,6 +1030,14 @@ def change_freezing(value):
         n_frozen_layers_input_f.hide()
 
 
+@run_model_benchmark_checkbox.value_changed
+def change_model_benchmark(value):
+    if value:
+        run_speedtest_checkbox.hide()
+    else:
+        run_speedtest_checkbox.show()
+
+
 @additional_config_radio.value_changed
 def change_radio(value):
     if value == "import template from Team Files":
@@ -1085,6 +1103,8 @@ def save_train_params():
     image_size_input.disable()
     select_optimizer.disable()
     n_workers_input.disable()
+    run_model_benchmark_checkbox.disable()
+    run_speedtest_checkbox.disable()
     train_settings_editor.readonly = True
     curr_step = stepper.get_active_step()
     curr_step += 1
@@ -1105,6 +1125,8 @@ def change_train_params():
     image_size_input.enable()
     select_optimizer.enable()
     n_workers_input.enable()
+    run_model_benchmark_checkbox.enable()
+    run_speedtest_checkbox.enable()
     train_settings_editor.readonly = False
     save_template_button.show()
     save_template_done.hide()
@@ -2086,6 +2108,8 @@ def auto_train(request: Request):
     n_epochs_input.disable()
     patience_input.disable()
     batch_size_input.disable()
+    run_model_benchmark_checkbox.disable()
+    run_speedtest_checkbox.disable()
     image_size_input.disable()
     select_optimizer.disable()
     n_workers_input.disable()
