@@ -1400,8 +1400,8 @@ def start_training():
             )
         pretrained = True
         model = CustomYOLO(weights_dst_path, stop_event=g.stop_event)
-        # TODO
         try:
+            # get model_name from previous training
             selected_model_name = model.ckpt["sly_metadata"]["model_name"]
         except Exception:
             selected_model_name = "custom_model.pt"

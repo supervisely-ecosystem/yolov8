@@ -186,7 +186,18 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             custom_checkpoint_path = checkpoint_url
             file_id = self.api.file.get_info_by_path(self.team_id, checkpoint_url).id
             checkpoint_url = self.api.file.get_url(file_id)
-            model_name, architecture = None, None  # TODO: get this for custom checkpoint
+            try:
+                model_name = self.model.ckpt["sly_metadata"]["model_name"]
+                architecture = get_arch_from_model_name(model_name)
+            except Exception as e:
+                sly.logger.error(
+                    f"Failed to get model_name and architecture from checkpoint metadata. {repr(e)}",
+                    exc_info=True
+                )
+                model_name = None
+                architecture = None
+                if sly.is_development():
+                    raise e
         self.checkpoint_info = CheckpointInfo(
             checkpoint_name=checkpoint_name,
             model_name=model_name,
@@ -480,3 +491,11 @@ def parse_model_name(checkpoint_name: str):
     model_name = f"YOLOv{version}{variant}"
     architecture = f"YOLOv{version}"
     return model_name, architecture
+
+def get_arch_from_model_name(model_name: str):
+    import re
+    # yolov8n-det
+    p = r"yolov(\d+)"
+    match = re.match(p, model_name.lower())
+    if match:
+        return f"YOLOv{match.group(1)}"
