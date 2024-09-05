@@ -490,6 +490,7 @@ train_params_content = Container(
         n_workers_input_f,
         freeze_layers_f,
         n_frozen_layers_input_f,
+        run_model_benchmark_checkbox,
         additional_config_radio_f,
         additional_config_template_select_f,
         no_templates_notification,
@@ -1732,13 +1733,12 @@ def start_training():
         print(app_url, file=text_file)
 
     # upload training artifacts to team files
-    remote_artifacts_dir = os.path.join(
+    upload_artifacts_dir = os.path.join(
         framework_folder,
         task_type_select.get_value(),
         project_info.name,
         str(g.app_session_id),
     )
-    remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
 
     if not app.is_stopped():
 
@@ -1764,23 +1764,24 @@ def start_training():
             unit="bytes",
             unit_scale=True,
         ) as artifacts_pbar:
-            team_files_dir = api.file.upload_directory(
+            remote_artifacts_dir = api.file.upload_directory(
                 team_id=sly.env.team_id(),
                 local_dir=local_artifacts_dir,
-                remote_dir=remote_artifacts_dir,
+                remote_dir=upload_artifacts_dir,
                 progress_size_cb=progress_cb,
             )
     else:
         sly.logger.info(
             "Uploading training artifacts before stopping the app... (progress bar is disabled)"
         )
-        team_files_dir = api.file.upload_directory(
+        remote_artifacts_dir = api.file.upload_directory(
             team_id=sly.env.team_id(),
             local_dir=local_artifacts_dir,
-            remote_dir=remote_artifacts_dir,
+            remote_dir=upload_artifacts_dir,
         )
         sly.logger.info("Training artifacts uploaded successfully")
     uploading_artefacts_f.hide()
+    remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
 
     # ------------------------------------- Model Benchmark ------------------------------------- #
     if run_model_benchmark_checkbox.is_checked():
@@ -1807,6 +1808,7 @@ def start_training():
                 checkpoint_path = os.path.join(remote_weights_dir, best_filename)
                 deploy_params = dict(
                     device=device,
+                    runtime=sly.nn.inference.RuntimeType.PYTORCH,
                     model_source="Custom models",
                     task_type=task_type,
                     checkpoint_name=best_filename,
@@ -1950,13 +1952,13 @@ def start_training():
     if not model_benchmark_done:
         benchmark_report_template = None
     w.workflow_output(
-        api, model_filename, team_files_dir, best_filename, benchmark_report_template
+        api, model_filename, remote_artifacts_dir, best_filename, benchmark_report_template
     )
     # ----------------------------------------------- - ---------------------------------------------- #
 
     if not app.is_stopped():
         file_info = api.file.get_info_by_path(
-            sly.env.team_id(), team_files_dir + "/results.csv"
+            sly.env.team_id(), remote_artifacts_dir + "/results.csv"
         )
         train_artifacts_folder.set(file_info)
         # finish training
