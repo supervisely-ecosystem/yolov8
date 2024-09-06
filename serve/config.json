@@ -18,7 +18,7 @@
   "gpu": "preferred",
   "session_tags": ["deployed_nn"],
   "community_agent": false,
-  "docker_image": "supervisely/yolov8:dev",
+  "docker_image": "supervisely/yolov8:1.0.25",
   "instance_version": "6.11.10",
   "entrypoint": "python -m uvicorn src.main:m.app --app-dir ./serve --host 0.0.0.0 --port 8000 --ws websockets",
   "port": 8000,
