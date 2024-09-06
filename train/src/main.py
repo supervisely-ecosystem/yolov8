@@ -1827,9 +1827,9 @@ def start_training():
     remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
 
     # ------------------------------------- Model Benchmark ------------------------------------- #
+    model_benchmark_done = False
     if run_model_benchmark_checkbox.is_checked():
         try:
-            model_benchmark_done = False
             if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
                 sly.logger.info(
                     f"Creating the report for the best model: {best_filename!r}"
@@ -1987,9 +1987,7 @@ def start_training():
                 if bm.diff_project_info:
                     api.project.remove(bm.diff_project_info.id)
             except Exception as re:
-                sly.logger.warning(
-                    f"Failed to remove unnecessary projects after model benchmark failure. {repr(re)}"
-                )
+                pass
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
