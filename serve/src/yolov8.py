@@ -189,18 +189,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             custom_checkpoint_path = checkpoint_url
             file_id = self.api.file.get_info_by_path(self.team_id, checkpoint_url).id
             checkpoint_url = self.api.file.get_url(file_id)
-            try:
-                model_name = self.model.ckpt["sly_metadata"]["model_name"]
-                architecture = get_arch_from_model_name(model_name)
-            except Exception as e:
-                sly.logger.error(
-                    f"Failed to get model_name and architecture from checkpoint metadata. {repr(e)}",
-                    exc_info=True
-                )
-                model_name = None
-                architecture = None
-                if sly.is_development():
-                    raise e
+            model_name, architecture = self._try_extract_info_from_custom_checkpoint()
         self.checkpoint_info = CheckpointInfo(
             checkpoint_name=checkpoint_name,
             model_name=model_name,
@@ -216,6 +205,33 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         #     self.model.overrides['verbose'] = True
         # else:
         #     self.model.overrides['verbose'] = False
+
+    def _try_extract_info_from_custom_checkpoint(self):
+        model_name = None
+        architecture = None
+        try:
+            model_name = self.model.ckpt["sly_metadata"]["model_name"]
+            architecture = get_arch_from_model_name(model_name)
+            assert architecture is not None
+            return model_name, architecture
+        except Exception as e:
+            sly.logger.warn(
+                f"Failed to get model_name and architecture from checkpoint metadata. {repr(e)}",
+                exc_info=True
+            )
+        # Fallback: trying to extract from train_args for old custom checkpoints
+        try:
+            train_args = self.model.ckpt["train_args"]
+            model_name = os.path.basename(train_args["model"])
+            architecture = get_arch_from_model_name(model_name)
+            assert architecture is not None
+            return model_name, architecture
+        except Exception as e:
+            sly.logger.warn(
+                f"Failed to extract model_name and architecture from train_args. {repr(e)}",
+                exc_info=True
+            )
+        return model_name, architecture
 
     def get_info(self):
         info = super().get_info()
