@@ -14,6 +14,9 @@ from supervisely.app.widgets import (
     PretrainedModelsSelector,
     RadioTabs,
     CustomModelsSelector,
+    SelectString,
+    Field,
+    Container,
 )
 from supervisely.nn.prediction_dto import (
     PredictionBBox,
@@ -46,7 +49,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 "pose estimation",
             ],
         )
-
         self.model_source_tabs = RadioTabs(
             titles=["Pretrained models", "Custom models"],
             descriptions=[
@@ -55,7 +57,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             ],
             contents=[self.pretrained_models_table, self.custom_models_table],
         )
-        return self.model_source_tabs
+        self.runtime_select = SelectString([RuntimeType.PYTORCH, RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT])
+        runtime_field = Field(self.runtime_select, "Runtime", "Select a runtime for inference.")
+        layout = Container([self.model_source_tabs, runtime_field])
+        # TODO: disable runtime field for now, as it is not implemented yet
+        runtime_field.disable()
+        runtime_field.hide()
+        return layout
 
     def get_params_from_gui(self) -> dict:
         model_source = self.model_source_tabs.get_active_tab()
@@ -68,6 +76,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self.task_type = model_params.get("task_type")
         deploy_params = {
             "device": self.device,
+            "runtime": self.runtime_select.get_value(),
             **model_params,
         }
 
@@ -131,6 +140,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         ],
         checkpoint_name: str,
         checkpoint_url: str,
+        runtime: str,
     ):
         """
         Load model method is used to deploy model.
@@ -145,9 +155,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :type checkpoint_name: str
         :param checkpoint_url: The URL where the model can be downloaded.
         :type checkpoint_url: str
+        :param runtime: The runtime used for inference. Supported runtimes are PyTorch, ONNXRuntime, and TensorRT.
+        :type runtime: str
         """
         self.device = device
-        self.runtime = RuntimeType.PYTORCH
+        self.runtime = runtime
         self.task_type = task_type
 
         local_weights_path = os.path.join(self.model_dir, checkpoint_name)
@@ -157,25 +169,34 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 dst_path=local_weights_path,
             )
 
-        self.model = YOLO(local_weights_path)
-        self.model.to(self.device)
+        if runtime == RuntimeType.PYTORCH:
+            self.model = self._load_pytorch(local_weights_path)
+        elif runtime == RuntimeType.ONNXRUNTIME:
+            self.model = self._load_onnx(local_weights_path)
+            self._check_onnx_device(device)
+        elif runtime == RuntimeType.TENSORRT:
+            self.model = self._load_tensorrt(local_weights_path)
+            self._check_tensorrt_device(device)
+
         self.load_model_meta(model_source, local_weights_path)
 
         # Set checkpoint info
         if model_source == "Pretrained models":
             custom_checkpoint_path = None
             checkpoint_name = os.path.splitext(checkpoint_name)[0]
-            # maybe do not downcase the checkpoint_name ?
+            model_name, architecture = parse_model_name(checkpoint_name)
         else:
             custom_checkpoint_path = checkpoint_url
             file_id = self.api.file.get_info_by_path(self.team_id, checkpoint_url).id
             checkpoint_url = self.api.file.get_url(file_id)
+            model_name, architecture = self._try_extract_info_from_custom_checkpoint()
         self.checkpoint_info = CheckpointInfo(
             checkpoint_name=checkpoint_name,
-            architecture="YOLO",
-            model_source=model_source,
+            model_name=model_name,
+            architecture=architecture,
             checkpoint_url=checkpoint_url,
             custom_checkpoint_path=custom_checkpoint_path,
+            model_source=model_source,
         )
 
         # This will disable logs from YOLO
@@ -184,6 +205,32 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         #     self.model.overrides['verbose'] = True
         # else:
         #     self.model.overrides['verbose'] = False
+
+    def _try_extract_info_from_custom_checkpoint(self):
+        model_name = None
+        architecture = None
+        try:
+            model_name = self.model.ckpt["sly_metadata"]["model_name"]
+            architecture = get_arch_from_model_name(model_name)
+            assert architecture is not None
+            return model_name, architecture
+        except Exception as e:
+            pass
+        # Fallback: trying to extract from train_args for old custom checkpoints
+        try:
+            train_args = self.model.ckpt["train_args"]
+            model_name = os.path.basename(train_args["model"]).split(".")[0]
+            if "yolov" in model_name:
+                model_name = model_name.replace("yolov", "YOLOv")
+            architecture = get_arch_from_model_name(model_name)
+            assert architecture is not None
+            return model_name, architecture
+        except Exception as e:
+            sly.logger.warn(
+                f"Failed to extract model_name and architecture from train_args. {repr(e)}",
+                exc_info=True
+            )
+        return model_name, architecture
 
     def get_info(self):
         info = super().get_info()
@@ -417,16 +464,56 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         }
         predictions = [self._to_dto(prediction, settings) for prediction in predictions]
         return predictions, benchmark
+    
+    def _load_pytorch(self, weights_path: str):
+        model = YOLO(weights_path)
+        model.to(self.device)
+        return model
+    
+    def _load_runtime(self, weights_path: str, format: str, **kwargs):
+        if weights_path.endswith(".pt"):
+            onnx_path = weights_path.replace(".pt", f".{format}")
+            if not os.path.exists(onnx_path):
+                sly.logger.info(f"Exporting model to {format} format...")
+                model = YOLO(weights_path)
+                model.export(format=format, **kwargs)
+        model = YOLO(onnx_path)
+        return model
+    
+    def _load_onnx(self, weights_path: str):
+        return self._load_runtime(weights_path, "onnx", dynamic=True)
+    
+    def _load_tensorrt(self, weights_path: str):
+        return self._load_runtime(weights_path, "engine", dynamic=True)
+
+    def _check_onnx_device(self, device: str):
+        import onnxruntime as ort
+        providers = ort.get_available_providers()
+        if device.startswith("cuda") and "CUDAExecutionProvider" not in providers:
+            raise ValueError(f"Selected {device} device, but CUDAExecutionProvider is not available")
+        elif device == "cpu" and "CPUExecutionProvider" not in providers:
+            raise ValueError(f"Selected {device} device, but CPUExecutionProvider is not available")
+
+    def _check_tensorrt_device(self, device: str):
+        if "cuda" not in device:
+            raise ValueError(f"Selected {device} device, but TensorRT only supports CUDA devices")
 
 
-def parse_model_name(model_name: str):
-    v8 = int(model_name[5])
-    postfix = model_name[6:].split("-")
-    variant = postfix[0].upper().strip()
-    if len(postfix) > 1:
-        task = postfix[1]
-        name = f"YOLOv{v8}-{variant}"
-    else:
-        name = f"YOLOv{v8}-{variant}"
-    architecture = f"YOLOv{v8}"
-    return name, architecture
+def parse_model_name(checkpoint_name: str):
+    import re
+    # yolov8n
+    p = r"yolov(\d+)(\w)"
+    match = re.match(p, checkpoint_name)
+    version = match.group(1)
+    variant = match.group(2)
+    model_name = f"YOLOv{version}{variant}"
+    architecture = f"YOLOv{version}"
+    return model_name, architecture
+
+def get_arch_from_model_name(model_name: str):
+    import re
+    # yolov8n-det
+    p = r"yolov(\d+)"
+    match = re.match(p, model_name.lower())
+    if match:
+        return f"YOLOv{match.group(1)}"
