@@ -422,7 +422,7 @@ n_frozen_layers_input_f = Field(
 )
 n_frozen_layers_input_f.hide()
 run_model_benchmark_checkbox = Checkbox(content="Run Model Benchmark evaluation", checked=True)
-run_speedtest_checkbox = Checkbox(content="Run speed test", checked=True)
+run_speedtest_checkbox = Checkbox(content="Run speed test (may take a while)", checked=False)
 model_benchmark_f = Field(
     Container(
         widgets=[
@@ -1933,7 +1933,7 @@ def start_training():
                     "app_session_id": g.app_session_id,
                     "train_dataset_ids": train_dataset_ids,
                     "train_images_ids": train_images_ids,
-                    "image_count": len(train_set),
+                    "images_count": len(train_set),
                 }
                 bm.train_info = train_info
 
