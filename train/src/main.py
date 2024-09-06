@@ -1342,6 +1342,7 @@ def start_training():
         selected_dict = models_data[selected_index]
         weights_url = selected_dict["weights_url"]
         model_filename = weights_url.split("/")[-1]
+        selected_model_name = selected_dict["Model"].split(" ")[0]  # "YOLOv8n-det"
         if select_train_mode.get_value() == "Finetune mode":
             pretrained = True
             weights_dst_path = os.path.join(g.app_data_dir, model_filename)
@@ -1371,7 +1372,6 @@ def start_training():
             yaml_config = selected_dict["yaml_config"]
             pretrained = False
             model = CustomYOLO(yaml_config, stop_event=g.stop_event)
-        selected_model_name = selected_dict["Model"].split(" ")[0]  # "YOLOv8n-det"
     elif weights_type == "Custom models":
         custom_link = model_path_input.get_value()
         model_filename = "custom_model.pt"
@@ -2043,122 +2043,28 @@ def auto_train(request: Request):
     task_type = state["task_type"]
     use_cache = state.get("use_cache", True)
 
-    if task_type == "instance segmentation":
-        models_table_columns = [
-            key for key in g.seg_models_data[0].keys() if key != "weights_url"
-        ]
-        models_table_subtitles = [None] * len(models_table_columns)
-        models_table_rows = []
-        for element in g.seg_models_data:
-            models_table_rows.append(list(element.values())[:-1])
-        models_table.set_data(
-            columns=models_table_columns,
-            rows=models_table_rows,
-            subtitles=models_table_subtitles,
-        )
-    elif task_type == "pose estimation":
-        models_table_columns = [
-            key for key in g.pose_models_data[0].keys() if key != "weights_url"
-        ]
-        models_table_subtitles = [None] * len(models_table_columns)
-        models_table_rows = []
-        for element in g.pose_models_data:
-            models_table_rows.append(list(element.values())[:-1])
-        models_table.set_data(
-            columns=models_table_columns,
-            rows=models_table_rows,
-            subtitles=models_table_subtitles,
-        )
-    dataset_selector.disable()
-    if use_cache:
-        use_cache_checkbox.check()
-    else:
-        use_cache_checkbox.uncheck()
-    classes_table.read_project_from_id(project_id)
-    classes_table.select_all()
-    selected_classes = classes_table.get_selected_classes()
-    _update_select_classes_button(selected_classes)
-    select_data_button.hide()
-    select_done.show()
-    reselect_data_button.show()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_classes.unlock()
-    card_classes.uncollapse()
-
-    select_classes_button.hide()
-    classes_done.show()
-    select_other_classes_button.show()
-    classes_table.disable()
-    task_type_select.disable()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_val_split.unlock()
-    card_train_val_split.uncollapse()
-
-    train_val_split.disable()
-    unlabeled_images_select.disable()
-    split_data_button.hide()
-    split_done.show()
-    resplit_data_button.show()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_model_selection.unlock()
-    card_model_selection.uncollapse()
-
-    select_model_button.hide()
-    model_select_done.show()
-    model_tabs.disable()
-    models_table.disable()
-    model_path_input.disable()
-    reselect_model_button.show()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_params.unlock()
-    card_train_params.uncollapse()
-
-    save_train_params_button.hide()
-    train_params_done.show()
-    reselect_train_params_button.show()
-    select_train_mode.disable()
-    n_epochs_input.disable()
-    patience_input.disable()
-    batch_size_input.disable()
-    run_model_benchmark_checkbox.disable()
-    run_speedtest_checkbox.disable()
-    image_size_input.disable()
-    select_optimizer.disable()
-    n_workers_input.disable()
-    train_settings_editor.readonly = True
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_progress.unlock()
-    card_train_progress.uncollapse()
-
     local_dir = g.root_model_checkpoint_dir
     if task_type == "object detection":
         necessary_geometries = ["rectangle"]
         checkpoint_dir = os.path.join(local_dir, "detect")
         local_artifacts_dir = os.path.join(local_dir, "detect", "train")
+        models_data = g.det_models_data
     elif task_type == "pose estimation":
         necessary_geometries = ["graph", "rectangle"]
         checkpoint_dir = os.path.join(local_dir, "pose")
         local_artifacts_dir = os.path.join(local_dir, "pose", "train")
+        models_data = g.pose_models_data
     elif task_type == "instance segmentation":
         necessary_geometries = ["bitmap", "polygon"]
         checkpoint_dir = os.path.join(local_dir, "segment")
         local_artifacts_dir = os.path.join(local_dir, "segment", "train")
+        models_data = g.seg_models_data
 
     sly.logger.info(f"Local artifacts dir: {local_artifacts_dir}")
 
     if os.path.exists(local_artifacts_dir):
         sly.fs.remove_dir(local_artifacts_dir)
-    # start_training_button.loading = True
+
     # get number of images in selected datasets
     if "dataset_ids" not in state:
         dataset_infos = api.dataset.get_list(project_id)
@@ -2168,6 +2074,8 @@ def auto_train(request: Request):
         dataset_infos = [
             api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids
         ]
+
+    n_images = sum([info.images_count for info in dataset_infos])
     download_project(
         api=api,
         project_info=project_info,
@@ -2175,8 +2083,11 @@ def auto_train(request: Request):
         use_cache=use_cache,
         progress=progress_bar_download_project,
     )
+
+    # remove unselected classes
     project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
     selected_classes = [cls.name for cls in project_meta.obj_classes]
+
     # remove classes with unnecessary shapes
     if task_type != "object detection":
         unnecessary_classes = []
@@ -2190,12 +2101,56 @@ def auto_train(request: Request):
             sly.Project.remove_classes(
                 g.project_dir, classes_to_remove=unnecessary_classes, inplace=True
             )
+    # extract geometry configs
+    if task_type == "pose estimation":
+        nodes_order = []
+        cls2config = {}
+        total_config = {"nodes": {}, "edges": []}
+        for cls in project_meta.obj_classes:
+            if (
+                cls.name in selected_classes
+                and cls.geometry_type.geometry_name() == "graph"
+            ):
+                g.keypoints_classes.append(cls.name)
+                geometry_config = cls.geometry_config
+                cls2config[cls.name] = geometry_config
+                for key, value in geometry_config["nodes"].items():
+                    label = value["label"]
+                    g.node_id2label[key] = label
+                    if label not in total_config["nodes"]:
+                        total_config["nodes"][label] = value
+                        nodes_order.append(label)
+        if len(total_config["nodes"]) == 17:
+            total_config["nodes"][uuid.uuid4().hex[:6]] = {
+                "label": "fictive",
+                "color": [0, 0, 255],
+                "loc": [0, 0],
+            }
+        g.keypoints_template = total_config
+
     # transfer project to detection task if necessary
     if task_type == "object detection":
         sly.Project.to_detection_task(g.project_dir, inplace=True)
     # split the data
-    train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
-    train_set, val_set = train_val_split.get_splits()
+    try:
+        train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+        train_set, val_set = train_val_split.get_splits()
+    except Exception:
+        if not use_cache:
+            raise
+        sly.logger.warning(
+            "Error during data splitting. Will try to re-download project without cache",
+            exc_info=True,
+        )
+        download_project(
+            api=api,
+            project_info=project_info,
+            dataset_infos=dataset_infos,
+            use_cache=False,
+            progress=progress_bar_download_project,
+        )
+        train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+        train_set, val_set = train_val_split.get_splits()
     verify_train_val_sets(train_set, val_set)
     # convert dataset from supervisely to yolo format
     if os.path.exists(g.yolov8_project_dir):
@@ -2208,8 +2163,9 @@ def auto_train(request: Request):
         progress_bar_convert_to_yolo,
         task_type,
     )
-
     # download model
+    weights_type = "Pretrained models"
+
     def download_monitor(monitor, api: sly.Api, progress: sly.Progress):
         value = monitor
         if progress.total == 0:
@@ -2218,70 +2174,132 @@ def auto_train(request: Request):
             progress.set_current_value(value, report=False)
         weights_pbar.update(progress.current)
 
-    if "model" not in state:
-        selected_model = models_table.get_selected_row()[0]
-    else:
-        selected_model = state["model"]
-    selected_model_name = selected_model.split(" ")[0]  # "YOLOv8n-det"
-    if selected_model.endswith("det"):
-        selected_model = selected_model[:-4]
-    if "train_mode" in state and state["train_mode"] == "scratch":
-        model_filename = selected_model.lower() + ".yaml"
-        pretrained = False
-        model = YOLO(model_filename)
-    else:
-        model_filename = selected_model.lower() + ".pt"
-        pretrained = True
-        weights_dst_path = os.path.join(g.app_data_dir, model_filename)
-        weights_url = f"https://github.com/ultralytics/assets/releases/download/v0.0.0/{model_filename}"
-        with urlopen(weights_url) as file:
-            weights_size = file.length
+    file_info = None
 
-        progress = sly.Progress(
-            message="",
-            total_cnt=weights_size,
-            is_size=True,
-        )
-        progress_cb = partial(download_monitor, api=api, progress=progress)
+    g.stop_event = threading.Event()
 
-        with progress_bar_download_model(
-            message="Downloading model weights...",
-            total=weights_size,
-            unit="bytes",
-            unit_scale=True,
-        ) as weights_pbar:
-            sly.fs.download(
-                url=weights_url,
-                save_path=weights_dst_path,
-                progress=progress_cb,
+    if weights_type == "Pretrained models":
+        if "model" not in state:
+            selected_index = 0
+        else:
+            selected_model = state["model"]
+            found_index = False
+            for i, element in enumerate(models_data):
+                if selected_model in element.values():
+                    selected_index = i
+                    found_index = True
+                    break
+            if not found_index:
+                sly.logger.info(
+                    f"Unable to find requested model: {selected_model}, switching to default"
+                )
+                selected_index = 0
+        selected_dict = models_data[selected_index]
+        weights_url = selected_dict["weights_url"]
+        model_filename = weights_url.split("/")[-1]
+        selected_model_name = selected_dict["Model"].split(" ")[0]  # "YOLOv8n-det"
+        if "train_mode" in state and state["train_mode"] == "Finetune mode":
+            pretrained = True
+            weights_dst_path = os.path.join(g.app_data_dir, model_filename)
+            with urlopen(weights_url) as file:
+                weights_size = file.length
+
+            progress = sly.Progress(
+                message="",
+                total_cnt=weights_size,
+                is_size=True,
             )
-        model = YOLO(weights_dst_path)
+            progress_cb = partial(download_monitor, api=api, progress=progress)
+
+            with progress_bar_download_model(
+                message="Downloading model weights...",
+                total=weights_size,
+                unit="bytes",
+                unit_scale=True,
+            ) as weights_pbar:
+                sly.fs.download(
+                    url=weights_url,
+                    save_path=weights_dst_path,
+                    progress=progress_cb,
+                )
+            model = CustomYOLO(weights_dst_path, stop_event=g.stop_event)
+        else:
+            yaml_config = selected_dict["yaml_config"]
+            pretrained = False
+            model = CustomYOLO(yaml_config, stop_event=g.stop_event)
+    # elif weights_type == "Custom models":
+    #     custom_link = model_path_input.get_value()
+    #     model_filename = "custom_model.pt"
+    #     weights_dst_path = os.path.join(g.app_data_dir, model_filename)
+    #     file_info = api.file.get_info_by_path(sly.env.team_id(), custom_link)
+    #     if file_info is None:
+    #         raise FileNotFoundError(f"Custon model file not found: {custom_link}")
+    #     file_size = file_info.sizeb
+    #     progress = sly.Progress(
+    #         message="",
+    #         total_cnt=file_size,
+    #         is_size=True,
+    #     )
+    #     progress_cb = partial(download_monitor, api=api, progress=progress)
+    #     with progress_bar_download_model(
+    #         message="Downloading model weights...",
+    #         total=file_size,
+    #         unit="bytes",
+    #         unit_scale=True,
+    #     ) as weights_pbar:
+    #         api.file.download(
+    #             team_id=sly.env.team_id(),
+    #             remote_path=custom_link,
+    #             local_save_path=weights_dst_path,
+    #             progress_cb=progress_cb,
+    #         )
+    #     pretrained = True
+    #     model = CustomYOLO(weights_dst_path, stop_event=g.stop_event)
+    #     try:
+    #         # get model_name from previous training
+    #         selected_model_name = model.ckpt["sly_metadata"]["model_name"]
+    #     except Exception:
+    #         selected_model_name = "custom_model.pt"
+
+    # ---------------------------------- Init And Set Workflow Input --------------------------------- #
+    w.workflow_input(api, project_info, file_info)
+    # ----------------------------------------------- - ---------------------------------------------- #
 
     # add callbacks to model
     def on_train_batch_end(trainer):
         with open("train_batches.txt", "w") as file:
             file.write("train batch end")
 
-    model.add_callback("on_train_batch_end", on_train_batch_end)
+    def freeze_callback(trainer):
+        model = trainer.model
+        num_freeze = n_frozen_layers_input.get_value()
+        print(f"Freezing {num_freeze} layers...")
+        freeze = [f"model.{x}." for x in range(num_freeze)]  # layers to freeze
+        for k, v in model.named_parameters():
+            v.requires_grad = True  # train all layers
+            if any(x in k for x in freeze):
+                print(f"freezing {k}")
+                v.requires_grad = False
+        print(f"{num_freeze} layers were frozen")
 
-    progress_bar_download_model.hide()
+    model.add_callback("on_train_batch_end", on_train_batch_end)
+    if freeze_layers.is_switched():
+        model.add_callback("on_train_start", freeze_callback)
+
     # get additional training params
     additional_params = train_settings_editor.get_text()
     additional_params = yaml.safe_load(additional_params)
     if task_type == "pose estimation":
         additional_params["fliplr"] = 0.0
-        if "fliplr" in state:
-            state["fliplr"] = 0.0
     # set up epoch progress bar and grid plot
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
     pd.set_option("display.max_colwidth", None)
-    grid_plot_f.show()
-    plot_notification.show()
+
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
     plotted_train_batches = []
     remote_images_path = (
-        f"/yolov8_train/{task_type}/{project_info.name}/images/{g.app_session_id}/"
+        f"{framework_folder}/{task_type}/{project_info.name}/images/{g.app_session_id}/"
     )
 
     def check_number(value):
@@ -2292,73 +2310,12 @@ def auto_train(request: Request):
             return False
 
     def on_results_file_changed(filepath, pbar):
-        # read results file
         results = pd.read_csv(filepath)
         results.columns = [col.replace(" ", "") for col in results.columns]
         print(results.tail(1))
-        # get losses values
-        train_box_loss = results["train/box_loss"].iat[-1]
-        train_cls_loss = results["train/cls_loss"].iat[-1]
-        train_dfl_loss = results["train/dfl_loss"].iat[-1]
-        if "train/pose_loss" in results.columns:
-            train_pose_loss = results["train/pose_loss"].iat[-1]
-        if "train/kobj_loss" in results.columns:
-            train_kobj_loss = results["train/kobj_loss"].iat[-1]
-        if "train/seg_loss" in results.columns:
-            train_seg_loss = results["train/seg_loss"].iat[-1]
-        precision = results["metrics/precision(B)"].iat[-1]
-        recall = results["metrics/recall(B)"].iat[-1]
-        val_box_loss = results["val/box_loss"].iat[-1]
-        val_cls_loss = results["val/cls_loss"].iat[-1]
-        val_dfl_loss = results["val/dfl_loss"].iat[-1]
-        if "val/pose_loss" in results.columns:
-            val_pose_loss = results["val/pose_loss"].iat[-1]
-        if "val/kobj_loss" in results.columns:
-            val_kobj_loss = results["val/kobj_loss"].iat[-1]
-        if "val/seg_loss" in results.columns:
-            val_seg_loss = results["val/seg_loss"].iat[-1]
-        # update progress bar
         x = results["epoch"].iat[-1]
-        pbar.update(int(x) + 1 - pbar.n)
-        # add new points to plots
-        if check_number(float(train_box_loss)):
-            grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
-        if check_number(float(train_cls_loss)):
-            grid_plot.add_scalar("train/cls loss", float(train_cls_loss), int(x))
-        if check_number(float(train_dfl_loss)):
-            grid_plot.add_scalar("train/dfl loss", float(train_dfl_loss), int(x))
-        if "train/pose_loss" in results.columns:
-            if check_number(float(train_pose_loss)):
-                grid_plot.add_scalar("train/pose loss", float(train_pose_loss), int(x))
-        if "train/kobj_loss" in results.columns:
-            if check_number(float(train_kobj_loss)):
-                grid_plot.add_scalar("train/kobj loss", float(train_kobj_loss), int(x))
-        if "train/seg_loss" in results.columns:
-            if check_number(float(train_seg_loss)):
-                grid_plot.add_scalar("train/seg loss", float(train_seg_loss), int(x))
-        if check_number(float(precision)):
-            grid_plot.add_scalar(
-                "precision & recall/precision", float(precision), int(x)
-            )
-        if check_number(float(recall)):
-            grid_plot.add_scalar("precision & recall/recall", float(recall), int(x))
-        if check_number(float(val_box_loss)):
-            grid_plot.add_scalar("val/box loss", float(val_box_loss), int(x))
-        if check_number(float(val_cls_loss)):
-            grid_plot.add_scalar("val/cls loss", float(val_cls_loss), int(x))
-        if check_number(float(val_dfl_loss)):
-            grid_plot.add_scalar("val/dfl loss", float(val_dfl_loss), int(x))
-        if "val/pose_loss" in results.columns:
-            if check_number(float(val_pose_loss)):
-                grid_plot.add_scalar("val/pose loss", float(val_pose_loss), int(x))
-        if "val/kobj_loss" in results.columns:
-            if check_number(float(val_kobj_loss)):
-                grid_plot.add_scalar("val/kobj loss", float(val_kobj_loss), int(x))
-        if "val/seg_loss" in results.columns:
-            if check_number(float(val_seg_loss)):
-                grid_plot.add_scalar("val/seg loss", float(val_seg_loss), int(x))
         # visualize train batch
-        batch = f"train_batch{x}.jpg"
+        batch = f"train_batch{x-1}.jpg"
         local_train_batches_path = os.path.join(local_artifacts_dir, batch)
         if (
             os.path.exists(local_train_batches_path)
@@ -2370,9 +2327,6 @@ def auto_train(request: Request):
             tf_train_batches_info = api.file.upload(
                 team_id, local_train_batches_path, remote_train_batches_path
             )
-            train_batches_gallery.append(tf_train_batches_info.full_storage_url)
-            if x == 0:
-                train_batches_gallery_f.show()
 
     watcher = Watcher(
         watch_file,
@@ -2386,6 +2340,11 @@ def auto_train(request: Request):
 
     def watcher_func():
         watcher.watch()
+
+    def disable_watcher():
+        watcher.running = False
+
+    app.call_before_shutdown(disable_watcher)
 
     threading.Thread(target=watcher_func, daemon=True).start()
     if len(train_set) > 300:
@@ -2409,46 +2368,60 @@ def auto_train(request: Request):
         def train_batch_watcher_func():
             train_batch_watcher.watch()
 
+        def train_batch_watcher_disable():
+            train_batch_watcher.running = False
+
+        app.call_before_shutdown(train_batch_watcher_disable)
+
         threading.Thread(target=train_batch_watcher_func, daemon=True).start()
 
-    model.train(
-        data=data_path,
-        project=checkpoint_dir,
-        epochs=state.get("n_epochs", n_epochs_input.get_value()),
-        patience=state.get("patience", patience_input.get_value()),
-        batch=state.get("batch_size", batch_size_input.get_value()),
-        imgsz=state.get("input_image_size", image_size_input.get_value()),
-        save_period=1000,
-        device=device,
-        workers=state.get("n_workers", n_workers_input.get_value()),
-        optimizer=state.get("optimizer", select_optimizer.get_value()),
-        pretrained=pretrained,
-        lr0=state.get("lr0", additional_params["lr0"]),
-        lrf=state.get("lrf", additional_params["lr0"]),
-        momentum=state.get("momentum", additional_params["momentum"]),
-        weight_decay=state.get("weight_decay", additional_params["weight_decay"]),
-        warmup_epochs=state.get("warmup_epochs", additional_params["warmup_epochs"]),
-        warmup_momentum=state.get(
-            "warmup_momentum", additional_params["warmup_momentum"]
-        ),
-        warmup_bias_lr=state.get("warmup_bias_lr", additional_params["warmup_bias_lr"]),
-        amp=state.get("amp", additional_params["amp"]),
-        hsv_h=state.get("hsv_h", additional_params["hsv_h"]),
-        hsv_s=state.get("hsv_s", additional_params["hsv_s"]),
-        hsv_v=state.get("hsv_v", additional_params["hsv_v"]),
-        degrees=state.get("degrees", additional_params["degrees"]),
-        translate=state.get("translate", additional_params["translate"]),
-        scale=state.get("scale", additional_params["scale"]),
-        shear=state.get("shear", additional_params["shear"]),
-        perspective=state.get("perspective", additional_params["perspective"]),
-        flipud=state.get("flipud", additional_params["flipud"]),
-        fliplr=state.get("fliplr", additional_params["fliplr"]),
-        mosaic=state.get("mosaic", additional_params["mosaic"]),
-        mixup=state.get("mixup", additional_params["mixup"]),
-        copy_paste=state.get("copy_paste", additional_params["copy_paste"]),
-    )
-    progress_bar_iters.hide()
-    progress_bar_epochs.hide()
+    def train_model():
+        model.train(
+            data=data_path,
+            project=checkpoint_dir,
+            epochs=state.get("n_epochs", n_epochs_input.get_value()),
+            patience=state.get("patience", patience_input.get_value()),
+            batch=state.get("batch_size", batch_size_input.get_value()),
+            imgsz=state.get("input_image_size", image_size_input.get_value()),
+            save_period=1000,
+            device=device,
+            workers=state.get("n_workers", n_workers_input.get_value()),
+            optimizer=state.get("optimizer", select_optimizer.get_value()),
+            pretrained=pretrained,
+            lr0=state.get("lr0", additional_params["lr0"]),
+            lrf=state.get("lrf", additional_params["lr0"]),
+            momentum=state.get("momentum", additional_params["momentum"]),
+            weight_decay=state.get("weight_decay", additional_params["weight_decay"]),
+            warmup_epochs=state.get(
+                "warmup_epochs", additional_params["warmup_epochs"]
+            ),
+            warmup_momentum=state.get(
+                "warmup_momentum", additional_params["warmup_momentum"]
+            ),
+            warmup_bias_lr=state.get(
+                "warmup_bias_lr", additional_params["warmup_bias_lr"]
+            ),
+            amp=state.get("amp", additional_params["amp"]),
+            hsv_h=state.get("hsv_h", additional_params["hsv_h"]),
+            hsv_s=state.get("hsv_s", additional_params["hsv_s"]),
+            hsv_v=state.get("hsv_v", additional_params["hsv_v"]),
+            degrees=state.get("degrees", additional_params["degrees"]),
+            translate=state.get("translate", additional_params["translate"]),
+            scale=state.get("scale", additional_params["scale"]),
+            shear=state.get("shear", additional_params["shear"]),
+            perspective=state.get("perspective", additional_params["perspective"]),
+            flipud=state.get("flipud", additional_params["flipud"]),
+            fliplr=state.get("fliplr", additional_params["fliplr"]),
+            mosaic=state.get("mosaic", additional_params["mosaic"]),
+            mixup=state.get("mixup", additional_params["mixup"]),
+            copy_paste=state.get("copy_paste", additional_params["copy_paste"]),
+        )
+
+    stop_training_tooltip.show()
+
+    train_thread = threading.Thread(target=train_model, args=())
+    train_thread.start()
+    train_thread.join()
     watcher.running = False
 
     # visualize model predictions
@@ -2460,24 +2433,12 @@ def auto_train(request: Request):
                 remote_images_path, f"val_batch{i}_labels.jpg"
             )
             tf_labels_info = api.file.upload(team_id, labels_path, remote_labels_path)
-            val_batch_labels_id = val_batches_gallery.append(
-                image_url=tf_labels_info.full_storage_url,
-                title="labels",
-            )
         preds_path = os.path.join(local_artifacts_dir, f"val_batch{i}_pred.jpg")
         if os.path.exists(preds_path):
             remote_preds_path = os.path.join(
                 remote_images_path, f"val_batch{i}_pred.jpg"
             )
             tf_preds_info = api.file.upload(team_id, preds_path, remote_preds_path)
-            val_batch_preds_id = val_batches_gallery.append(
-                image_url=tf_preds_info.full_storage_url,
-                title="predictions",
-            )
-        if val_batch_labels_id and val_batch_preds_id:
-            val_batches_gallery.sync_images([val_batch_labels_id, val_batch_preds_id])
-        if i == 0:
-            val_batches_gallery_f.show()
 
     # visualize additional training results
     confusion_matrix_path = os.path.join(
@@ -2490,41 +2451,40 @@ def auto_train(request: Request):
         tf_confusion_matrix_info = api.file.upload(
             team_id, confusion_matrix_path, remote_confusion_matrix_path
         )
-        additional_gallery.append(tf_confusion_matrix_info.full_storage_url)
-        additional_gallery_f.show()
     pr_curve_path = os.path.join(local_artifacts_dir, "PR_curve.png")
     if os.path.exists(pr_curve_path):
         remote_pr_curve_path = os.path.join(remote_images_path, "PR_curve.png")
         tf_pr_curve_info = api.file.upload(team_id, pr_curve_path, remote_pr_curve_path)
-        additional_gallery.append(tf_pr_curve_info.full_storage_url)
     f1_curve_path = os.path.join(local_artifacts_dir, "F1_curve.png")
     if os.path.exists(f1_curve_path):
         remote_f1_curve_path = os.path.join(remote_images_path, "F1_curve.png")
         tf_f1_curve_info = api.file.upload(team_id, f1_curve_path, remote_f1_curve_path)
-        additional_gallery.append(tf_f1_curve_info.full_storage_url)
     box_f1_curve_path = os.path.join(local_artifacts_dir, "BoxF1_curve.png")
     if os.path.exists(box_f1_curve_path):
         remote_box_f1_curve_path = os.path.join(remote_images_path, "BoxF1_curve.png")
         tf_box_f1_curve_info = api.file.upload(
             team_id, box_f1_curve_path, remote_box_f1_curve_path
         )
-        additional_gallery.append(tf_box_f1_curve_info.full_storage_url)
     pose_f1_curve_path = os.path.join(local_artifacts_dir, "PoseF1_curve.png")
     if os.path.exists(pose_f1_curve_path):
         remote_pose_f1_curve_path = os.path.join(remote_images_path, "PoseF1_curve.png")
         tf_pose_f1_curve_info = api.file.upload(
             team_id, pose_f1_curve_path, remote_pose_f1_curve_path
         )
-        additional_gallery.append(tf_pose_f1_curve_info.full_storage_url)
     mask_f1_curve_path = os.path.join(local_artifacts_dir, "MaskF1_curve.png")
     if os.path.exists(mask_f1_curve_path):
         remote_mask_f1_curve_path = os.path.join(remote_images_path, "MaskF1_curve.png")
         tf_mask_f1_curve_info = api.file.upload(
             team_id, mask_f1_curve_path, remote_mask_f1_curve_path
         )
-        additional_gallery.append(tf_mask_f1_curve_info.full_storage_url)
 
     # rename best checkpoint file
+    if not os.path.isfile(watch_file):
+        sly.logger.warning(
+            "The file with results does not exist, training was not completed successfully."
+        )
+        app.stop()
+        return
     results = pd.read_csv(watch_file)
     results.columns = [col.replace(" ", "") for col in results.columns]
     results["fitness"] = (0.1 * results["metrics/mAP50(B)"]) + (
@@ -2540,16 +2500,16 @@ def auto_train(request: Request):
 
     # add geometry config to saved weights for pose estimation task
     if task_type == "pose estimation":
-        for obj_class in project_meta.obj_classes:
-            if (
-                obj_class.geometry_type.geometry_name() == "graph"
-                and obj_class.name in selected_classes
-            ):
-                geometry_config = obj_class.geometry_config
-                break
         weights_filepath = os.path.join(local_artifacts_dir, "weights", best_filename)
         weights_dict = torch.load(weights_filepath)
-        weights_dict["geometry_config"] = geometry_config
+        if len(cls2config.keys()) == 1:
+            geometry_config = list(cls2config.values())[0]
+            weights_dict["geometry_config"] = geometry_config
+        elif len(cls2config.keys()) > 1:
+            weights_dict["geometry_config"] = {
+                "configs": cls2config,
+                "nodes_order": nodes_order,
+            }
         torch.save(weights_dict, weights_filepath)
 
     # add model name to saved weights
@@ -2571,42 +2531,235 @@ def auto_train(request: Request):
         print(app_url, file=text_file)
 
     # upload training artifacts to team files
-    remote_artifacts_dir = os.path.join(
-        framework_folder, task_type, project_info.name, str(g.app_session_id)
+    upload_artifacts_dir = os.path.join(
+        framework_folder,
+        task_type_select.get_value(),
+        project_info.name,
+        str(g.app_session_id),
     )
-    remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
 
-    def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
-        value = monitor.bytes_read
-        if progress.total == 0:
-            progress.set(value, monitor.len, report=False)
-        else:
-            progress.set_current_value(value, report=False)
-        artifacts_pbar.update(progress.current - artifacts_pbar.n)
+    if not app.is_stopped():
 
-    local_files = sly.fs.list_files_recursively(local_artifacts_dir)
-    total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
-    progress = sly.Progress(
-        message="",
-        total_cnt=total_size,
-        is_size=True,
-    )
-    progress_cb = partial(upload_monitor, api=api, progress=progress)
-    with progress_bar_upload_artifacts(
-        message="Uploading train artifacts to Team Files...",
-        total=total_size,
-        unit="bytes",
-        unit_scale=True,
-    ) as artifacts_pbar:
-        team_files_dir = api.file.upload_directory(
+        def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
+            value = monitor.bytes_read
+            if progress.total == 0:
+                progress.set(value, monitor.len, report=False)
+            else:
+                progress.set_current_value(value, report=False)
+            artifacts_pbar.update(progress.current - artifacts_pbar.n)
+
+        local_files = sly.fs.list_files_recursively(local_artifacts_dir)
+        total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
+        progress = sly.Progress(
+            message="",
+            total_cnt=total_size,
+            is_size=True,
+        )
+        progress_cb = partial(upload_monitor, api=api, progress=progress)
+        with progress_bar_upload_artifacts(
+            message="Uploading train artifacts to Team Files...",
+            total=total_size,
+            unit="bytes",
+            unit_scale=True,
+        ) as artifacts_pbar:
+            remote_artifacts_dir = api.file.upload_directory(
+                team_id=sly.env.team_id(),
+                local_dir=local_artifacts_dir,
+                remote_dir=upload_artifacts_dir,
+                progress_size_cb=progress_cb,
+            )
+    else:
+        sly.logger.info(
+            "Uploading training artifacts before stopping the app... (progress bar is disabled)"
+        )
+        remote_artifacts_dir = api.file.upload_directory(
             team_id=sly.env.team_id(),
             local_dir=local_artifacts_dir,
-            remote_dir=remote_artifacts_dir,
-            progress_size_cb=progress_cb,
+            remote_dir=upload_artifacts_dir,
         )
-    file_info = api.file.get_info_by_path(
-        sly.env.team_id(), team_files_dir + "/results.csv"
+        sly.logger.info("Training artifacts uploaded successfully")
+    remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
+
+    # ------------------------------------- Model Benchmark ------------------------------------- #
+    model_benchmark_done = False
+    if run_model_benchmark_checkbox.is_checked():
+        try:
+            if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
+                sly.logger.info(
+                    f"Creating the report for the best model: {best_filename!r}"
+                )
+                creating_report_f.show()
+
+                # 0. Serve trained model
+                m = YOLOv8ModelMB(
+                    model_dir=local_artifacts_dir + "/weights",
+                    use_gui=False,
+                    custom_inference_settings=os.path.join(
+                        root_source_path, "serve", "custom_settings.yaml"
+                    ),
+                )
+
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+                sly.logger.info(f"Using device: {device}")
+
+                checkpoint_path = os.path.join(remote_weights_dir, best_filename)
+                deploy_params = dict(
+                    device=device,
+                    runtime=sly.nn.inference.RuntimeType.PYTORCH,
+                    model_source="Custom models",
+                    task_type=task_type,
+                    checkpoint_name=best_filename,
+                    checkpoint_url=checkpoint_path,
+                )
+                m._load_model(deploy_params)
+                m.serve()
+                session = SessionJSON(api, session_url="http://localhost:8000")
+                sly.fs.remove_dir(g.app_data_dir + "/benchmark")
+
+                # 1. Init benchmark (todo: auto-detect task type)
+                benchmark_dataset_ids = None
+                benchmark_images_ids = None
+                train_dataset_ids = None
+                train_images_ids = None
+
+                split_method = train_val_split._content.get_active_tab()
+
+                if split_method == "Based on datasets":
+                    benchmark_dataset_ids = (
+                        train_val_split._val_ds_select.get_selected_ids()
+                    )
+                    train_dataset_ids = train_val_split._train_ds_select.get_selected_ids()
+                else:
+                    def get_image_infos_by_split(split: list):
+                        ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
+                        image_names_per_dataset = {}
+                        for item in split:
+                            image_names_per_dataset.setdefault(item.dataset_name, []).append(
+                                item.name
+                            )
+                        image_infos = []
+                        for dataset_name, image_names in image_names_per_dataset.items():
+                            ds_info = ds_infos_dict[dataset_name]
+                            image_infos.extend(
+                                api.image.get_list(
+                                    ds_info.id,
+                                    filters=[
+                                        {
+                                            "field": "name",
+                                            "operator": "in",
+                                            "value": image_names,
+                                        }
+                                    ],
+                                )
+                            )
+                        return image_infos
+                    val_image_infos = get_image_infos_by_split(val_set)
+                    train_image_infos = get_image_infos_by_split(train_set)
+                    benchmark_images_ids = [img_info.id for img_info in val_image_infos]
+                    train_images_ids = [img_info.id for img_info in train_image_infos]
+
+                if task_type == TaskType.OBJECT_DETECTION:
+                    bm = ObjectDetectionBenchmark(
+                        api,
+                        project_info.id,
+                        output_dir=g.app_data_dir + "/benchmark",
+                        gt_dataset_ids=benchmark_dataset_ids,
+                        gt_images_ids=benchmark_images_ids,
+                        progress=model_benchmark_pbar,
+                        classes_whitelist=selected_classes,
+                    )
+                elif task_type == TaskType.INSTANCE_SEGMENTATION:
+                    bm = InstanceSegmentationBenchmark(
+                        api,
+                        project_info.id,
+                        output_dir=g.app_data_dir + "/benchmark",
+                        gt_dataset_ids=benchmark_dataset_ids,
+                        gt_images_ids=benchmark_images_ids,
+                        progress=model_benchmark_pbar,
+                        classes_whitelist=selected_classes,
+                    )
+                else:
+                    raise ValueError(
+                        f"Model benchmark for task type {task_type} is not implemented (coming soon)"
+                    )
+                
+                train_info = {
+                    "app_session_id": g.app_session_id,
+                    "train_dataset_ids": train_dataset_ids,
+                    "train_images_ids": train_images_ids,
+                    "images_count": len(train_set),
+                }
+                bm.train_info = train_info
+
+                # 2. Run inference
+                bm.run_inference(session)
+
+                # 3. Pull results from the server
+                gt_project_path, dt_project_path = bm.download_projects(save_images=False)
+
+                # 4. Evaluate
+                bm._evaluate(gt_project_path, dt_project_path)
+
+                # 5. Upload evaluation results
+                eval_res_dir = get_eval_results_dir_name(
+                    api, g.app_session_id, project_info
+                )
+                bm.upload_eval_results(eval_res_dir + "/evaluation/")
+
+                # 6. Speed test
+                if run_speedtest_checkbox.is_checked():
+                    bm.run_speedtest(session, project_info.id)
+                    bm.upload_speedtest_results(eval_res_dir + "/speedtest/")
+
+                # 7. Prepare visualizations, report and upload
+                bm.visualize()
+                remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
+                report = bm.upload_report_link(remote_dir)
+
+                # 8. UI updates
+                benchmark_report_template = api.file.get_info_by_path(
+                    sly.env.team_id(), remote_dir + "template.vue"
+                )
+                model_benchmark_done = True
+                creating_report_f.hide()
+                model_benchmark_report.set(benchmark_report_template)
+                model_benchmark_report.show()
+                model_benchmark_pbar.hide()
+                sly.logger.info(
+                    f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}"
+                )
+                sly.logger.info(
+                    f"Differences project name: {bm.diff_project_info.name}. Workspace_id: {bm.diff_project_info.workspace_id}"
+                )
+        except Exception as e:
+            sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
+            creating_report_f.hide()
+            model_benchmark_pbar.hide()
+            try:
+                if bm.dt_project_info:
+                    api.project.remove(bm.dt_project_info.id)
+                if bm.diff_project_info:
+                    api.project.remove(bm.diff_project_info.id)
+            except Exception as re:
+                pass
+    # ----------------------------------------------- - ---------------------------------------------- #
+
+    # ------------------------------------- Set Workflow Outputs ------------------------------------- #
+    if not model_benchmark_done:
+        benchmark_report_template = None
+    w.workflow_output(
+        api, model_filename, remote_artifacts_dir, best_filename, benchmark_report_template
     )
+    # ----------------------------------------------- - ---------------------------------------------- #
+
+    if not app.is_stopped():
+        file_info = api.file.get_info_by_path(
+            sly.env.team_id(), remote_artifacts_dir + "/results.csv"
+        )
+        train_artifacts_folder.set(file_info)
+        # finish training
+        card_train_artifacts.unlock()
+        card_train_artifacts.uncollapse()
 
     # upload sly_metadata.json
     yolov8_artifacts.generate_metadata(
@@ -2620,22 +2773,11 @@ def auto_train(request: Request):
         config_path=None,
     )
 
-    train_artifacts_folder.set(file_info)
-
-    # finish training
-    g.IN_PROGRESS = False
-    start_training_button.loading = False
-    start_training_button.disable()
-    logs_button.disable()
-    train_done.show()
-    curr_step = stepper.get_active_step()
-    curr_step += 1
-    stepper.set_active_step(curr_step)
-    card_train_artifacts.unlock()
-    card_train_artifacts.uncollapse()
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
     sly.fs.silent_remove("train_batches.txt")
     # set task output
     sly.output.set_directory(remote_artifacts_dir)
+    # stop app
+    app.stop()
     return {"result": "successfully finished automatic training session"}
