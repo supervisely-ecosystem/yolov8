@@ -60,6 +60,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self.runtime_select = SelectString([RuntimeType.PYTORCH, RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT])
         runtime_field = Field(self.runtime_select, "Runtime", "Select a runtime for inference.")
         layout = Container([self.model_source_tabs, runtime_field])
+        # TODO: disable runtime field for now, as it is not implemented yet
+        runtime_field.disable()
+        runtime_field.hide()
         return layout
 
     def get_params_from_gui(self) -> dict:
