@@ -215,14 +215,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             assert architecture is not None
             return model_name, architecture
         except Exception as e:
-            sly.logger.warn(
-                f"Failed to get model_name and architecture from checkpoint metadata. {repr(e)}",
-                exc_info=True
-            )
+            pass
         # Fallback: trying to extract from train_args for old custom checkpoints
         try:
             train_args = self.model.ckpt["train_args"]
-            model_name = os.path.basename(train_args["model"])
+            model_name = os.path.basename(train_args["model"]).split(".")[0]
+            if "yolov" in model_name:
+                model_name = model_name.replace("yolov", "YOLOv")
             architecture = get_arch_from_model_name(model_name)
             assert architecture is not None
             return model_name, architecture
