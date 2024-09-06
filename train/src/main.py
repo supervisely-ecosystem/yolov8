@@ -431,7 +431,7 @@ model_benchmark_f = Field(
         ]
     ),
     title="Model Evaluation Benchmark",
-    description=f"Generate evalutaion dashboard with visualizations and detailed analysis of the model performance after training. The best checkpoint will be used for evaluation. You can also run speed test to evaluate model inference speed.",
+    description=f"Generate evaluation dashboard with visualizations and detailed analysis of the model performance after training. The best checkpoint will be used for evaluation. You can also run speed test to evaluate model inference speed.",
 )
 docs_link = '<a href="https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/" target="_blank">documentation</a>'
 model_benchmark_learn_more = Text(f"Learn more about Model Benchmark in the {docs_link}.", status="info")
