@@ -422,7 +422,7 @@ n_frozen_layers_input_f = Field(
 )
 n_frozen_layers_input_f.hide()
 run_model_benchmark_checkbox = Checkbox(content="Run Model Benchmark evaluation", checked=True)
-run_speedtest_checkbox = Checkbox(content="Run speed test")
+run_speedtest_checkbox = Checkbox(content="Run speed test", checked=True)
 model_benchmark_f = Field(
     Container(
         widgets=[
