@@ -20,11 +20,13 @@ m = YOLOv8Model(
 test_image_id = 31180449
 deploy_params = {
     'device': 'cuda:0',
-    'runtime': RuntimeType.ONNXRUNTIME,
+    'runtime': RuntimeType.TENSORRT,
     'model_source': 'Pretrained models',
     'task_type': 'object detection',
     'checkpoint_name': 'yolov8n-det (coco).pt',
     'checkpoint_url': 'https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8n.pt'
 }
 m._load_model(deploy_params)
-m._inference_image_id(m.api, {"image_id": test_image_id})
+# m._inference_image_id(m.api, {"image_id": test_image_id})
+m._inference_batch_ids(m.api, {"batch_ids": [31450547, 31447888]})
+m._inference_batch_ids(m.api, {"batch_ids": [31450547, 31447888]})

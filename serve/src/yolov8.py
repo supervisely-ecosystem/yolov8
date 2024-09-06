@@ -452,21 +452,21 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         model.to(self.device)
         return model
     
-    def _load_runtime(self, weights_path: str, format: str):
+    def _load_runtime(self, weights_path: str, format: str, **kwargs):
         if weights_path.endswith(".pt"):
             onnx_path = weights_path.replace(".pt", f".{format}")
             if not os.path.exists(onnx_path):
                 sly.logger.info(f"Exporting model to {format} format...")
                 model = YOLO(weights_path)
-                model.export(format=format)
+                model.export(format=format, **kwargs)
         model = YOLO(onnx_path)
         return model
     
     def _load_onnx(self, weights_path: str):
-        return self._load_runtime(weights_path, "onnx")
+        return self._load_runtime(weights_path, "onnx", dynamic=True)
     
     def _load_tensorrt(self, weights_path: str):
-        return self._load_runtime(weights_path, "engine")
+        return self._load_runtime(weights_path, "engine", dynamic=True)
 
     def _check_onnx_device(self, device: str):
         import onnxruntime as ort

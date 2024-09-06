@@ -57,13 +57,13 @@
             }
         },
         {
-            "name": "test runtimes",
+            "name": "test: runtimes.py",
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/tests/runtimes.py",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/serve:${PYTHONPATH}",
+                "PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/serve:${PYTHONPATH}:/root/supervisely",
                 "LOG_LEVEL": "DEBUG",
             }
         },
