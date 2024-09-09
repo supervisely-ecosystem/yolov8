@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.append("serve")
 from dotenv import load_dotenv
 from pathlib import Path
 import supervisely as sly
