@@ -7,6 +7,7 @@ import cv2
 import torch
 
 from ultralytics import YOLO
+import yaml
 
 import supervisely as sly
 from supervisely.nn.inference import TaskType, CheckpointInfo, RuntimeType
@@ -162,6 +163,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self.runtime = runtime
         self.task_type = task_type
 
+        # Remove old checkpoint_info.yaml if exists
+        sly.fs.silent_remove(os.path.join(self.model_dir, "checkpoint_info.yaml"))
+
         local_weights_path = os.path.join(self.model_dir, checkpoint_name)
         if not sly.fs.file_exists(local_weights_path):
             self.download(
@@ -172,11 +176,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         if runtime == RuntimeType.PYTORCH:
             self.model = self._load_pytorch(local_weights_path)
         elif runtime == RuntimeType.ONNXRUNTIME:
-            self.model = self._load_onnx(local_weights_path)
             self._check_onnx_device(device)
+            self.model = self._load_onnx(local_weights_path)
         elif runtime == RuntimeType.TENSORRT:
-            self.model = self._load_tensorrt(local_weights_path)
             self._check_tensorrt_device(device)
+            self.model = self._load_tensorrt(local_weights_path)
 
         self.load_model_meta(model_source, local_weights_path)
 
@@ -189,7 +193,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             custom_checkpoint_path = checkpoint_url
             file_id = self.api.file.get_info_by_path(self.team_id, checkpoint_url).id
             checkpoint_url = self.api.file.get_url(file_id)
-            model_name, architecture = self._try_extract_info_from_custom_checkpoint()
+            model_name, architecture = self._try_extract_checkpoint_info(self.model)
         self.checkpoint_info = CheckpointInfo(
             checkpoint_name=checkpoint_name,
             model_name=model_name,
@@ -200,37 +204,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         )
 
         # This will disable logs from YOLO
-        # import logging
-        # if sly.logger.isEnabledFor(logging.DEBUG):
-        #     self.model.overrides['verbose'] = True
-        # else:
-        #     self.model.overrides['verbose'] = False
-
-    def _try_extract_info_from_custom_checkpoint(self):
-        model_name = None
-        architecture = None
-        try:
-            model_name = self.model.ckpt["sly_metadata"]["model_name"]
-            architecture = get_arch_from_model_name(model_name)
-            assert architecture is not None
-            return model_name, architecture
-        except Exception as e:
-            pass
-        # Fallback: trying to extract from train_args for old custom checkpoints
-        try:
-            train_args = self.model.ckpt["train_args"]
-            model_name = os.path.basename(train_args["model"]).split(".")[0]
-            if "yolov" in model_name:
-                model_name = model_name.replace("yolov", "YOLOv")
-            architecture = get_arch_from_model_name(model_name)
-            assert architecture is not None
-            return model_name, architecture
-        except Exception as e:
-            sly.logger.warn(
-                f"Failed to extract model_name and architecture from train_args. {repr(e)}",
-                exc_info=True
-            )
-        return model_name, architecture
+        # self.model.overrides['verbose'] = False
 
     def get_info(self):
         info = super().get_info()
@@ -476,6 +450,8 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if not os.path.exists(onnx_path):
                 sly.logger.info(f"Exporting model to {format} format...")
                 model = YOLO(weights_path)
+                # save checkpoint_info in yaml, as it will be lost after exporting
+                self._dump_yaml_checkpoint_info(model, os.path.dirname(weights_path))
                 model.export(format=format, **kwargs)
         model = YOLO(onnx_path)
         return model
@@ -484,7 +460,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         return self._load_runtime(weights_path, "onnx", dynamic=True)
     
     def _load_tensorrt(self, weights_path: str):
-        return self._load_runtime(weights_path, "engine", dynamic=True)
+        return self._load_runtime(weights_path, "engine", dynamic=True, batch=8)
 
     def _check_onnx_device(self, device: str):
         import onnxruntime as ort
@@ -497,6 +473,57 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def _check_tensorrt_device(self, device: str):
         if "cuda" not in device:
             raise ValueError(f"Selected {device} device, but TensorRT only supports CUDA devices")
+
+    def _try_extract_checkpoint_info(self, model: YOLO):
+        model_name = None
+        architecture = None
+        # 1. Extract from checkpoint_info.yaml
+        try:
+            yaml_path = os.path.join(self.model_dir, "checkpoint_info.yaml")
+            if os.path.exists(yaml_path):
+                with open(yaml_path, "r") as f:
+                    info = yaml.safe_load(f)
+                model_name = info["model_name"]
+                architecture = info["architecture"]
+                return model_name, architecture
+        except Exception as e:
+            pass
+        
+        # 2. Extract from sly_metadata for custom checkpoints
+        try:
+            model_name = model.ckpt["sly_metadata"]["model_name"]
+            architecture = get_arch_from_model_name(model_name)
+            assert architecture is not None
+            return model_name, architecture
+        except Exception as e:
+            pass
+
+        # 3. Fallback: trying to extract from train_args for old custom checkpoints
+        try:
+            train_args = model.ckpt["train_args"]
+            model_name = os.path.basename(train_args["model"]).split(".")[0]
+            if "yolov" in model_name:
+                model_name = model_name.replace("yolov", "YOLOv")
+            architecture = get_arch_from_model_name(model_name)
+            assert architecture is not None
+            return model_name, architecture
+        except Exception as e:
+            sly.logger.warn(
+                f"Failed to extract model_name and architecture from train_args. {repr(e)}",
+                exc_info=True
+            )
+        return model_name, architecture
+    
+    def _dump_yaml_checkpoint_info(self, model: YOLO, dir_path: str):
+        model_name, architecture = self._try_extract_checkpoint_info(model)
+        info = {
+            "model_name": model_name,
+            "architecture": architecture,
+        }
+        yaml_path = os.path.join(dir_path, "checkpoint_info.yaml")
+        with open(yaml_path, "w") as f:
+            yaml.dump(info, f)
+        return yaml_path
 
 
 def parse_model_name(checkpoint_name: str):

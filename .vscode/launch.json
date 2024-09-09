@@ -75,7 +75,7 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}"
+                "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}:/root/supervisely",
             }
         },
     ]
