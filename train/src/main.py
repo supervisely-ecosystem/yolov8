@@ -1346,8 +1346,14 @@ def start_training():
         if select_train_mode.get_value() == "Finetune mode":
             pretrained = True
             weights_dst_path = os.path.join(g.app_data_dir, model_filename)
-            with urlopen(weights_url) as file:
-                weights_size = file.length
+            try:
+                with urlopen(weights_url) as file:
+                    weights_size = file.length
+            except Exception as e:
+                err_msg = f"Unable to open weight url. Please, try again later or contact technical support."
+                extra = {'url': weights_url, 'model_filename': model_filename, 'selected_model_name': selected_model_name, 'error message': str(e)}
+                sly.logger.error(err_msg, extra=extra)
+                return
 
             progress = sly.Progress(
                 message="",
