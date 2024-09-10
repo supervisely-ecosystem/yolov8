@@ -6,7 +6,7 @@ import supervisely as sly
 from dotenv import load_dotenv
 from serve.src.yolov8 import YOLOv8Model
 from serve.src.models import yolov8_models
-from supervisely.nn.inference import RuntimeType
+from supervisely.nn.inference import RuntimeType, ModelSource
 
 
 load_dotenv("local.env")
@@ -71,7 +71,7 @@ def test_custom():
     for runtime in [RuntimeType.PYTORCH, RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT]:
         m.load_model(
             device="cuda",
-            model_source="Custom model",
+            model_source=ModelSource.CUSTOM,
             task_type=task,
             checkpoint_name="custom.pt",
             checkpoint_url=custom_model_url,
