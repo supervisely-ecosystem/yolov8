@@ -1,3 +1,8 @@
+from src.monkey_patching_fix import monkey_patching_fix
+# Monkey patching to avoid a problem with installing wrong onnxruntime requirements
+# issue: https://github.com/ultralytics/ultralytics/issues/5093
+monkey_patching_fix()
+
 import os
 from typing import Any, Dict, Generator, List, Union, Literal
 from threading import Event
@@ -10,7 +15,7 @@ from ultralytics import YOLO
 import yaml
 
 import supervisely as sly
-from supervisely.nn.inference import TaskType, CheckpointInfo, RuntimeType
+from supervisely.nn.inference import TaskType, CheckpointInfo, RuntimeType, ModelSource
 from supervisely.app.widgets import (
     PretrainedModelsSelector,
     RadioTabs,
@@ -159,6 +164,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self.device = device
         self.runtime = runtime
         self.task_type = task_type
+        self.model_source = model_source
 
         # Remove old checkpoint_info.yaml if exists
         sly.fs.silent_remove(os.path.join(self.model_dir, "checkpoint_info.yaml"))
@@ -447,8 +453,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if not os.path.exists(onnx_path):
                 sly.logger.info(f"Exporting model to {format} format...")
                 model = YOLO(weights_path)
-                # save checkpoint_info in yaml, as it will be lost after exporting
-                self._dump_yaml_checkpoint_info(model, os.path.dirname(weights_path))
+                if self.model_source == ModelSource.CUSTOM:
+                    # save custom checkpoint_info in yaml, as it will be lost after exporting
+                    self._dump_yaml_checkpoint_info(model, os.path.dirname(weights_path))
                 model.export(format=format, **kwargs)
         model = YOLO(onnx_path)
         return model
@@ -457,7 +464,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         return self._load_runtime(weights_path, "onnx", dynamic=True)
     
     def _load_tensorrt(self, weights_path: str):
-        return self._load_runtime(weights_path, "engine", dynamic=True, batch=8)
+        return self._load_runtime(weights_path, "engine", dynamic=True, batch=4)
 
     def _check_onnx_device(self, device: str):
         import onnxruntime as ort
@@ -527,7 +534,7 @@ def parse_model_name(checkpoint_name: str):
     import re
     # yolov8n
     p = r"yolov(\d+)(\w)"
-    match = re.match(p, checkpoint_name)
+    match = re.match(p, checkpoint_name.lower())
     version = match.group(1)
     variant = match.group(2)
     model_name = f"YOLOv{version}{variant}"
