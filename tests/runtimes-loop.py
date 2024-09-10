@@ -12,15 +12,18 @@ from supervisely.nn.inference import RuntimeType
 load_dotenv("local.env")
 load_dotenv(os.path.expanduser("~/supervisely.env"))
 
-m = YOLOv8Model(
-    model_dir="app_data",
-    use_gui=False,
-    custom_inference_settings="serve/custom_settings.yaml"
-)
 
-det_url = yolov8_models[0]['meta']['weights_url']
+# Set custom model path
+custom_model_url = "/yolov8_train_tmp/object detection/TACO-10 trainset/57436/weights/best_277.pt"
+det_url = "https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov10n.pt"
 seg_url = "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8n-seg.pt"
 pose_url = "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8n-pose.pt"
+
+img_path = "tests/images/giraffe.jpg"
+img_np = sly.image.read(img_path)
+
+output_dir = "app_data/results"
+
 
 models = [
     ("object detection", det_url),
@@ -28,9 +31,11 @@ models = [
     ("pose estimation", pose_url),
 ]
 
-img_path = "tests/images/giraffe.jpg"
-img_np = sly.image.read(img_path)
-
+m = YOLOv8Model(
+    model_dir="app_data",
+    use_gui=False,
+    custom_inference_settings="serve/custom_settings.yaml"
+)
 
 def ensure_taco():
     global img_np, img_path
@@ -51,33 +56,40 @@ def test_pretrained():
                 model_source="Pretrained models",
                 task_type=task,
                 checkpoint_name=name,
-                checkpoint_url=det_url,
+                checkpoint_url=url,
                 runtime=runtime,
             )
             settings = m.custom_inference_settings_dict
             # settings["conf"] = 0.45
             pred = m.predict_benchmark([img_np], settings)[0][0]
-            m.visualize(pred, img_path, f"result_{runtime}_{name}.jpg", thickness=3)
+            m.visualize(pred, img_path, f"{output_dir}/result_{runtime}_{name}.jpg", thickness=3)
 
 
 def test_custom():
     ensure_taco()
     task = "object detection"
-    custom_url = "/yolov8_train_tmp/object detection/TACO-10 trainset/57436/weights/best_277.pt"
-    for runtime in [RuntimeType.TENSORRT]:
+    for runtime in [RuntimeType.PYTORCH, RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT]:
         m.load_model(
             device="cuda",
             model_source="Custom model",
             task_type=task,
             checkpoint_name="custom.pt",
-            checkpoint_url=custom_url,
+            checkpoint_url=custom_model_url,
             runtime=runtime,
         )
         settings = m.custom_inference_settings_dict
         # settings["conf"] = 0.45
         pred = m.predict_benchmark([img_np], settings)[0][0]
-        m.visualize(pred, img_path, f"app_data/results/result_taco_{runtime}_{task}.jpg", thickness=5)
+        m.visualize(pred, img_path, f"{output_dir}/result_taco_{runtime}_{task}.jpg", thickness=5)
 
 
-# test_pretrained()
+def assert_checkpoint_info(m: YOLOv8Model):
+    info = m.checkpoint_info
+    assert None not in [
+        info.checkpoint_name,
+        info.model_name,
+        info.architecture,
+    ], "Checkpoint info is not fully set"
+
+test_pretrained()
 test_custom()
