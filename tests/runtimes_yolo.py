@@ -36,7 +36,7 @@ device = "cuda"
 model = YOLO(f"app_data/{MODEL_NAME}.pt")
 
 # Export to TensorRT
-model.export(format="engine", dynamic=True, batch=4)
+# model.export(format="engine", dynamic=True, batch=4)
 
 # PyTorch GPU inference
 preds_original = model(images, device=device)
@@ -61,9 +61,8 @@ assert_device(preds_original, device)
 
 # TensorRT GPU
 device = "cuda"
-model = YOLO(f"app_data/{MODEL_NAME}.engine")
-preds_trt = model(images, device=device)
+model = YOLO(f"app_data/{MODEL_NAME}_fp16.engine")
 preds_trt = model(images, device=device)
 assert len(preds_trt) == len(images)
 assert_device(preds_trt, device)
-compare_predictions(preds_original, preds_trt, atol=0.1)
+compare_predictions(preds_original, preds_trt, atol=0.5)

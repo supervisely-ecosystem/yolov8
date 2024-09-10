@@ -35,6 +35,28 @@ def run_speedtest(model: YOLO, batch_size: int, device: str, imgsz: int = 640, n
 
 MODEL_NAME = "yolov10n"
 
+
+# export
+model = YOLO(f"app_data/{MODEL_NAME}.pt")
+model.export(format="engine", dynamic=True, batch=4, half=True)
+
+
+# TensorRT GPU
+print("TensorRT GPU FP32")
+device = "cuda"
+model = YOLO(f"app_data/{MODEL_NAME}_fp32.engine", task="detect")
+print("TensorRT GPU")
+run_speedtest(model, batch_size=4, device=device)
+
+
+# TensorRT GPU
+print("TensorRT GPU FP16")
+device = "cuda"
+model = YOLO(f"app_data/{MODEL_NAME}.engine", task="detect")
+print("TensorRT GPU")
+run_speedtest(model, batch_size=4, device=device)
+
+
 # PyTorch GPU
 device = "cuda"
 model = YOLO(f"app_data/{MODEL_NAME}.pt", task="detect")
