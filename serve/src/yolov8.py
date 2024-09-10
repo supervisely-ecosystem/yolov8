@@ -450,13 +450,17 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def _load_runtime(self, weights_path: str, format: str, **kwargs):
         if weights_path.endswith(".pt"):
             onnx_path = weights_path.replace(".pt", f".{format}")
+            model = None
             if not os.path.exists(onnx_path):
                 sly.logger.info(f"Exporting model to {format} format...")
                 model = YOLO(weights_path)
-                if self.model_source == ModelSource.CUSTOM:
-                    # save custom checkpoint_info in yaml, as it will be lost after exporting
-                    self._dump_yaml_checkpoint_info(model, os.path.dirname(weights_path))
                 model.export(format=format, **kwargs)
+            checkpoint_info_path = os.path.join(os.path.dirname(weights_path), "checkpoint_info.yaml")
+            if self.model_source == ModelSource.CUSTOM and not os.path.exists(checkpoint_info_path):
+                # save custom checkpoint_info in yaml, as it will be lost after exporting
+                if model is None:
+                    model = YOLO(weights_path)
+                self._dump_yaml_checkpoint_info(model, os.path.dirname(weights_path))
         model = YOLO(onnx_path)
         return model
     
