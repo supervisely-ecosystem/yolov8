@@ -441,7 +441,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             "inference": first_benchmark["inference"] * n,
             "postprocess": first_benchmark["postprocess"] * n,
         }
-        predictions = [self._to_dto(prediction, settings) for prediction in predictions]
+        with sly.nn.inference.Timer() as timer:
+            predictions = [self._to_dto(prediction, settings) for prediction in predictions]
+        to_dto_time = timer.get_time()
+        benchmark["postprocess"] += to_dto_time
         return predictions, benchmark
     
     def _load_pytorch(self, weights_path: str):
