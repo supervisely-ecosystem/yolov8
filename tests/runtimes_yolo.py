@@ -1,23 +1,19 @@
-# Monkey patching to avoid a problem with installing onnxruntime requirements
-# issue: https://github.com/ultralytics/ultralytics/issues/5093
-import importlib
-import ultralytics.nn.autobackend
-import ultralytics.utils.checks as checks
-check_requirements = checks.check_requirements  # save original function
-def check_requirements_dont_install(*args, **kwargs):
-    kwargs["install"] = False
-    return check_requirements(*args, **kwargs)
-checks.check_requirements = check_requirements_dont_install
-importlib.reload(ultralytics.nn.autobackend)
+import sys, os
+sys.path.append(os.path.abspath("./"))
+from serve.src.monkey_patching_fix import monkey_patching_fix
+monkey_patching_fix()
 
 from dotenv import load_dotenv
 from pathlib import Path
+from tqdm import tqdm
 from ultralytics import YOLO
 import cv2
 import torch
 
 load_dotenv("local.env")
 load_dotenv("supervisely.env")
+
+MODEL_NAME = "yolov10n"
 
 image_paths = Path("tests/images").glob("*.jpg")
 images = [cv2.imread(str(path)) for path in image_paths]  # BGR images
@@ -37,32 +33,36 @@ def assert_device(preds: list, device: str):
 
 # PyTorch GPU (original)
 device = "cuda"
-model = YOLO("app_data/yolov8n-det (coco).pt")
+model = YOLO(f"app_data/{MODEL_NAME}.pt")
+
+# Export to TensorRT
+model.export(format="engine", dynamic=True, batch=4)
+
+# PyTorch GPU inference
 preds_original = model(images, device=device)
 assert len(preds_original) == len(images)
 assert_device(preds_original, device)
 
-# # ONNX GPU
+# ONNX GPU
 # device = "cuda"
-# model = YOLO("app_data/yolov8n-det (coco).onnx")
+# model = YOLO(f"app_data/{MODEL_NAME}.onnx")
 # preds_onnx = model(images, device=device)
 # assert len(preds_onnx) == len(images)
 # assert_device(preds_onnx, device)
 # compare_predictions(preds_original, preds_onnx, atol=1e-2)
 
-# # ONNX CPU
+# ONNX CPU
 # device = "cpu"
-# model = YOLO("app_data/yolov8n-det (coco).onnx")
+# model = YOLO(f"app_data/{MODEL_NAME}.onnx")
 # preds_onnx = model(images, device=device)
 # assert len(preds_onnx) == len(images)
 # assert_device(preds_onnx, device)
 # compare_predictions(preds_original, preds_onnx, atol=1e-2)
-
-# model.export(format="engine", dynamic=True, batch=16)
 
 # TensorRT GPU
 device = "cuda"
-model = YOLO("app_data/yolov8n-det (coco).engine")
+model = YOLO(f"app_data/{MODEL_NAME}.engine")
+preds_trt = model(images, device=device)
 preds_trt = model(images, device=device)
 assert len(preds_trt) == len(images)
 assert_device(preds_trt, device)
