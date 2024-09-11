@@ -41,7 +41,7 @@ import src.workflow as w
 class YOLOv8Model(sly.nn.inference.ObjectDetection):
     team_id = sly.env.team_id()
     in_train = False
-    TENSORRT_MAX_BATCH_SIZE = 4
+    TENSORRT_MAX_BATCH_SIZE = 1
 
     def initialize_custom_gui(self):
         """Create custom GUI layout for model selection. This method is called once when the application is started."""
@@ -515,10 +515,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         return self._load_runtime(
             weights_path,
             "engine",
-            dynamic=True,
-            batch=self.TENSORRT_MAX_BATCH_SIZE,
+            dynamic=False,
+            # batch=self.TENSORRT_MAX_BATCH_SIZE,
             half=self.model_precision == ModelPrecision.FP16,
-            imgsz=320,  # max size will be 1280 (see YOLO export)
         )
 
     def _check_onnx_device(self, device: str):
