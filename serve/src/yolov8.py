@@ -72,7 +72,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             RuntimeType.TENSORRT,
         ])
         runtime_field = Field(self.runtime_select, "Runtime", "Select a runtime for inference.")
-        self.fp16_checkbox = Checkbox("Enable FP16 precision", False)
+        self.fp16_checkbox = Checkbox("Enable FP16", False)
         fp16_field = Field(
             self.fp16_checkbox,
             "FP16 precision",
@@ -91,16 +91,17 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
     def get_params_from_gui(self) -> dict:
         model_source = self.model_source_tabs.get_active_tab()
-        self.device = self.gui.get_device()
+        device = self.gui.get_device()
         if model_source == "Pretrained models":
             model_params = self.pretrained_models_table.get_selected_model_params()
         elif model_source == "Custom models":
             model_params = self.custom_models_table.get_selected_model_params()
-
-        self.task_type = model_params.get("task_type")
+        runtime = self.runtime_select.get_value()
+        fp16 = self.fp16_checkbox.is_checked()
         deploy_params = {
-            "device": self.device,
-            "runtime": self.runtime_select.get_value(),
+            "device": device,
+            "runtime": runtime,
+            "fp16": fp16,
             **model_params,
         }
 
@@ -165,6 +166,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         checkpoint_name: str,
         checkpoint_url: str,
         runtime: str,
+        fp16: bool = False,
     ):
         """
         Load model method is used to deploy model.
@@ -181,12 +183,14 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         :type checkpoint_url: str
         :param runtime: The runtime used for inference. Supported runtimes are PyTorch, ONNXRuntime, and TensorRT.
         :type runtime: str
+        :param fp16: If True, the model will be loaded with FP16 precision.
+        :type fp16: bool
         """
         self.device = device
         self.runtime = runtime
         self.task_type = task_type
         self.model_source = model_source
-        self.model_precision = "FP32"
+        self.model_precision = ModelPrecision.FP16 if fp16 else ModelPrecision.FP32
 
         # Remove old checkpoint_info.yaml if exists
         sly.fs.silent_remove(os.path.join(self.model_dir, "checkpoint_info.yaml"))
@@ -476,15 +480,22 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def _load_runtime(self, weights_path: str, format: str, **kwargs):
         if weights_path.endswith(".pt"):            
             exported_weights_path = weights_path.replace(".pt", f".{format}")
+            if self.model_precision == ModelPrecision.FP16:
+                exported_weights_path = exported_weights_path.replace(f".{format}", f"_fp16.{format}")
             model = None
             if not os.path.exists(exported_weights_path):
-                sly.logger.info(f"Exporting model to {format} format...")
+                sly.logger.info(f"Exporting model to '{format}' format...")
                 if self.gui is not None:
-                    bar = self.gui.download_progress(desc=f"Exporting model to {format} format...", total=1)
+                    bar = self.gui.download_progress(message=f"Exporting model to '{format}' format...", total=1)
+                    self.gui.download_progress.show()
                 model = YOLO(weights_path)
                 model.export(format=format, **kwargs)
+                if self.model_precision == ModelPrecision.FP16:
+                    # rename after YOLO's export
+                    os.rename(weights_path.replace(".pt", f".{format}"), exported_weights_path)
                 if self.gui is not None:
                     bar.update(1)
+                    self.gui.download_progress.hide()
             checkpoint_info_path = os.path.join(os.path.dirname(weights_path), "checkpoint_info.yaml")
             if self.model_source == ModelSource.CUSTOM and not os.path.exists(checkpoint_info_path):
                 # save custom checkpoint_info in yaml, as it will be lost after exporting
@@ -505,7 +516,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             "engine",
             dynamic=True,
             batch=self.TENSORRT_MAX_BATCH_SIZE,
-            fp16=self.model_precision == ModelPrecision.FP16,
+            half=self.model_precision == ModelPrecision.FP16,
         )
 
     def _check_onnx_device(self, device: str):
