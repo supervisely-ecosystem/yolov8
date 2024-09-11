@@ -13,7 +13,6 @@ import torch
 load_dotenv("local.env")
 load_dotenv("supervisely.env")
 
-MODEL_NAME = "yolov10n"
 
 image_paths = Path("tests/images").glob("*.jpg")
 images = [cv2.imread(str(path)) for path in image_paths]  # BGR images
@@ -31,12 +30,17 @@ def assert_device(preds: list, device: str):
         assert pred.boxes.data.device.type == device, f"predictions are not on {device} device"
 
 
+MODEL_NAME = "yolov10s-det"
+
 # PyTorch GPU (original)
 device = "cuda"
 model = YOLO(f"app_data/{MODEL_NAME}.pt")
 
 # Export to TensorRT
-# model.export(format="engine", dynamic=True, batch=4)
+os.remove(f"app_data/{MODEL_NAME}_fp16.engine")  # remove old engine
+if not os.path.exists(f"app_data/{MODEL_NAME}_fp16.engine"):
+    model.export(format="engine", dynamic=True, half=True, batch=4, imgsz=320)
+    os.rename(f"app_data/{MODEL_NAME}.engine", f"app_data/{MODEL_NAME}_fp16.engine")
 
 # PyTorch GPU inference
 preds_original = model(images, device=device)
@@ -59,7 +63,7 @@ assert_device(preds_original, device)
 # assert_device(preds_onnx, device)
 # compare_predictions(preds_original, preds_onnx, atol=1e-2)
 
-# TensorRT GPU
+# TensorRT GPU FP16
 device = "cuda"
 model = YOLO(f"app_data/{MODEL_NAME}_fp16.engine")
 preds_trt = model(images, device=device)

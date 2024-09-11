@@ -493,6 +493,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 if self.model_precision == ModelPrecision.FP16:
                     # rename after YOLO's export
                     os.rename(weights_path.replace(".pt", f".{format}"), exported_weights_path)
+                    sly.fs.silent_remove(weights_path.replace(".pt", f".onnx"))
                 if self.gui is not None:
                     bar.update(1)
                     self.gui.download_progress.hide()
@@ -517,6 +518,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             dynamic=True,
             batch=self.TENSORRT_MAX_BATCH_SIZE,
             half=self.model_precision == ModelPrecision.FP16,
+            imgsz=320,  # max size will be 1280 (see YOLO export)
         )
 
     def _check_onnx_device(self, device: str):
