@@ -6,6 +6,7 @@ monkey_patching_fix()
 import os
 from typing import Any, Dict, Generator, List, Union, Literal
 from threading import Event
+import re
 
 import numpy as np
 import cv2
@@ -15,7 +16,7 @@ from ultralytics import YOLO
 import yaml
 
 import supervisely as sly
-from supervisely.nn.inference import TaskType, CheckpointInfo, RuntimeType, ModelSource
+from supervisely.nn.inference import TaskType, CheckpointInfo, RuntimeType, ModelSource, ModelPrecision
 from supervisely.app.widgets import (
     PretrainedModelsSelector,
     RadioTabs,
@@ -23,6 +24,7 @@ from supervisely.app.widgets import (
     SelectString,
     Field,
     Container,
+    Checkbox,
 )
 from supervisely.nn.prediction_dto import (
     PredictionBBox,
@@ -64,9 +66,27 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             ],
             contents=[self.pretrained_models_table, self.custom_models_table],
         )
-        self.runtime_select = SelectString([RuntimeType.PYTORCH, RuntimeType.ONNXRUNTIME, RuntimeType.TENSORRT])
+        self.runtime_select = SelectString([
+            RuntimeType.PYTORCH,
+            RuntimeType.ONNXRUNTIME,
+            RuntimeType.TENSORRT,
+        ])
         runtime_field = Field(self.runtime_select, "Runtime", "Select a runtime for inference.")
-        layout = Container([self.model_source_tabs, runtime_field])
+        self.fp16_checkbox = Checkbox("Enable FP16 precision", False)
+        fp16_field = Field(
+            self.fp16_checkbox,
+            "FP16 precision",
+            "Export model with FP16 precision. This will reduce GPU memory usage and increase inference speed. "
+            "Usually, the accuracy of predictions remains the same.",
+        )
+        fp16_field.hide()
+        layout = Container([self.model_source_tabs, runtime_field, fp16_field])
+        @self.runtime_select.value_changed
+        def on_runtime_changed(value):
+            if value == RuntimeType.TENSORRT:
+                fp16_field.show()
+            else:
+                fp16_field.hide()
         return layout
 
     def get_params_from_gui(self) -> dict:
@@ -166,6 +186,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         self.runtime = runtime
         self.task_type = task_type
         self.model_source = model_source
+        self.model_precision = "FP32"
 
         # Remove old checkpoint_info.yaml if exists
         sly.fs.silent_remove(os.path.join(self.model_dir, "checkpoint_info.yaml"))
@@ -453,20 +474,26 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         return model
     
     def _load_runtime(self, weights_path: str, format: str, **kwargs):
-        if weights_path.endswith(".pt"):
-            onnx_path = weights_path.replace(".pt", f".{format}")
+        if weights_path.endswith(".pt"):            
+            exported_weights_path = weights_path.replace(".pt", f".{format}")
             model = None
-            if not os.path.exists(onnx_path):
+            if not os.path.exists(exported_weights_path):
                 sly.logger.info(f"Exporting model to {format} format...")
+                if self.gui is not None:
+                    bar = self.gui.download_progress(desc=f"Exporting model to {format} format...", total=1)
                 model = YOLO(weights_path)
                 model.export(format=format, **kwargs)
+                if self.gui is not None:
+                    bar.update(1)
             checkpoint_info_path = os.path.join(os.path.dirname(weights_path), "checkpoint_info.yaml")
             if self.model_source == ModelSource.CUSTOM and not os.path.exists(checkpoint_info_path):
                 # save custom checkpoint_info in yaml, as it will be lost after exporting
                 if model is None:
                     model = YOLO(weights_path)
                 self._dump_yaml_checkpoint_info(model, os.path.dirname(weights_path))
-        model = YOLO(onnx_path)
+        else:
+            exported_weights_path = weights_path
+        model = YOLO(exported_weights_path)
         return model
     
     def _load_onnx(self, weights_path: str):
@@ -477,7 +504,8 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             weights_path,
             "engine",
             dynamic=True,
-            batch=self.TENSORRT_MAX_BATCH_SIZE
+            batch=self.TENSORRT_MAX_BATCH_SIZE,
+            fp16=self.model_precision == ModelPrecision.FP16,
         )
 
     def _check_onnx_device(self, device: str):
@@ -545,7 +573,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
 
 def parse_model_name(checkpoint_name: str):
-    import re
     # yolov8n
     p = r"yolov(\d+)(\w)"
     match = re.match(p, checkpoint_name.lower())
@@ -556,7 +583,6 @@ def parse_model_name(checkpoint_name: str):
     return model_name, architecture
 
 def get_arch_from_model_name(model_name: str):
-    import re
     # yolov8n-det
     p = r"yolov(\d+)"
     match = re.match(p, model_name.lower())
