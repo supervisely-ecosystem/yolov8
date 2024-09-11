@@ -30,6 +30,12 @@ YOLOv9 builds on the advancements of YOLOv8 by further improving the model's per
 
 YOLOv10, the latest iteration, introduces consistent dual assignments for NMS-free training and adopts a holistic efficiency-accuracy-driven model design strategy.
 
+**Efficient Inference:**
+
+You can now deploy models in new optimized runtimes:
+- **TensorRT** is a very optimized environment for Nvidia GPU devices. TensorRT can significantly boost the inference speed. Additionally, you can select *FP16 mode* to reduce GPU memory usage and further increase speed. Usually, the accuracy of predictions remains the same.
+- **ONNXRuntime** can speed up inference on some CPU and GPU devices.
+
 ----
 
 This app deploys YOLOv8, YOLOv9, and YOLOv10 models (pretrained on COCO, Open Images V7, or custom datasets) as a REST API service. Supported task types include object detection, instance segmentation and pose estimation. Serve app is the simplest way how any model can be integrated into Supervisely. Once model is deployed, user gets the following benefits:
@@ -48,6 +54,8 @@ This app deploys YOLOv8, YOLOv9, and YOLOv10 models (pretrained on COCO, Open Im
 - v1.0.63 - Added multiclass pose estimation support.
 - v1.0.73 - Enabled support for freezing layers to allow more flexible model training.
 - v1.0.87 - Integrated the YOLOv10 checkpoints.
+- v1.1.8  - Added model benchmark evaluation after training
+- v1.1.9  - Added inference in ONNXRuntime and TesnorRT.
 
 🔥🔥🔥 Check out our [youtube tutorial](https://youtu.be/Rsr8xWJ6s9I) and the [complete guide in our blog](https://supervisely.com/blog/train-yolov8-on-custom-data-no-code/):   
 
