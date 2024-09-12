@@ -16,9 +16,11 @@
   "poster": "https://github.com/user-attachments/assets/6cd42ea1-1dda-483e-b907-19ed48e06c45",
   "need_gpu": false,
   "gpu": "preferred",
-  "session_tags": ["deployed_nn"],
+  "session_tags": [
+    "deployed_nn"
+  ],
   "community_agent": false,
-  "docker_image": "supervisely/yolov8:1.0.25",
+  "docker_image": "supervisely/yolov8:1.0.26",
   "instance_version": "6.11.10",
   "entrypoint": "python -m uvicorn src.main:m.app --app-dir ./serve --host 0.0.0.0 --port 8000 --ws websockets",
   "port": 8000,
