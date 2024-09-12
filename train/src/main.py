@@ -612,14 +612,14 @@ train_progress_content = Container(
         progress_bar_download_model,
         progress_bar_epochs,
         progress_bar_iters,
+        progress_bar_upload_artifacts,
         model_benchmark_pbar,
+        train_done,
         grid_plot_f,
         plot_notification,
         train_batches_gallery_f,
         val_batches_gallery_f,
         additional_gallery_f,
-        progress_bar_upload_artifacts,
-        train_done,
     ]
 )
 card_train_progress = Card(
@@ -1859,6 +1859,7 @@ def start_training():
                 )
                 m._load_model(deploy_params)
                 m.serve()
+                m.model.overrides['verbose'] = False
                 session = SessionJSON(api, session_url="http://localhost:8000")
                 sly.fs.remove_dir(g.app_data_dir + "/benchmark")
 
@@ -2013,6 +2014,7 @@ def start_training():
         stepper.set_active_step(curr_step)
         card_train_artifacts.unlock()
         card_train_artifacts.uncollapse()
+        card_train_progress.collapse()
 
     # upload sly_metadata.json
     yolov8_artifacts.generate_metadata(
@@ -2613,6 +2615,7 @@ def auto_train(request: Request):
                 )
                 m._load_model(deploy_params)
                 m.serve()
+                m.model.overrides['verbose'] = False
                 session = SessionJSON(api, session_url="http://localhost:8000")
                 sly.fs.remove_dir(g.app_data_dir + "/benchmark")
 
