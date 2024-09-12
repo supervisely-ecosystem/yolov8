@@ -71,7 +71,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             RuntimeType.ONNXRUNTIME,
             RuntimeType.TENSORRT,
         ])
-        runtime_field = Field(self.runtime_select, "Runtime", "Select a runtime for inference.")
+        runtime_field = Field(
+            self.runtime_select,
+            "Runtime",
+            "The model will be exported to the selected runtime for efficient inference (exporting to TensorRT may take about a minute).",
+        )
         self.fp16_checkbox = Checkbox("Enable FP16", False)
         fp16_field = Field(
             self.fp16_checkbox,
@@ -515,7 +519,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         return self._load_runtime(
             weights_path,
             "engine",
-            dynamic=False,
+            dynamic=False,  # batch size is 1
             # batch=self.TENSORRT_MAX_BATCH_SIZE,
             half=self.model_precision == ModelPrecision.FP16,
         )
