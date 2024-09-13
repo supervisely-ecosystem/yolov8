@@ -1822,9 +1822,10 @@ def start_training():
         print(app_url, file=text_file)
 
     # Exporting to ONNX / TensorRT
-    torch.cuda.empty_cache()
     if export_model_switch.is_switched() and os.path.exists(best_path):
         try:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             export_weights(best_path, selected_model_name, model_benchmark_pbar)
         except Exception as e:
             sly.logger.error(f"Error during model export: {e}")
@@ -2595,9 +2596,10 @@ def auto_train(request: Request):
         print(app_url, file=text_file)
 
     # Exporting to ONNX / TensorRT
-    torch.cuda.empty_cache()
     if export_model_switch.is_switched() and os.path.exists(best_path):
         try:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             export_weights(best_path, selected_model_name, model_benchmark_pbar)
         except Exception as e:
             sly.logger.error(f"Error during model export: {e}")
