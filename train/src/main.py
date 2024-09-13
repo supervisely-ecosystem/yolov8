@@ -107,7 +107,7 @@ def update_globals(new_dataset_ids):
 # authentication
 load_dotenv("local.env")
 load_dotenv("supervisely.env")
-api = sly.Api(retry_count=5)
+api = sly.Api(retry_count=7)
 team_id = sly.env.team_id()
 server_address = sly.env.server_address()
 
