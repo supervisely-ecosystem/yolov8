@@ -627,7 +627,7 @@ additional_gallery_f = Field(
 additional_gallery_f.hide()
 progress_bar_upload_artifacts = Progress()
 model_benchmark_pbar = SlyTqdm()
-model_benchmark_pbar_secondary = SlyTqdm()
+model_benchmark_pbar_secondary = Progress(hide_on_finish=False)
 train_done = DoneLabel(
     "Training completed. Training artifacts were uploaded to Team Files"
 )
@@ -1892,7 +1892,7 @@ def start_training():
                 )
                 creating_report_f.show()
                 model_benchmark_pbar.show()
-                model_benchmark_pbar(message="Starting Model benchmark evaluation...", total=1)
+                model_benchmark_pbar(message="Starting Model Benchmark evaluation...", total=1)
 
                 # 0. Serve trained model
                 m = YOLOv8ModelMB(
@@ -2016,6 +2016,7 @@ def start_training():
                 # 6. Speed test
                 if run_speedtest_checkbox.is_checked():
                     bm.run_speedtest(session, project_info.id)
+                    model_benchmark_pbar_secondary.hide()
                     bm.upload_speedtest_results(eval_res_dir + "/speedtest/")
 
                 # 7. Prepare visualizations, report and upload
@@ -2042,6 +2043,7 @@ def start_training():
             sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
             creating_report_f.hide()
             model_benchmark_pbar.hide()
+            model_benchmark_pbar_secondary.hide()
             try:
                 if bm.dt_project_info:
                     api.project.remove(bm.dt_project_info.id)
@@ -2662,7 +2664,7 @@ def auto_train(request: Request):
                 )
                 creating_report_f.show()
                 model_benchmark_pbar.show()
-                model_benchmark_pbar(message="Starting Model benchmark evaluation...", total=1)
+                model_benchmark_pbar(message="Starting Model Benchmark evaluation...", total=1)
 
                 # 0. Serve trained model
                 m = YOLOv8ModelMB(
@@ -2786,6 +2788,7 @@ def auto_train(request: Request):
                 # 6. Speed test
                 if run_speedtest_checkbox.is_checked():
                     bm.run_speedtest(session, project_info.id)
+                    model_benchmark_pbar_secondary.hide()
                     bm.upload_speedtest_results(eval_res_dir + "/speedtest/")
 
                 # 7. Prepare visualizations, report and upload
@@ -2812,6 +2815,7 @@ def auto_train(request: Request):
             sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
             creating_report_f.hide()
             model_benchmark_pbar.hide()
+            model_benchmark_pbar_secondary.hide()
             try:
                 if bm.dt_project_info:
                     api.project.remove(bm.dt_project_info.id)
