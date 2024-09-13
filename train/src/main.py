@@ -1815,40 +1815,12 @@ def start_training():
         print(app_url, file=text_file)
 
     # Exporting to ONNX / TensorRT
-    if export_model_switch.is_switched():
+    if export_model_switch.is_switched() and os.path.exists(best_path):
         try:
-            from src.model_export import export_checkpoint
-
-            def dump_yaml_checkpoint_info(weights_path, selected_model_name):
-                p = r"yolov(\d+)"
-                match = re.match(p, selected_model_name.lower())
-                architecture = match.group(0) if match else None
-                checkpoint_info = {
-                    "model_name": selected_model_name,
-                    "architecture": architecture,
-                }
-                checkpoint_info_path = os.path.join(
-                    os.path.dirname(weights_path), "checkpoint_info.yaml"
-                )
-                with open(checkpoint_info_path, "w") as f:
-                    yaml.dump(checkpoint_info, f)
-                return checkpoint_info_path
-
-            checkpoint_info_path = dump_yaml_checkpoint_info(best_path, selected_model_name)
-            pbar = None
-            if export_tensorrt_checkbox.is_checked():
-                pbar = model_benchmark_pbar(message="Exporting model to TensorRT...", total=1)
-                export_checkpoint(best_path, format="engine", dynamic=False)
-                pbar.update(1)
-            if export_onnx_checkbox.is_checked():
-                pbar = model_benchmark_pbar(message="Exporting model to ONNX...", total=1)
-                export_checkpoint(best_path, format="onnx", dynamic=True)
-                pbar.update(1)
+            export_weights(best_path, selected_model_name, model_benchmark_pbar)
         except Exception as e:
-            sly.logger.error(f"Error during exporting model: {e}")
-            if pbar is not None:
-                model_benchmark_pbar.hide()
-            
+            sly.logger.error(f"Error during model export: {e}")
+            model_benchmark_pbar.hide()
 
     # upload training artifacts to team files
     upload_artifacts_dir = os.path.join(
@@ -2609,6 +2581,14 @@ def auto_train(request: Request):
     with open(app_link_path, "w") as text_file:
         print(app_url, file=text_file)
 
+    # Exporting to ONNX / TensorRT
+    if export_model_switch.is_switched() and os.path.exists(best_path):
+        try:
+            export_weights(best_path, selected_model_name, model_benchmark_pbar)
+        except Exception as e:
+            sly.logger.error(f"Error during model export: {e}")
+            model_benchmark_pbar.hide()
+
     # upload training artifacts to team files
     upload_artifacts_dir = os.path.join(
         framework_folder,
@@ -2863,3 +2843,33 @@ def auto_train(request: Request):
     # stop app
     app.stop()
     return {"result": "successfully finished automatic training session"}
+
+
+def export_weights(weights_path, selected_model_name, progress: SlyTqdm):
+    from src.model_export import export_checkpoint
+    checkpoint_info_path = dump_yaml_checkpoint_info(weights_path, selected_model_name)
+    pbar = None
+    if export_tensorrt_checkbox.is_checked():
+        pbar = progress(message="Exporting model to TensorRT...", total=1)
+        export_checkpoint(weights_path, format="engine", dynamic=False)
+        pbar.update(1)
+    if export_onnx_checkbox.is_checked():
+        pbar = progress(message="Exporting model to ONNX...", total=1)
+        export_checkpoint(weights_path, format="onnx", dynamic=True)
+        pbar.update(1)
+
+
+def dump_yaml_checkpoint_info(weights_path, selected_model_name):
+    p = r"yolov(\d+)"
+    match = re.match(p, selected_model_name.lower())
+    architecture = match.group(0) if match else None
+    checkpoint_info = {
+        "model_name": selected_model_name,
+        "architecture": architecture,
+    }
+    checkpoint_info_path = os.path.join(
+        os.path.dirname(weights_path), "checkpoint_info.yaml"
+    )
+    with open(checkpoint_info_path, "w") as f:
+        yaml.dump(checkpoint_info, f)
+    return checkpoint_info_path
