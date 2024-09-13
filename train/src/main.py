@@ -448,10 +448,17 @@ export_model_switch_f = Field(
     "Exported model can be used for deployment in various frameworks and used for efficient inference on edge devices.",
 )
 export_onnx_checkbox = Checkbox(content="Export to ONNX", checked=False)
-export_tensorrt_checkbox = Checkbox(content="Export to TensorRT", checked=False)
+export_tensorrt_checkbox = Checkbox(content="Export to TensorRT (may take some time)", checked=False)
+export_fp16_switch = Switch(switched=False)
+export_fp16_switch_f = Field(
+    content=export_fp16_switch,
+    title="FP16 mode",
+    description="Export model in FP16 precision to reduce model size and increase inference speed.",
+)
 export_model_container = Container([
     export_onnx_checkbox,
     export_tensorrt_checkbox,
+    export_fp16_switch_f,
 ])
 export_model_container.hide()
 
@@ -1798,7 +1805,7 @@ def start_training():
     
     # add model name to saved weights
     def add_sly_metadata_to_ckpt(ckpt_path):
-        loaded = torch.load(ckpt_path)
+        loaded = torch.load(ckpt_path, map_location="cpu")
         loaded["sly_metadata"] = {"model_name": selected_model_name}
         torch.save(loaded, ckpt_path)
     best_path = os.path.join(local_artifacts_dir, "weights", best_filename)
@@ -1815,12 +1822,12 @@ def start_training():
         print(app_url, file=text_file)
 
     # Exporting to ONNX / TensorRT
+    torch.cuda.empty_cache()
     if export_model_switch.is_switched() and os.path.exists(best_path):
         try:
             export_weights(best_path, selected_model_name, model_benchmark_pbar)
         except Exception as e:
             sly.logger.error(f"Error during model export: {e}")
-            model_benchmark_pbar.hide()
 
     # upload training artifacts to team files
     upload_artifacts_dir = os.path.join(
@@ -2565,7 +2572,7 @@ def auto_train(request: Request):
 
     # add model name to saved weights
     def add_sly_metadata_to_ckpt(ckpt_path):
-        loaded = torch.load(ckpt_path)
+        loaded = torch.load(ckpt_path, map_location="cpu")
         loaded["sly_metadata"] = {"model_name": selected_model_name}
         torch.save(loaded, ckpt_path)
     best_path = os.path.join(local_artifacts_dir, "weights", best_filename)
@@ -2582,12 +2589,12 @@ def auto_train(request: Request):
         print(app_url, file=text_file)
 
     # Exporting to ONNX / TensorRT
+    torch.cuda.empty_cache()
     if export_model_switch.is_switched() and os.path.exists(best_path):
         try:
             export_weights(best_path, selected_model_name, model_benchmark_pbar)
         except Exception as e:
             sly.logger.error(f"Error during model export: {e}")
-            model_benchmark_pbar.hide()
 
     # upload training artifacts to team files
     upload_artifacts_dir = os.path.join(
@@ -2849,13 +2856,15 @@ def export_weights(weights_path, selected_model_name, progress: SlyTqdm):
     from src.model_export import export_checkpoint
     checkpoint_info_path = dump_yaml_checkpoint_info(weights_path, selected_model_name)
     pbar = None
+    fp16 = export_fp16_switch.is_switched()
     if export_tensorrt_checkbox.is_checked():
-        pbar = progress(message="Exporting model to TensorRT...", total=1)
-        export_checkpoint(weights_path, format="engine", dynamic=False)
+        pbar = progress(message="Exporting model to TensorRT, this may take some time...", total=1)
+        export_checkpoint(weights_path, format="engine", fp16=fp16, dynamic=False)
         pbar.update(1)
     if export_onnx_checkbox.is_checked():
         pbar = progress(message="Exporting model to ONNX...", total=1)
-        export_checkpoint(weights_path, format="onnx", dynamic=True)
+        dynamic = not fp16  # dynamic mode is not supported for fp16
+        export_checkpoint(weights_path, format="onnx", fp16=fp16, dynamic=dynamic)
         pbar.update(1)
 
 
