@@ -1,1 +1,1 @@
-supervisely[model-benchmark]==6.73.183
+supervisely[model-benchmark]==6.73.187

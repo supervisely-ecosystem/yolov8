@@ -1,9 +1,11 @@
 import os
+import sys
+sys.path.append("serve")
 from dotenv import load_dotenv
 from pathlib import Path
 import supervisely as sly
 from serve.src.yolov8 import YOLOv8Model
-from supervisely.nn.inference import RuntimeType
+from supervisely.nn import utils, TaskType
 
 load_dotenv("local.env")
 load_dotenv("supervisely.env")
@@ -19,14 +21,15 @@ m = YOLOv8Model(
 
 test_image_id = 31180449
 deploy_params = {
-    'device': 'cuda:0',
-    'runtime': RuntimeType.TENSORRT,
-    'model_source': 'Pretrained models',
-    'task_type': 'object detection',
-    'checkpoint_name': 'yolov8n-det (coco).pt',
-    'checkpoint_url': 'https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8n.pt'
+    'device': 'cuda',
+    'runtime': utils.RuntimeType.TENSORRT,
+    'model_source': utils.ModelSource.PRETRAINED,
+    'task_type': TaskType.OBJECT_DETECTION,
+    'checkpoint_name': 'YOLOv8s-det (Open Images V7).pt'.lower(),
+    'checkpoint_url': 'https://github.com/ultralytics/assets/releases/download/v8.2.0/yolov8s-oiv7.pt',
+    'fp16': False,
 }
 m._load_model(deploy_params)
-# m._inference_image_id(m.api, {"image_id": test_image_id})
+m._inference_image_id(m.api, {"image_id": test_image_id})
 m._inference_batch_ids(m.api, {"batch_ids": [31450547, 31447888]})
 m._inference_batch_ids(m.api, {"batch_ids": [31450547, 31447888]})

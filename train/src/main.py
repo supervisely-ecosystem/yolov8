@@ -1,4 +1,5 @@
 import os
+import re
 from dotenv import load_dotenv
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
@@ -106,7 +107,7 @@ def update_globals(new_dataset_ids):
 # authentication
 load_dotenv("local.env")
 load_dotenv("supervisely.env")
-api = sly.Api()
+api = sly.Api(retry_count=7)
 team_id = sly.env.team_id()
 server_address = sly.env.server_address()
 
@@ -421,6 +422,8 @@ n_frozen_layers_input_f = Field(
     content=n_frozen_layers_input, title="Number of layers to freeze"
 )
 n_frozen_layers_input_f.hide()
+
+# Model Benchmark evaluation
 run_model_benchmark_checkbox = Checkbox(content="Run Model Benchmark evaluation", checked=True)
 run_speedtest_checkbox = Checkbox(content="Run speed test", checked=True)
 model_benchmark_f = Field(
@@ -435,6 +438,30 @@ model_benchmark_f = Field(
 )
 docs_link = '<a href="https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/" target="_blank">documentation</a>'
 model_benchmark_learn_more = Text(f"Learn more about Model Benchmark in the {docs_link}.", status="info")
+
+# ONNX / TensorRT export
+export_model_switch = Switch(switched=False)
+export_model_switch_f = Field(
+    content=export_model_switch,
+    title="Export weights to ONNX / TensorRT format",
+    description="After training the 'best.pt' checkpoint will be exported to ONNX or TensorRT format and saved to Team Files. "
+    "Exported model can be deployed in various frameworks and used for efficient inference on edge devices.",
+)
+export_onnx_checkbox = Checkbox(content="Export to ONNX", checked=False)
+export_tensorrt_checkbox = Checkbox(content="Export to TensorRT (may take some time)", checked=False)
+export_fp16_switch = Switch(switched=False)
+export_fp16_switch_f = Field(
+    content=export_fp16_switch,
+    title="FP16 mode",
+    description="Export model in FP16 precision to reduce model size and increase inference speed.",
+)
+export_model_container = Container([
+    export_onnx_checkbox,
+    export_tensorrt_checkbox,
+    export_fp16_switch_f,
+])
+export_model_container.hide()
+
 additional_config_items = [
     RadioGroup.Item(value="custom"),
     RadioGroup.Item(value="import template from Team Files"),
@@ -503,6 +530,9 @@ train_params_content = Container(
         n_frozen_layers_input_f,
         model_benchmark_f,
         model_benchmark_learn_more,
+        Empty(),  # add gap
+        export_model_switch_f,
+        export_model_container,
         Empty(),  # add gap
         additional_config_radio_f,
         additional_config_template_select_f,
@@ -597,6 +627,7 @@ additional_gallery_f = Field(
 additional_gallery_f.hide()
 progress_bar_upload_artifacts = Progress()
 model_benchmark_pbar = SlyTqdm()
+model_benchmark_pbar_secondary = Progress(hide_on_finish=False)
 train_done = DoneLabel(
     "Training completed. Training artifacts were uploaded to Team Files"
 )
@@ -612,14 +643,15 @@ train_progress_content = Container(
         progress_bar_download_model,
         progress_bar_epochs,
         progress_bar_iters,
+        progress_bar_upload_artifacts,
         model_benchmark_pbar,
+        model_benchmark_pbar_secondary,
+        train_done,
         grid_plot_f,
         plot_notification,
         train_batches_gallery_f,
         val_batches_gallery_f,
         additional_gallery_f,
-        progress_bar_upload_artifacts,
-        train_done,
     ]
 )
 card_train_progress = Card(
@@ -1041,6 +1073,14 @@ def change_model_benchmark(value):
         run_speedtest_checkbox.hide()
 
 
+@export_model_switch.value_changed
+def change_export_model(value):
+    if value:
+        export_model_container.show()
+    else:
+        export_model_container.hide()
+
+
 @additional_config_radio.value_changed
 def change_radio(value):
     if value == "import template from Team Files":
@@ -1108,6 +1148,9 @@ def save_train_params():
     n_workers_input.disable()
     run_model_benchmark_checkbox.disable()
     run_speedtest_checkbox.disable()
+    export_model_switch.disable()
+    export_onnx_checkbox.disable()
+    export_tensorrt_checkbox.disable()
     train_settings_editor.readonly = True
     curr_step = stepper.get_active_step()
     curr_step += 1
@@ -1130,6 +1173,9 @@ def change_train_params():
     n_workers_input.enable()
     run_model_benchmark_checkbox.enable()
     run_speedtest_checkbox.enable()
+    export_model_switch.enable()
+    export_onnx_checkbox.enable()
+    export_tensorrt_checkbox.enable()
     train_settings_editor.readonly = False
     save_template_button.show()
     save_template_done.hide()
@@ -1759,7 +1805,7 @@ def start_training():
     
     # add model name to saved weights
     def add_sly_metadata_to_ckpt(ckpt_path):
-        loaded = torch.load(ckpt_path)
+        loaded = torch.load(ckpt_path, map_location="cpu")
         loaded["sly_metadata"] = {"model_name": selected_model_name}
         torch.save(loaded, ckpt_path)
     best_path = os.path.join(local_artifacts_dir, "weights", best_filename)
@@ -1774,6 +1820,17 @@ def start_training():
     app_link_path = os.path.join(local_artifacts_dir, "open_app.lnk")
     with open(app_link_path, "w") as text_file:
         print(app_url, file=text_file)
+
+    # Exporting to ONNX / TensorRT
+    if export_model_switch.is_switched() and os.path.exists(best_path):
+        try:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            export_weights(best_path, selected_model_name, model_benchmark_pbar)
+        except Exception as e:
+            sly.logger.error(f"Error during model export: {e}")
+        finally:
+            model_benchmark_pbar.hide()
 
     # upload training artifacts to team files
     upload_artifacts_dir = os.path.join(
@@ -1835,6 +1892,8 @@ def start_training():
                     f"Creating the report for the best model: {best_filename!r}"
                 )
                 creating_report_f.show()
+                model_benchmark_pbar.show()
+                model_benchmark_pbar(message="Starting Model Benchmark evaluation...", total=1)
 
                 # 0. Serve trained model
                 m = YOLOv8ModelMB(
@@ -1859,6 +1918,7 @@ def start_training():
                 )
                 m._load_model(deploy_params)
                 m.serve()
+                m.model.overrides['verbose'] = False
                 session = SessionJSON(api, session_url="http://localhost:8000")
                 sly.fs.remove_dir(g.app_data_dir + "/benchmark")
 
@@ -1912,6 +1972,7 @@ def start_training():
                         gt_dataset_ids=benchmark_dataset_ids,
                         gt_images_ids=benchmark_images_ids,
                         progress=model_benchmark_pbar,
+                        progress_secondary=model_benchmark_pbar_secondary,
                         classes_whitelist=selected_classes,
                     )
                 elif task_type == TaskType.INSTANCE_SEGMENTATION:
@@ -1922,6 +1983,7 @@ def start_training():
                         gt_dataset_ids=benchmark_dataset_ids,
                         gt_images_ids=benchmark_images_ids,
                         progress=model_benchmark_pbar,
+                        progress_secondary=model_benchmark_pbar_secondary,
                         classes_whitelist=selected_classes,
                     )
                 else:
@@ -1955,6 +2017,7 @@ def start_training():
                 # 6. Speed test
                 if run_speedtest_checkbox.is_checked():
                     bm.run_speedtest(session, project_info.id)
+                    model_benchmark_pbar_secondary.hide()
                     bm.upload_speedtest_results(eval_res_dir + "/speedtest/")
 
                 # 7. Prepare visualizations, report and upload
@@ -1981,12 +2044,13 @@ def start_training():
             sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
             creating_report_f.hide()
             model_benchmark_pbar.hide()
+            model_benchmark_pbar_secondary.hide()
             try:
                 if bm.dt_project_info:
                     api.project.remove(bm.dt_project_info.id)
                 if bm.diff_project_info:
                     api.project.remove(bm.diff_project_info.id)
-            except Exception as re:
+            except Exception as e2:
                 pass
     # ----------------------------------------------- - ---------------------------------------------- #
 
@@ -2013,6 +2077,7 @@ def start_training():
         stepper.set_active_step(curr_step)
         card_train_artifacts.unlock()
         card_train_artifacts.uncollapse()
+        card_train_progress.collapse()
 
     # upload sly_metadata.json
     yolov8_artifacts.generate_metadata(
@@ -2514,7 +2579,7 @@ def auto_train(request: Request):
 
     # add model name to saved weights
     def add_sly_metadata_to_ckpt(ckpt_path):
-        loaded = torch.load(ckpt_path)
+        loaded = torch.load(ckpt_path, map_location="cpu")
         loaded["sly_metadata"] = {"model_name": selected_model_name}
         torch.save(loaded, ckpt_path)
     best_path = os.path.join(local_artifacts_dir, "weights", best_filename)
@@ -2529,6 +2594,17 @@ def auto_train(request: Request):
     app_link_path = os.path.join(local_artifacts_dir, "open_app.lnk")
     with open(app_link_path, "w") as text_file:
         print(app_url, file=text_file)
+
+    # Exporting to ONNX / TensorRT
+    if export_model_switch.is_switched() and os.path.exists(best_path):
+        try:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            export_weights(best_path, selected_model_name, model_benchmark_pbar)
+        except Exception as e:
+            sly.logger.error(f"Error during model export: {e}")
+        finally:
+            model_benchmark_pbar.hide()
 
     # upload training artifacts to team files
     upload_artifacts_dir = os.path.join(
@@ -2589,6 +2665,8 @@ def auto_train(request: Request):
                     f"Creating the report for the best model: {best_filename!r}"
                 )
                 creating_report_f.show()
+                model_benchmark_pbar.show()
+                model_benchmark_pbar(message="Starting Model Benchmark evaluation...", total=1)
 
                 # 0. Serve trained model
                 m = YOLOv8ModelMB(
@@ -2613,6 +2691,7 @@ def auto_train(request: Request):
                 )
                 m._load_model(deploy_params)
                 m.serve()
+                m.model.overrides['verbose'] = False
                 session = SessionJSON(api, session_url="http://localhost:8000")
                 sly.fs.remove_dir(g.app_data_dir + "/benchmark")
 
@@ -2666,6 +2745,7 @@ def auto_train(request: Request):
                         gt_dataset_ids=benchmark_dataset_ids,
                         gt_images_ids=benchmark_images_ids,
                         progress=model_benchmark_pbar,
+                        progress_secondary=model_benchmark_pbar_secondary,
                         classes_whitelist=selected_classes,
                     )
                 elif task_type == TaskType.INSTANCE_SEGMENTATION:
@@ -2676,6 +2756,7 @@ def auto_train(request: Request):
                         gt_dataset_ids=benchmark_dataset_ids,
                         gt_images_ids=benchmark_images_ids,
                         progress=model_benchmark_pbar,
+                        progress_secondary=model_benchmark_pbar_secondary,
                         classes_whitelist=selected_classes,
                     )
                 else:
@@ -2709,6 +2790,7 @@ def auto_train(request: Request):
                 # 6. Speed test
                 if run_speedtest_checkbox.is_checked():
                     bm.run_speedtest(session, project_info.id)
+                    model_benchmark_pbar_secondary.hide()
                     bm.upload_speedtest_results(eval_res_dir + "/speedtest/")
 
                 # 7. Prepare visualizations, report and upload
@@ -2735,12 +2817,13 @@ def auto_train(request: Request):
             sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
             creating_report_f.hide()
             model_benchmark_pbar.hide()
+            model_benchmark_pbar_secondary.hide()
             try:
                 if bm.dt_project_info:
                     api.project.remove(bm.dt_project_info.id)
                 if bm.diff_project_info:
                     api.project.remove(bm.diff_project_info.id)
-            except Exception as re:
+            except Exception as e2:
                 pass
     # ----------------------------------------------- - ---------------------------------------------- #
 
@@ -2781,3 +2864,35 @@ def auto_train(request: Request):
     # stop app
     app.stop()
     return {"result": "successfully finished automatic training session"}
+
+
+def export_weights(weights_path, selected_model_name, progress: SlyTqdm):
+    from src.model_export import export_checkpoint
+    checkpoint_info_path = dump_yaml_checkpoint_info(weights_path, selected_model_name)
+    pbar = None
+    fp16 = export_fp16_switch.is_switched()
+    if export_tensorrt_checkbox.is_checked():
+        pbar = progress(message="Exporting model to TensorRT, this may take some time...", total=1)
+        export_checkpoint(weights_path, format="engine", fp16=fp16, dynamic=False)
+        pbar.update(1)
+    if export_onnx_checkbox.is_checked():
+        pbar = progress(message="Exporting model to ONNX...", total=1)
+        dynamic = not fp16  # dynamic mode is not supported for fp16
+        export_checkpoint(weights_path, format="onnx", fp16=fp16, dynamic=dynamic)
+        pbar.update(1)
+
+
+def dump_yaml_checkpoint_info(weights_path, selected_model_name):
+    p = r"yolov(\d+)"
+    match = re.match(p, selected_model_name.lower())
+    architecture = match.group(0) if match else None
+    checkpoint_info = {
+        "model_name": selected_model_name,
+        "architecture": architecture,
+    }
+    checkpoint_info_path = os.path.join(
+        os.path.dirname(weights_path), "checkpoint_info.yaml"
+    )
+    with open(checkpoint_info_path, "w") as f:
+        yaml.dump(checkpoint_info, f)
+    return checkpoint_info_path
