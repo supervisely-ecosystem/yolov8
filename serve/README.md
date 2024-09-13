@@ -54,7 +54,7 @@ This app deploys YOLOv8, YOLOv9, and YOLOv10 models (pretrained on COCO, Open Im
 - v1.0.63 - Added multiclass pose estimation support.
 - v1.0.73 - Enabled support for freezing layers to allow more flexible model training.
 - v1.0.87 - Integrated the YOLOv10 checkpoints.
-- v1.1.8  - Added model benchmark evaluation after training
+- v1.1.8  - Added model benchmark evaluation after training.
 - v1.1.9  - Added inference in ONNXRuntime and TesnorRT.
 
 🔥🔥🔥 Check out our [youtube tutorial](https://youtu.be/Rsr8xWJ6s9I) and the [complete guide in our blog](https://supervisely.com/blog/train-yolov8-on-custom-data-no-code/):   

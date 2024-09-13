@@ -445,7 +445,7 @@ export_model_switch_f = Field(
     content=export_model_switch,
     title="Export weights to ONNX / TensorRT format",
     description="After training the 'best.pt' checkpoint will be exported to ONNX or TensorRT format and saved to Team Files. "
-    "Exported model can be used for deployment in various frameworks and used for efficient inference on edge devices.",
+    "Exported model can be deployed in various frameworks and used for efficient inference on edge devices.",
 )
 export_onnx_checkbox = Checkbox(content="Export to ONNX", checked=False)
 export_tensorrt_checkbox = Checkbox(content="Export to TensorRT (may take some time)", checked=False)

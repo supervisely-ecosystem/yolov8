@@ -34,6 +34,12 @@ YOLOv10, the latest iteration, introduces consistent dual assignments for NMS-fr
 
 This app allows you to train models using YOLOv8, YOLOv9 and YOLOv10 on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
 
+**Export to ONNX / TensorRT:**
+
+You can now export your trained model to ONNX or TensorRT formats after training. Exported model can be deployed in various frameworks and used for efficient inference on edge devices.
+- **TensorRT** is a very optimized environment for Nvidia GPU devices. TensorRT can significantly boost the inference speed. Additionally, you can select *FP16 mode* to reduce GPU memory usage and further increase speed. Usually, the accuracy of predictions remains the same.
+- **ONNXRuntime** can speed up inference on some CPU and GPU devices.
+
 ---
 
 **Updates:**
@@ -42,6 +48,8 @@ This app allows you to train models using YOLOv8, YOLOv9 and YOLOv10 on a select
 - v1.0.63 - Added multiclass pose estimation support.
 - v1.0.73 - Enabled support for freezing layers to allow more flexible model training.
 - v1.0.87 - Integrated the YOLOv10 checkpoints.
+- v1.1.8  - Added model benchmark evaluation after training.
+- v1.1.9  - Added export to ONNX and TesnorRT.
 
 🔥🔥🔥 Check out our [youtube tutorial](https://youtu.be/Rsr8xWJ6s9I) and the [complete guide in our blog](https://supervisely.com/blog/train-yolov8-on-custom-data-no-code/):   
 
