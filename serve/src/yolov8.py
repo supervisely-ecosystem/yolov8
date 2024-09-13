@@ -482,7 +482,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         return model
     
     def _load_runtime(self, weights_path: str, format: str, **kwargs):
-        if weights_path.endswith(".pt"):            
+        if weights_path.endswith(".pt"):
             exported_weights_path = weights_path.replace(".pt", f".{format}")
             if self.model_precision == ModelPrecision.FP16:
                 exported_weights_path = exported_weights_path.replace(f".{format}", f"_fp16.{format}")
