@@ -1828,6 +1828,8 @@ def start_training():
             export_weights(best_path, selected_model_name, model_benchmark_pbar)
         except Exception as e:
             sly.logger.error(f"Error during model export: {e}")
+        finally:
+            model_benchmark_pbar.hide()
 
     # upload training artifacts to team files
     upload_artifacts_dir = os.path.join(
@@ -1889,6 +1891,8 @@ def start_training():
                     f"Creating the report for the best model: {best_filename!r}"
                 )
                 creating_report_f.show()
+                model_benchmark_pbar.show()
+                model_benchmark_pbar(message="Starting Model benchmark evaluation...", total=1)
 
                 # 0. Serve trained model
                 m = YOLOv8ModelMB(
@@ -2595,6 +2599,8 @@ def auto_train(request: Request):
             export_weights(best_path, selected_model_name, model_benchmark_pbar)
         except Exception as e:
             sly.logger.error(f"Error during model export: {e}")
+        finally:
+            model_benchmark_pbar.hide()
 
     # upload training artifacts to team files
     upload_artifacts_dir = os.path.join(
@@ -2655,6 +2661,8 @@ def auto_train(request: Request):
                     f"Creating the report for the best model: {best_filename!r}"
                 )
                 creating_report_f.show()
+                model_benchmark_pbar.show()
+                model_benchmark_pbar(message="Starting Model benchmark evaluation...", total=1)
 
                 # 0. Serve trained model
                 m = YOLOv8ModelMB(
