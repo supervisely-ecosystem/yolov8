@@ -142,11 +142,20 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if model_source == "Pretrained models":
                 self.keypoints_template = human_template
             elif model_source == "Custom models":
-                weights_dict = torch.load(weights_save_path)
+                model = YOLO(weights_save_path)
+                weights_dict = model.ckpt
                 geometry_data = weights_dict["geometry_config"]
                 if "nodes_order" not in geometry_data:
                     geometry_config = geometry_data
                     self.keypoints_template = dict_to_template(geometry_config)
+                    if len(list(self.model.names.values())) > 1:
+                        self.nodes_order = []
+                        for key, value in geometry_config["nodes"].items():
+                            label = value["label"]
+                            self.nodes_order.append(label)
+                        self.cls2config = {}
+                        for cls in list(self.model.names.values()):
+                            self.cls2config[cls] = geometry_config
                 else:
                     self.nodes_order = geometry_data["nodes_order"]
                     self.cls2config = {}
