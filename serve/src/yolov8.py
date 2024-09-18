@@ -1,4 +1,5 @@
 from src.monkey_patching_fix import monkey_patching_fix
+
 # Monkey patching to avoid a problem with installing wrong onnxruntime requirements
 # issue: https://github.com/ultralytics/ultralytics/issues/5093
 monkey_patching_fix()
@@ -16,7 +17,13 @@ from ultralytics import YOLO
 import yaml
 
 import supervisely as sly
-from supervisely.nn.inference import TaskType, CheckpointInfo, RuntimeType, ModelSource, ModelPrecision
+from supervisely.nn.inference import (
+    TaskType,
+    CheckpointInfo,
+    RuntimeType,
+    ModelSource,
+    ModelPrecision,
+)
 from supervisely.app.widgets import (
     PretrainedModelsSelector,
     RadioTabs,
@@ -66,11 +73,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             ],
             contents=[self.pretrained_models_table, self.custom_models_table],
         )
-        self.runtime_select = SelectString([
-            RuntimeType.PYTORCH,
-            RuntimeType.ONNXRUNTIME,
-            RuntimeType.TENSORRT,
-        ])
+        self.runtime_select = SelectString(
+            [
+                RuntimeType.PYTORCH,
+                RuntimeType.ONNXRUNTIME,
+                RuntimeType.TENSORRT,
+            ]
+        )
         runtime_field = Field(
             self.runtime_select,
             "Runtime",
@@ -85,12 +94,14 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         )
         fp16_field.hide()
         layout = Container([self.model_source_tabs, runtime_field, fp16_field])
+
         @self.runtime_select.value_changed
         def on_runtime_changed(value):
             if value == RuntimeType.TENSORRT:
                 fp16_field.show()
             else:
                 fp16_field.hide()
+
         return layout
 
     def get_params_from_gui(self) -> dict:
@@ -119,14 +130,32 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def load_model_meta(self, model_source: str, weights_save_path: str):
         self.class_names = list(self.model.names.values())
         if self.task_type == "pose estimation":
+            self.general_class_names = list(self.model.names.values())
+            bbox_class_names = [f"{cls}_bbox" for cls in self.class_names]
+            kpt_class_names = []
+            for cls in self.class_names:
+                if cls.endswith("_keypoints"):
+                    kpt_class_names.append(cls)
+                else:
+                    kpt_class_names.append(f"{cls}_keypoints")
+            self.class_names = bbox_class_names + kpt_class_names
             if model_source == "Pretrained models":
                 self.keypoints_template = human_template
             elif model_source == "Custom models":
-                weights_dict = torch.load(weights_save_path)
+                model = YOLO(weights_save_path)
+                weights_dict = model.ckpt
                 geometry_data = weights_dict["geometry_config"]
                 if "nodes_order" not in geometry_data:
                     geometry_config = geometry_data
                     self.keypoints_template = dict_to_template(geometry_config)
+                    if len(list(self.model.names.values())) > 1:
+                        self.nodes_order = []
+                        for key, value in geometry_config["nodes"].items():
+                            label = value["label"]
+                            self.nodes_order.append(label)
+                        self.cls2config = {}
+                        for cls in list(self.model.names.values()):
+                            self.cls2config[cls] = geometry_config
                 else:
                     self.nodes_order = geometry_data["nodes_order"]
                     self.cls2config = {}
@@ -137,24 +166,42 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 sly.ObjClass(name, sly.Rectangle) for name in self.class_names
             ]
         elif self.task_type == "instance segmentation":
-            obj_classes = [sly.ObjClass(name, sly.Bitmap) for name in self.class_names]
+            self.general_class_names = list(self.model.names.values())
+            bbox_class_names = [f"{cls}_bbox" for cls in self.class_names]
+            mask_class_names = [f"{cls}_mask" for cls in self.class_names]
+            self.class_names = bbox_class_names + mask_class_names
+            bbox_obj_classes = [sly.ObjClass(name, sly.Rectangle) for name in bbox_class_names]
+            mask_obj_classes = [sly.ObjClass(name, sly.Bitmap) for name in mask_class_names]
+            obj_classes = bbox_obj_classes + mask_obj_classes
         elif self.task_type == "pose estimation":
-            if len(self.class_names) == 1:
+            if self.class_names == ["person_bbox", "person_keypoints"]: # human pose estimation
                 obj_classes = [
-                    sly.ObjClass(
-                        name, sly.GraphNodes, geometry_config=self.keypoints_template
-                    )
-                    for name in self.class_names
+                    sly.ObjClass("person_bbox", sly.Rectangle),
+                    sly.ObjClass("person_keypoints", sly.GraphNodes, geometry_config=self.keypoints_template)
                 ]
-            elif len(self.class_names) > 1:
-                obj_classes = [
-                    sly.ObjClass(
-                        name,
-                        sly.GraphNodes,
-                        geometry_config=dict_to_template(self.cls2config[name]),
-                    )
-                    for name in self.class_names
+            elif self.class_names != ["person_bbox", "person_keypoints"]:
+                bbox_obj_classes = [
+                    sly.ObjClass(name, sly.Rectangle) for name in bbox_class_names
                 ]
+                kpt_obj_classes = []
+                for name in self.general_class_names:
+                    if name.endswith("_keypoints"):
+                        kpt_obj_classes.append(
+                            sly.ObjClass(
+                                name,
+                                sly.GraphNodes,
+                                geometry_config=dict_to_template(self.cls2config[name]),
+                                )
+                            )
+                    else:
+                        kpt_obj_classes.append(
+                            sly.ObjClass(
+                                name + "_keypoints",
+                                sly.GraphNodes,
+                                geometry_config=dict_to_template(self.cls2config[name]),
+                                )
+                            )
+                obj_classes = bbox_obj_classes + kpt_obj_classes
         self._model_meta = sly.ProjectMeta(
             obj_classes=sly.ObjClassCollection(obj_classes)
         )
@@ -256,7 +303,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def _create_label(
         self, dto: Union[PredictionMask, PredictionBBox, PredictionKeypoints]
     ):
-        if self.task_type == "object detection":
+        if self.task_type == "object detection" or dto.class_name.endswith("_bbox"):
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
                 raise KeyError(
@@ -267,7 +314,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if dto.score is not None:
                 tags.append(sly.Tag(self._get_confidence_tag_meta(), dto.score))
             label = sly.Label(geometry, obj_class, tags)
-        elif self.task_type == "instance segmentation":
+        elif self.task_type == "instance segmentation" and not dto.class_name.endswith("_bbox"):
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
                 raise KeyError(
@@ -280,13 +327,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     )
                     return None
                 geometry = sly.Bitmap(dto.mask, extra_validation=False)
-            elif isinstance(dto, PredictionBBox):
-                geometry = sly.Rectangle(*dto.bbox_tlbr)
             tags = []
             if dto.score is not None:
                 tags.append(sly.Tag(self._get_confidence_tag_meta(), dto.score))
             label = sly.Label(geometry, obj_class, tags)
-        elif self.task_type == "pose estimation":
+        elif self.task_type == "pose estimation" and not dto.class_name.endswith("_bbox"):
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
                 raise KeyError(
@@ -339,14 +384,22 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         int(box[5]),
                     )
                     mask = mask.cpu().numpy()
+                    mask_class_name = self.general_class_names[cls_index] + "_mask"
                     dtos.append(
-                        PredictionMask(self.class_names[cls_index], mask, confidence)
+                        PredictionMask(mask_class_name, mask, confidence)
+                    )
+                    bbox_class_name = self.general_class_names[cls_index] + "_bbox"
+                    bbox = [top, left, bottom, right]
+                    dtos.append(
+                        PredictionBBox(
+                            bbox_class_name, bbox, confidence
+                        )
                     )
         elif self.task_type == "pose estimation":
             boxes_data = prediction.boxes.data
             keypoints_data = prediction.keypoints.data
             point_threshold = settings.get("point_threshold", 0.1)
-            if len(self.class_names) == 1:
+            if self.class_names == ["person_bbox", "person_keypoints"]: # human pose estimation
                 point_labels = self.keypoints_template.point_names
                 if len(point_labels) == 17:
                     point_labels.append("fictive")
@@ -383,14 +436,22 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                                 point_coordinate.cpu().numpy()
                             )
                     if len(included_labels) > 1:
+                        kpt_class_name = self.general_class_names[cls_index] + "_keypoints"
                         dtos.append(
                             sly.nn.PredictionKeypoints(
-                                self.class_names[cls_index],
+                                kpt_class_name,
                                 included_labels,
                                 included_point_coordinates,
                             )
                         )
-            elif len(self.class_names) > 1:
+                        bbox_class_name = self.general_class_names[cls_index] + "_bbox"
+                        bbox = [top, left, bottom, right]
+                        dtos.append(
+                            PredictionBBox(
+                                bbox_class_name, bbox, confidence
+                            )
+                        )
+            else:
                 for box, keypoints in zip(boxes_data, keypoints_data):
                     left, top, right, bottom, confidence, cls_index = (
                         int(box[0]),
@@ -400,7 +461,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         float(box[4]),
                         int(box[5]),
                     )
-                    keypoints_template = self.cls2config[self.class_names[cls_index]]
+                    keypoints_template = self.cls2config[self.general_class_names[cls_index]]
                     point_labels = [
                         value["label"] for value in keypoints_template["nodes"].values()
                     ]
@@ -418,11 +479,22 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                                 point_coordinate.cpu().numpy()
                             )
                     if len(included_labels) > 1:
+                        if self.general_class_names[cls_index].endswith("_keypoints"):
+                            kpt_class_name = self.general_class_names[cls_index]
+                        else:
+                            kpt_class_name = self.general_class_names[cls_index] + "_keypoints"
                         dtos.append(
                             sly.nn.PredictionKeypoints(
-                                self.class_names[cls_index],
+                                kpt_class_name,
                                 included_labels,
                                 included_point_coordinates,
+                            )
+                        )
+                        bbox_class_name = self.general_class_names[cls_index] + "_bbox"
+                        bbox = [top, left, bottom, right]
+                        dtos.append(
+                            PredictionBBox(
+                                bbox_class_name, bbox, confidence
                             )
                         )
         return dtos
@@ -471,38 +543,50 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             "postprocess": first_benchmark["postprocess"] * n,
         }
         with sly.nn.inference.Timer() as timer:
-            predictions = [self._to_dto(prediction, settings) for prediction in predictions]
+            predictions = [
+                self._to_dto(prediction, settings) for prediction in predictions
+            ]
         to_dto_time = timer.get_time()
         benchmark["postprocess"] += to_dto_time
         return predictions, benchmark
-    
+
     def _load_pytorch(self, weights_path: str):
         model = YOLO(weights_path)
         model.to(self.device)
         return model
-    
+
     def _load_runtime(self, weights_path: str, format: str, **kwargs):
         if weights_path.endswith(".pt"):
             exported_weights_path = weights_path.replace(".pt", f".{format}")
             if self.model_precision == ModelPrecision.FP16:
-                exported_weights_path = exported_weights_path.replace(f".{format}", f"_fp16.{format}")
+                exported_weights_path = exported_weights_path.replace(
+                    f".{format}", f"_fp16.{format}"
+                )
             model = None
             if not os.path.exists(exported_weights_path):
                 sly.logger.info(f"Exporting model to '{format}' format...")
                 if self.gui is not None:
-                    bar = self.gui.download_progress(message=f"Exporting model to '{format}' format...", total=1)
+                    bar = self.gui.download_progress(
+                        message=f"Exporting model to '{format}' format...", total=1
+                    )
                     self.gui.download_progress.show()
                 model = YOLO(weights_path)
                 model.export(format=format, **kwargs)
                 if self.model_precision == ModelPrecision.FP16:
                     # rename after YOLO's export
-                    os.rename(weights_path.replace(".pt", f".{format}"), exported_weights_path)
+                    os.rename(
+                        weights_path.replace(".pt", f".{format}"), exported_weights_path
+                    )
                     sly.fs.silent_remove(weights_path.replace(".pt", f".onnx"))
                 if self.gui is not None:
                     bar.update(1)
                     self.gui.download_progress.hide()
-            checkpoint_info_path = os.path.join(os.path.dirname(weights_path), "checkpoint_info.yaml")
-            if self.model_source == ModelSource.CUSTOM and not os.path.exists(checkpoint_info_path):
+            checkpoint_info_path = os.path.join(
+                os.path.dirname(weights_path), "checkpoint_info.yaml"
+            )
+            if self.model_source == ModelSource.CUSTOM and not os.path.exists(
+                checkpoint_info_path
+            ):
                 # save custom checkpoint_info in yaml, as it will be lost after exporting
                 if model is None:
                     model = YOLO(weights_path)
@@ -511,10 +595,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             exported_weights_path = weights_path
         model = YOLO(exported_weights_path)
         return model
-    
+
     def _load_onnx(self, weights_path: str):
         return self._load_runtime(weights_path, "onnx", dynamic=True)
-    
+
     def _load_tensorrt(self, weights_path: str):
         return self._load_runtime(
             weights_path,
@@ -526,15 +610,22 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
     def _check_onnx_device(self, device: str):
         import onnxruntime as ort
+
         providers = ort.get_available_providers()
         if device.startswith("cuda") and "CUDAExecutionProvider" not in providers:
-            raise ValueError(f"Selected {device} device, but CUDAExecutionProvider is not available")
+            raise ValueError(
+                f"Selected {device} device, but CUDAExecutionProvider is not available"
+            )
         elif device == "cpu" and "CPUExecutionProvider" not in providers:
-            raise ValueError(f"Selected {device} device, but CPUExecutionProvider is not available")
+            raise ValueError(
+                f"Selected {device} device, but CPUExecutionProvider is not available"
+            )
 
     def _check_tensorrt_device(self, device: str):
         if "cuda" not in device:
-            raise ValueError(f"Selected {device} device, but TensorRT only supports CUDA devices")
+            raise ValueError(
+                f"Selected {device} device, but TensorRT only supports CUDA devices"
+            )
 
     def _try_extract_checkpoint_info(self, model: YOLO):
         model_name = None
@@ -550,7 +641,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 return model_name, architecture
         except Exception as e:
             pass
-        
+
         # 2. Extract from sly_metadata for custom checkpoints
         try:
             model_name = model.ckpt["sly_metadata"]["model_name"]
@@ -572,10 +663,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         except Exception as e:
             sly.logger.warn(
                 f"Failed to extract model_name and architecture from train_args. {repr(e)}",
-                exc_info=True
+                exc_info=True,
             )
         return model_name, architecture
-    
+
     def _dump_yaml_checkpoint_info(self, model: YOLO, dir_path: str):
         model_name, architecture = self._try_extract_checkpoint_info(model)
         info = {
@@ -597,6 +688,7 @@ def parse_model_name(checkpoint_name: str):
     model_name = f"YOLOv{version}{variant}"
     architecture = f"YOLOv{version}"
     return model_name, architecture
+
 
 def get_arch_from_model_name(model_name: str):
     # yolov8n-det
