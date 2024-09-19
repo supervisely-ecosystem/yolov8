@@ -148,14 +148,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 if "nodes_order" not in geometry_data:
                     geometry_config = geometry_data
                     self.keypoints_template = dict_to_template(geometry_config)
-                    if len(list(self.model.names.values())) > 1:
-                        self.nodes_order = []
-                        for key, value in geometry_config["nodes"].items():
-                            label = value["label"]
-                            self.nodes_order.append(label)
-                        self.cls2config = {}
-                        for cls in list(self.model.names.values()):
-                            self.cls2config[cls] = geometry_config
+                    self.nodes_order = []
+                    for key, value in geometry_config["nodes"].items():
+                        label = value["label"]
+                        self.nodes_order.append(label)
+                    self.cls2config = {}
+                    for cls in list(self.model.names.values()):
+                        self.cls2config[cls] = geometry_config
                 else:
                     self.nodes_order = geometry_data["nodes_order"]
                     self.cls2config = {}
