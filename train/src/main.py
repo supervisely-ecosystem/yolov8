@@ -1400,7 +1400,9 @@ def start_training():
     # split the data
     try:
         train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+        train_val_split._project_id = None
         train_set, val_set = train_val_split.get_splits()
+        train_val_split._project_id = project_id
     except Exception:
         if not use_cache:
             raise
@@ -1416,7 +1418,9 @@ def start_training():
             progress=progress_bar_download_project,
         )
         train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+        train_val_split._project_id = None
         train_set, val_set = train_val_split.get_splits()
+        train_val_split._project_id = project_id
     verify_train_val_sets(train_set, val_set)
     # convert dataset from supervisely to yolo format
     if os.path.exists(g.yolov8_project_dir):
