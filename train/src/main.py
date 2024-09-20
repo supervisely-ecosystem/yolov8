@@ -54,6 +54,7 @@ from supervisely.app.widgets import (  # SelectDataset,
     RadioTable,
     RadioTabs,
     RandomSplitsTable,
+    ReloadableArea,
     ReportThumbnail,
     SelectDatasetTree,
     SelectString,
@@ -145,6 +146,7 @@ def update_split_tabs_for_nested_datasets(selected_dataset_ids):
     )
     train_val_split._content = content
     train_val_split.update_data()
+    train_val_split_area.reload()
 
 # function for updating global variables
 def update_globals(new_dataset_ids):
@@ -262,8 +264,8 @@ card_classes.lock()
 
 
 ### 3.1 Train / validation split
-# train_val_split = ReloadableArea(TrainValSplits(project_id=project_id))
 train_val_split = TrainValSplits(project_id=project_id)
+train_val_split_area = ReloadableArea(train_val_split)
 unlabeled_images_select = SelectString(
     values=["keep unlabeled images", "ignore unlabeled images"]
 )
@@ -2005,6 +2007,8 @@ def start_training():
                             )
                         image_infos = []
                         for dataset_name, image_names in image_names_per_dataset.items():
+                            if "/" in dataset_name:
+                                dataset_name = dataset_name.split("/")[-1]
                             ds_info = ds_infos_dict[dataset_name]
                             image_infos.extend(
                                 api.image.get_list(
