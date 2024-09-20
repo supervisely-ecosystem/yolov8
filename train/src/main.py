@@ -826,7 +826,7 @@ def select_input_data():
     select_data_button.loading = True
     dataset_selector.disable()
     use_cache_text.disable()
-    classes_table.read_project_from_id(project_id)
+    classes_table.read_project_from_id(project_id, dataset_ids=dataset_ids)
     classes_table.select_all()
     selected_classes = classes_table.get_selected_classes()
     _update_select_classes_button(selected_classes)
