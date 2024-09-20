@@ -154,7 +154,6 @@ def update_globals(new_dataset_ids):
     global dataset_ids, project_id, workspace_id, project_info, project_meta
     dataset_ids = new_dataset_ids
     if dataset_ids and all(ds_id is not None for ds_id in dataset_ids):
-        update_split_tabs_for_nested_datasets(dataset_ids)
         project_id = api.dataset.get_info_by_id(dataset_ids[0]).project_id
         workspace_id = api.project.get_info_by_id(project_id).workspace_id
         project_info = api.project.get_info_by_id(project_id)
@@ -787,6 +786,7 @@ def on_dataset_selected(new_dataset_ids):
 @select_data_button.click
 def select_input_data():
     update_globals(dataset_selector.get_selected_ids())
+    update_split_tabs_for_nested_datasets(dataset_ids)
     sly.logger.debug(f"Select data button clicked, selected datasets: {dataset_ids}")
     project_shapes = [
         cls.geometry_type.geometry_name() for cls in project_meta.obj_classes
@@ -825,7 +825,6 @@ def select_input_data():
         )
     select_data_button.loading = True
     dataset_selector.disable()
-    update_globals(dataset_selector.get_selected_ids())
     use_cache_text.disable()
     classes_table.read_project_from_id(project_id)
     classes_table.select_all()
