@@ -53,6 +53,7 @@ from supervisely.app.widgets import (  # SelectDataset,
     RadioGroup,
     RadioTable,
     RadioTabs,
+    RandomSplitsTable,
     ReportThumbnail,
     SelectDatasetTree,
     SelectString,
@@ -80,6 +81,70 @@ ConfusionMatrix.plot = custom_plot
 plt.switch_backend("Agg")
 root_source_path = str(Path(__file__).parents[2])
 
+# authentication
+load_dotenv("local.env")
+load_dotenv("supervisely.env")
+api = sly.Api(retry_count=7)
+team_id = sly.env.team_id()
+server_address = sly.env.server_address()
+
+def update_split_tabs_for_nested_datasets(selected_dataset_ids):
+    global dataset_ids
+    temp_dataset_names = set()
+    temp_dataset_infos = set()
+    for ds_id in selected_dataset_ids:
+        ds_info = api.dataset.get_info_by_id(ds_id)
+        temp_dataset_infos.add(ds_info)
+        datasets = api.dataset.get_list(project_id, parent_id=ds_id, recursive=True)
+        temp_dataset_infos.update(datasets)
+    
+    temp_dataset_names = set([ds_info.name for ds_info in temp_dataset_infos])
+    sum_items_count = sum([ds_info.items_count for ds_info in temp_dataset_infos])
+    dataset_ids = list(set([ds_info.id for ds_info in temp_dataset_infos]))
+
+    contents = []
+    split_methods = []
+    tabs_descriptions = []
+
+    split_methods.append("Random")
+    tabs_descriptions.append("Shuffle data and split with defined probability")
+    contents.append(Container([RandomSplitsTable(sum_items_count)], direction="vertical", gap=5))
+
+    split_methods.append("Based on item tags")
+    tabs_descriptions.append("Images should have assigned train or val tag")
+    contents.append(train_val_split._get_tags_content())
+
+    split_methods.append("Based on datasets")
+    tabs_descriptions.append("Select one or several datasets for every split")
+
+    notification_box = NotificationBox(
+        title="Notice: How to make equal splits",
+        description="Choose the same dataset(s) for train/validation to make splits equal. Can be used for debug and for tiny projects",
+        box_type="info",
+    )
+    train_ds_select = SelectString(temp_dataset_names, multiple=True)
+    val_ds_select = SelectString(temp_dataset_names, multiple=True)
+    train_field = Field(
+        train_ds_select,
+        title="Train dataset(s)",
+        description="all images in selected dataset(s) are considered as training set",
+    )
+    val_field = Field(
+        val_ds_select,
+        title="Validation dataset(s)",
+        description="all images in selected dataset(s) are considered as validation set",
+    )
+    
+    contents.append(Container(
+        widgets=[notification_box, train_field, val_field], direction="vertical", gap=5
+    ))
+    content = RadioTabs(
+        titles=split_methods,
+        descriptions=tabs_descriptions,
+        contents=contents,
+    )
+    train_val_split._content = content
+    train_val_split.update_data()
 
 # function for updating global variables
 def update_globals(new_dataset_ids):
@@ -87,6 +152,7 @@ def update_globals(new_dataset_ids):
     global dataset_ids, project_id, workspace_id, project_info, project_meta
     dataset_ids = new_dataset_ids
     if dataset_ids and all(ds_id is not None for ds_id in dataset_ids):
+        update_split_tabs_for_nested_datasets(dataset_ids)
         project_id = api.dataset.get_info_by_id(dataset_ids[0]).project_id
         workspace_id = api.project.get_info_by_id(project_id).workspace_id
         project_info = api.project.get_info_by_id(project_id)
@@ -103,13 +169,6 @@ def update_globals(new_dataset_ids):
         dataset_ids = []
         project_id, workspace_id, project_info, project_meta = [None] * 4
 
-
-# authentication
-load_dotenv("local.env")
-load_dotenv("supervisely.env")
-api = sly.Api(retry_count=7)
-team_id = sly.env.team_id()
-server_address = sly.env.server_address()
 
 yolov8_artifacts = YOLOv8(team_id)
 framework_folder = yolov8_artifacts.framework_folder
@@ -203,6 +262,7 @@ card_classes.lock()
 
 
 ### 3.1 Train / validation split
+# train_val_split = ReloadableArea(TrainValSplits(project_id=project_id))
 train_val_split = TrainValSplits(project_id=project_id)
 unlabeled_images_select = SelectString(
     values=["keep unlabeled images", "ignore unlabeled images"]
