@@ -320,7 +320,7 @@ bbox_miss_dialog = Dialog(
 bbox_miss_check_progress = Progress()
 train_val_content = Container(
     [
-        train_val_split,
+        train_val_split_area,
         unlabeled_images_select_f,
         split_data_button,
         resplit_data_button,
