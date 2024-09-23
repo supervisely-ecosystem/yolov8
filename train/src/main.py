@@ -125,6 +125,8 @@ def update_split_tabs_for_nested_datasets(selected_dataset_ids):
     )
     train_ds_select = SelectString(temp_dataset_names, multiple=True)
     val_ds_select = SelectString(temp_dataset_names, multiple=True)
+    train_val_split._train_ds_select = train_ds_select
+    train_val_split._val_ds_select = val_ds_select
     train_field = Field(
         train_ds_select,
         title="Train dataset(s)",
