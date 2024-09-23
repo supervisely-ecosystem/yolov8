@@ -90,17 +90,45 @@ team_id = sly.env.team_id()
 server_address = sly.env.server_address()
 
 def update_split_tabs_for_nested_datasets(selected_dataset_ids):
-    global dataset_ids
+    global dataset_ids, train_val_split
+    sum_items_count = 0
     temp_dataset_names = set()
-    temp_dataset_infos = set()
+    temp_dataset_infos = []
+    datasets_tree = api.dataset.get_tree(project_id)
+
+    dataset_id_to_info = {}
+    def _get_dataset_ids_infos_map(ds_tree):
+        for ds_info in ds_tree.keys():
+            dataset_id_to_info[ds_info.id] = ds_info
+            if ds_tree[ds_info]:
+                _get_dataset_ids_infos_map(ds_tree[ds_info])
+
+    _get_dataset_ids_infos_map(datasets_tree)
+
+    def _get_full_name(ds_id):
+        ds_info = dataset_id_to_info[ds_id]
+        full_name = ds_info.name
+        while ds_info.parent_id is not None:
+            ds_info = dataset_id_to_info[ds_info.parent_id]
+            full_name = ds_info.name + "/" + full_name
+        return full_name
+
     for ds_id in selected_dataset_ids:
-        ds_info = api.dataset.get_info_by_id(ds_id)
-        temp_dataset_infos.add(ds_info)
-        datasets = api.dataset.get_list(project_id, parent_id=ds_id, recursive=True)
-        temp_dataset_infos.update(datasets)
-    
-    temp_dataset_names = set([ds_info.name for ds_info in temp_dataset_infos])
-    sum_items_count = sum([ds_info.items_count for ds_info in temp_dataset_infos])
+        def _get_dataset_infos(ds_tree, nested=False):
+            nonlocal sum_items_count
+
+            for ds_info in ds_tree.keys():
+                need_add = ds_info.id == ds_id or nested
+                if need_add:
+                    temp_dataset_infos.append(ds_info)                        
+                    name = _get_full_name(ds_info.id)
+                    temp_dataset_names.add(name)
+                    sum_items_count += ds_info.items_count
+                if ds_tree[ds_info]:
+                    _get_dataset_infos(ds_tree[ds_info], nested=need_add)
+
+        _get_dataset_infos(datasets_tree)
+
     dataset_ids = list(set([ds_info.id for ds_info in temp_dataset_infos]))
 
     contents = []
