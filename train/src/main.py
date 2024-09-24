@@ -90,13 +90,14 @@ team_id = sly.env.team_id()
 server_address = sly.env.server_address()
 
 def update_split_tabs_for_nested_datasets(selected_dataset_ids):
-    global dataset_ids, train_val_split
+    global dataset_ids, train_val_split, dataset_full_name_to_id
     sum_items_count = 0
     temp_dataset_names = set()
     temp_dataset_infos = []
     datasets_tree = api.dataset.get_tree(project_id)
 
     dataset_id_to_info = {}
+    dataset_full_name_to_id = {}
     def _get_dataset_ids_infos_map(ds_tree):
         for ds_info in ds_tree.keys():
             dataset_id_to_info[ds_info.id] = ds_info
@@ -123,6 +124,7 @@ def update_split_tabs_for_nested_datasets(selected_dataset_ids):
                     temp_dataset_infos.append(ds_info)                        
                     name = _get_full_name(ds_info.id)
                     temp_dataset_names.add(name)
+                    dataset_full_name_to_id[name] = ds_info.id
                     sum_items_count += ds_info.items_count
                 if ds_tree[ds_info]:
                     _get_dataset_infos(ds_tree[ds_info], nested=need_add)
@@ -2030,10 +2032,18 @@ def start_training():
                 split_method = train_val_split._content.get_active_tab()
 
                 if split_method == "Based on datasets":
-                    benchmark_dataset_ids = (
-                        train_val_split._val_ds_select.get_selected_ids()
-                    )
-                    train_dataset_ids = train_val_split._train_ds_select.get_selected_ids()
+                    if hasattr(train_val_split._val_ds_select, "get_selected_ids"):
+                        benchmark_dataset_ids = (
+                            train_val_split._val_ds_select.get_selected_ids()
+                        )
+                        train_dataset_ids = train_val_split._train_ds_select.get_selected_ids()
+                    else:
+                        benchmark_dataset_ids = [
+                            dataset_full_name_to_id[ds_name] for ds_name in train_val_split._val_ds_select.get_value()
+                        ]
+                        train_dataset_ids = [
+                            dataset_full_name_to_id[ds_name] for ds_name in train_val_split._train_ds_select.get_value()
+                        ]
                 else:
                     def get_image_infos_by_split(split: list):
                         ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
