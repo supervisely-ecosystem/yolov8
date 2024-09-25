@@ -83,8 +83,9 @@ plt.switch_backend("Agg")
 root_source_path = str(Path(__file__).parents[2])
 
 # authentication
-load_dotenv("local.env")
-load_dotenv("supervisely.env")
+if sly.is_development():
+    load_dotenv("local.env")
+    load_dotenv("supervisely.env")
 api = sly.Api(retry_count=7)
 team_id = sly.env.team_id()
 server_address = sly.env.server_address()
