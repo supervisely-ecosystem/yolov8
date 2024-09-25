@@ -53,6 +53,8 @@ from supervisely.app.widgets import (  # SelectDataset,
     RadioGroup,
     RadioTable,
     RadioTabs,
+    RandomSplitsTable,
+    ReloadableArea,
     ReportThumbnail,
     SelectDatasetTree,
     SelectString,
@@ -80,6 +82,104 @@ ConfusionMatrix.plot = custom_plot
 plt.switch_backend("Agg")
 root_source_path = str(Path(__file__).parents[2])
 
+# authentication
+if sly.is_development():
+    load_dotenv("local.env")
+    load_dotenv("supervisely.env")
+api = sly.Api(retry_count=7)
+team_id = sly.env.team_id()
+server_address = sly.env.server_address()
+
+def update_split_tabs_for_nested_datasets(selected_dataset_ids):
+    global dataset_ids, train_val_split, ds_name_to_id
+    sum_items_count = 0
+    temp_dataset_names = set()
+    temp_dataset_infos = []
+    datasets_tree = api.dataset.get_tree(project_id)
+
+    dataset_id_to_info = {}
+    ds_name_to_id = {}
+    def _get_dataset_ids_infos_map(ds_tree):
+        for ds_info in ds_tree.keys():
+            dataset_id_to_info[ds_info.id] = ds_info
+            if ds_tree[ds_info]:
+                _get_dataset_ids_infos_map(ds_tree[ds_info])
+
+    _get_dataset_ids_infos_map(datasets_tree)
+
+    def _get_full_name(ds_id):
+        ds_info = dataset_id_to_info[ds_id]
+        full_name = ds_info.name
+        while ds_info.parent_id is not None:
+            ds_info = dataset_id_to_info[ds_info.parent_id]
+            full_name = ds_info.name + "/" + full_name
+        return full_name
+
+    for ds_id in selected_dataset_ids:
+        def _get_dataset_infos(ds_tree, nested=False):
+
+            for ds_info in ds_tree.keys():
+                need_add = ds_info.id == ds_id or nested
+                if need_add:
+                    temp_dataset_infos.append(ds_info)                        
+                    name = _get_full_name(ds_info.id)
+                    temp_dataset_names.add(name)
+                    ds_name_to_id[name] = ds_info.id
+                if ds_tree[ds_info]:
+                    _get_dataset_infos(ds_tree[ds_info], nested=need_add)
+
+        _get_dataset_infos(datasets_tree)
+
+    dataset_ids = list(set([ds_info.id for ds_info in temp_dataset_infos]))
+    unique_ds = set([ds_info for ds_info in temp_dataset_infos])
+    sum_items_count = sum([ds_info.items_count for ds_info in unique_ds])
+
+    contents = []
+    split_methods = []
+    tabs_descriptions = []
+
+    split_methods.append("Random")
+    tabs_descriptions.append("Shuffle data and split with defined probability")
+    contents.append(Container([RandomSplitsTable(sum_items_count)], direction="vertical", gap=5))
+
+    split_methods.append("Based on item tags")
+    tabs_descriptions.append("Images should have assigned train or val tag")
+    contents.append(train_val_split._get_tags_content())
+
+    split_methods.append("Based on datasets")
+    tabs_descriptions.append("Select one or several datasets for every split")
+
+    notification_box = NotificationBox(
+        title="Notice: How to make equal splits",
+        description="Choose the same dataset(s) for train/validation to make splits equal. Can be used for debug and for tiny projects",
+        box_type="info",
+    )
+    train_ds_select = SelectString(temp_dataset_names, multiple=True)
+    val_ds_select = SelectString(temp_dataset_names, multiple=True)
+    train_val_split._train_ds_select = train_ds_select
+    train_val_split._val_ds_select = val_ds_select
+    train_field = Field(
+        train_ds_select,
+        title="Train dataset(s)",
+        description="all images in selected dataset(s) are considered as training set",
+    )
+    val_field = Field(
+        val_ds_select,
+        title="Validation dataset(s)",
+        description="all images in selected dataset(s) are considered as validation set",
+    )
+    
+    contents.append(Container(
+        widgets=[notification_box, train_field, val_field], direction="vertical", gap=5
+    ))
+    content = RadioTabs(
+        titles=split_methods,
+        descriptions=tabs_descriptions,
+        contents=contents,
+    )
+    train_val_split._content = content
+    train_val_split.update_data()
+    train_val_split_area.reload()
 
 # function for updating global variables
 def update_globals(new_dataset_ids):
@@ -104,13 +204,6 @@ def update_globals(new_dataset_ids):
         project_id, workspace_id, project_info, project_meta = [None] * 4
 
 
-# authentication
-load_dotenv("local.env")
-load_dotenv("supervisely.env")
-api = sly.Api(retry_count=7)
-team_id = sly.env.team_id()
-server_address = sly.env.server_address()
-
 yolov8_artifacts = YOLOv8(team_id)
 framework_folder = yolov8_artifacts.framework_folder
 
@@ -126,7 +219,7 @@ sly.logger.info(f"App root directory: {g.app_root_directory}")
 ### 1. Dataset selection
 # dataset_selector = SelectDataset(project_id=project_id, multiselect=True, select_all_datasets=True)
 dataset_selector = SelectDatasetTree(
-    project_id=project_id, multiselect=True, select_all_datasets=True, flat=True
+    project_id=project_id, multiselect=True, select_all_datasets=True
 )
 use_cache_text = Text(
     "Use cached data stored on the agent to optimize project download"
@@ -204,6 +297,7 @@ card_classes.lock()
 
 ### 3.1 Train / validation split
 train_val_split = TrainValSplits(project_id=project_id)
+train_val_split_area = ReloadableArea(train_val_split)
 unlabeled_images_select = SelectString(
     values=["keep unlabeled images", "ignore unlabeled images"]
 )
@@ -259,7 +353,7 @@ bbox_miss_dialog = Dialog(
 bbox_miss_check_progress = Progress()
 train_val_content = Container(
     [
-        train_val_split,
+        train_val_split_area,
         unlabeled_images_select_f,
         split_data_button,
         resplit_data_button,
@@ -725,6 +819,7 @@ def on_dataset_selected(new_dataset_ids):
 @select_data_button.click
 def select_input_data():
     update_globals(dataset_selector.get_selected_ids())
+    update_split_tabs_for_nested_datasets(dataset_ids)
     sly.logger.debug(f"Select data button clicked, selected datasets: {dataset_ids}")
     project_shapes = [
         cls.geometry_type.geometry_name() for cls in project_meta.obj_classes
@@ -763,9 +858,8 @@ def select_input_data():
         )
     select_data_button.loading = True
     dataset_selector.disable()
-    update_globals(dataset_selector.get_selected_ids())
     use_cache_text.disable()
-    classes_table.read_project_from_id(project_id)
+    classes_table.read_project_from_id(project_id, dataset_ids=dataset_ids)
     classes_table.select_all()
     selected_classes = classes_table.get_selected_classes()
     _update_select_classes_button(selected_classes)
@@ -1339,7 +1433,10 @@ def start_training():
     # split the data
     try:
         train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+        train_val_split._project_id = None
+        train_val_split.update_data()
         train_set, val_set = train_val_split.get_splits()
+        train_val_split._project_id = project_id
     except Exception:
         if not use_cache:
             raise
@@ -1355,7 +1452,10 @@ def start_training():
             progress=progress_bar_download_project,
         )
         train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+        train_val_split._project_id = None
+        train_val_split.update_data()
         train_set, val_set = train_val_split.get_splits()
+        train_val_split._project_id = project_id
     verify_train_val_sets(train_set, val_set)
     # convert dataset from supervisely to yolo format
     if os.path.exists(g.yolov8_project_dir):
@@ -1931,10 +2031,18 @@ def start_training():
                 split_method = train_val_split._content.get_active_tab()
 
                 if split_method == "Based on datasets":
-                    benchmark_dataset_ids = (
-                        train_val_split._val_ds_select.get_selected_ids()
-                    )
-                    train_dataset_ids = train_val_split._train_ds_select.get_selected_ids()
+                    if hasattr(train_val_split._val_ds_select, "get_selected_ids"):
+                        benchmark_dataset_ids = (
+                            train_val_split._val_ds_select.get_selected_ids()
+                        )
+                        train_dataset_ids = train_val_split._train_ds_select.get_selected_ids()
+                    else:
+                        benchmark_dataset_ids = [
+                            ds_name_to_id[d] for d in train_val_split._val_ds_select.get_value()
+                        ]
+                        train_dataset_ids = [
+                            ds_name_to_id[d] for d in train_val_split._train_ds_select.get_value()
+                        ]
                 else:
                     def get_image_infos_by_split(split: list):
                         ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
@@ -1945,6 +2053,8 @@ def start_training():
                             )
                         image_infos = []
                         for dataset_name, image_names in image_names_per_dataset.items():
+                            if "/" in dataset_name:
+                                dataset_name = dataset_name.split("/")[-1]
                             ds_info = ds_infos_dict[dataset_name]
                             image_infos.extend(
                                 api.image.get_list(
