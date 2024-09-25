@@ -1435,7 +1435,6 @@ def start_training():
         train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
         train_val_split._project_id = None
         train_val_split.update_data()
-        # train_val_split_area.reload()
         train_set, val_set = train_val_split.get_splits()
         train_val_split._project_id = project_id
     except Exception:
@@ -1455,7 +1454,6 @@ def start_training():
         train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
         train_val_split._project_id = None
         train_val_split.update_data()
-        # train_val_split_area.reload()
         train_set, val_set = train_val_split.get_splits()
         train_val_split._project_id = project_id
     verify_train_val_sets(train_set, val_set)
