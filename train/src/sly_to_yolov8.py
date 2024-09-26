@@ -34,7 +34,7 @@ def check_bbox_exist_on_images(api, selected_classes, datasets, project_meta, pr
                                 bbox_exist = True
                                 break
                     if not bbox_exist:
-                        bbox_miss_image_urls.append(img_info.preview_url)
+                        bbox_miss_image_urls.append(img_info.path_original)
                     pbar.update()
     return bbox_miss_image_urls
 
