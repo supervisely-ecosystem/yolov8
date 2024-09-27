@@ -132,12 +132,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         if self.task_type == "pose estimation":
             self.general_class_names = list(self.model.names.values())
             bbox_class_names = [f"{cls}_bbox" for cls in self.class_names]
-            kpt_class_names = []
-            for cls in self.class_names:
-                if cls.endswith("_keypoints"):
-                    kpt_class_names.append(cls)
-                else:
-                    kpt_class_names.append(f"{cls}_keypoints")
+            kpt_class_names = self.class_names
             self.class_names = bbox_class_names + kpt_class_names
             if model_source == "Pretrained models":
                 self.keypoints_template = human_template
@@ -167,39 +162,38 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         elif self.task_type == "instance segmentation":
             self.general_class_names = list(self.model.names.values())
             bbox_class_names = [f"{cls}_bbox" for cls in self.class_names]
-            mask_class_names = [f"{cls}_mask" for cls in self.class_names]
+            mask_class_names = self.class_names
             self.class_names = bbox_class_names + mask_class_names
-            bbox_obj_classes = [sly.ObjClass(name, sly.Rectangle) for name in bbox_class_names]
-            mask_obj_classes = [sly.ObjClass(name, sly.Bitmap) for name in mask_class_names]
+            bbox_obj_classes = [
+                sly.ObjClass(name, sly.Rectangle) for name in bbox_class_names
+            ]
+            mask_obj_classes = [
+                sly.ObjClass(name, sly.Bitmap) for name in mask_class_names
+            ]
             obj_classes = bbox_obj_classes + mask_obj_classes
         elif self.task_type == "pose estimation":
-            if self.class_names == ["person_bbox", "person_keypoints"]: # human pose estimation
+            if self.class_names == ["person_bbox", "person"]:  # human pose estimation
                 obj_classes = [
                     sly.ObjClass("person_bbox", sly.Rectangle),
-                    sly.ObjClass("person_keypoints", sly.GraphNodes, geometry_config=self.keypoints_template)
+                    sly.ObjClass(
+                        "person",
+                        sly.GraphNodes,
+                        geometry_config=self.keypoints_template,
+                    ),
                 ]
-            elif self.class_names != ["person_bbox", "person_keypoints"]:
+            elif self.class_names != ["person_bbox", "person"]:
                 bbox_obj_classes = [
                     sly.ObjClass(name, sly.Rectangle) for name in bbox_class_names
                 ]
                 kpt_obj_classes = []
                 for name in self.general_class_names:
-                    if name.endswith("_keypoints"):
-                        kpt_obj_classes.append(
-                            sly.ObjClass(
-                                name,
-                                sly.GraphNodes,
-                                geometry_config=dict_to_template(self.cls2config[name]),
-                                )
-                            )
-                    else:
-                        kpt_obj_classes.append(
-                            sly.ObjClass(
-                                name + "_keypoints",
-                                sly.GraphNodes,
-                                geometry_config=dict_to_template(self.cls2config[name]),
-                                )
-                            )
+                    kpt_obj_classes.append(
+                        sly.ObjClass(
+                            name,
+                            sly.GraphNodes,
+                            geometry_config=dict_to_template(self.cls2config[name]),
+                        )
+                    )
                 obj_classes = bbox_obj_classes + kpt_obj_classes
         self._model_meta = sly.ProjectMeta(
             obj_classes=sly.ObjClassCollection(obj_classes)
@@ -313,7 +307,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if dto.score is not None:
                 tags.append(sly.Tag(self._get_confidence_tag_meta(), dto.score))
             label = sly.Label(geometry, obj_class, tags)
-        elif self.task_type == "instance segmentation" and not dto.class_name.endswith("_bbox"):
+        elif self.task_type == "instance segmentation" and not dto.class_name.endswith(
+            "_bbox"
+        ):
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
                 raise KeyError(
@@ -330,7 +326,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if dto.score is not None:
                 tags.append(sly.Tag(self._get_confidence_tag_meta(), dto.score))
             label = sly.Label(geometry, obj_class, tags)
-        elif self.task_type == "pose estimation" and not dto.class_name.endswith("_bbox"):
+        elif self.task_type == "pose estimation" and not dto.class_name.endswith(
+            "_bbox"
+        ):
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
                 raise KeyError(
@@ -383,22 +381,19 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         int(box[5]),
                     )
                     mask = mask.cpu().numpy()
-                    mask_class_name = self.general_class_names[cls_index] + "_mask"
-                    dtos.append(
-                        PredictionMask(mask_class_name, mask, confidence)
-                    )
+                    mask_class_name = self.general_class_names[cls_index]
+                    dtos.append(PredictionMask(mask_class_name, mask, confidence))
                     bbox_class_name = self.general_class_names[cls_index] + "_bbox"
                     bbox = [top, left, bottom, right]
-                    dtos.append(
-                        PredictionBBox(
-                            bbox_class_name, bbox, confidence
-                        )
-                    )
+                    dtos.append(PredictionBBox(bbox_class_name, bbox, confidence))
         elif self.task_type == "pose estimation":
             boxes_data = prediction.boxes.data
             keypoints_data = prediction.keypoints.data
             point_threshold = settings.get("point_threshold", 0.1)
-            if self.class_names == ["person_bbox", "person_keypoints"]: # human pose estimation
+            if self.class_names == [
+                "person_bbox",
+                "person",
+            ]:  # human pose estimation
                 point_labels = self.keypoints_template.point_names
                 if len(point_labels) == 17:
                     point_labels.append("fictive")
@@ -435,7 +430,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                                 point_coordinate.cpu().numpy()
                             )
                     if len(included_labels) > 1:
-                        kpt_class_name = self.general_class_names[cls_index] + "_keypoints"
+                        kpt_class_name = self.general_class_names[cls_index]
                         dtos.append(
                             sly.nn.PredictionKeypoints(
                                 kpt_class_name,
@@ -445,11 +440,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         )
                         bbox_class_name = self.general_class_names[cls_index] + "_bbox"
                         bbox = [top, left, bottom, right]
-                        dtos.append(
-                            PredictionBBox(
-                                bbox_class_name, bbox, confidence
-                            )
-                        )
+                        dtos.append(PredictionBBox(bbox_class_name, bbox, confidence))
             else:
                 for box, keypoints in zip(boxes_data, keypoints_data):
                     left, top, right, bottom, confidence, cls_index = (
@@ -460,7 +451,9 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         float(box[4]),
                         int(box[5]),
                     )
-                    keypoints_template = self.cls2config[self.general_class_names[cls_index]]
+                    keypoints_template = self.cls2config[
+                        self.general_class_names[cls_index]
+                    ]
                     point_labels = [
                         value["label"] for value in keypoints_template["nodes"].values()
                     ]
@@ -478,10 +471,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                                 point_coordinate.cpu().numpy()
                             )
                     if len(included_labels) > 1:
-                        if self.general_class_names[cls_index].endswith("_keypoints"):
-                            kpt_class_name = self.general_class_names[cls_index]
-                        else:
-                            kpt_class_name = self.general_class_names[cls_index] + "_keypoints"
+                        kpt_class_name = self.general_class_names[cls_index]
                         dtos.append(
                             sly.nn.PredictionKeypoints(
                                 kpt_class_name,
@@ -491,11 +481,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         )
                         bbox_class_name = self.general_class_names[cls_index] + "_bbox"
                         bbox = [top, left, bottom, right]
-                        dtos.append(
-                            PredictionBBox(
-                                bbox_class_name, bbox, confidence
-                            )
-                        )
+                        dtos.append(PredictionBBox(bbox_class_name, bbox, confidence))
         return dtos
 
     def predict_video(
