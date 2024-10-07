@@ -15,9 +15,9 @@ RUN pip uninstall onnxruntime -y
 RUN pip install cmake onnxsim==0.4.36 onnx==1.12.0 onnxruntime-gpu==1.18.0
 RUN pip install nvidia-tensorrt
 
-RUN python3 -m pip install supervisely[tracking]==6.73.201
+RUN python3 -m pip install supervisely[tracking]==6.73.203
 RUN python3 -c "from supervisely.nn.tracker import *"
-RUN python3 -m pip install supervisely[model-benchmark]==6.73.201
+RUN python3 -m pip install supervisely[model-benchmark]==6.73.203
 RUN pip3 install dill==0.3.8
 
-LABEL python_sdk_version=6.73.201
+LABEL python_sdk_version=6.73.203
