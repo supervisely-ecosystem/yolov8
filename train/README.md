@@ -67,7 +67,7 @@ Please, remember that pose estimation task requires target object to be labeled 
 
 # How To Use Your Trained Model Outside Supervisely
 
-You can use your trained models outside Supervisely platform without any dependencies on Supervisely SDK. See this [Jupyter Notebook](https://github.com/supervisely-ecosystem/yolov8/blob/master/outside_supervisely/inference_outside_supervisely.ipynb) for details.
+You can use your trained models outside Supervisely platform without any dependencies on Supervisely SDK. See this [Jupyter Notebook](https://github.com/supervisely-ecosystem/yolov8/blob/master/outside_supervisely/inference_outside_supervisely.ipynb) for details. If you also want to apply the model to a video, using the same deepsort algorithm, you can refer to the official YOLO documentation [here](https://docs.ultralytics.com/modes/track/#tracker-selection).
 
 # Related apps
 
@@ -76,6 +76,12 @@ You can use your trained models outside Supervisely platform without any depende
 
 - [Serve YOLOv8 | v9 | v10](https://ecosystem.supervise.ly/apps/yolov8/serve) - app allows to deploy YOLOv8 | v9 | v10 model as REST API service.   
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/yolov8/serve" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/721f5344-013c-4466-bc05-88cc3efef5ca" height="70px" margin-bottom="20px"/>
+
+- [NN Image Labeling](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%252Fnn-image-labeling%252Fannotation-tool) - integrate any deployed NN to Supervisely Image Labeling UI. Configure inference settings and model output classes. Press `Apply` button (or use hotkey) and detections with their confidences will immediately appear on the image.   
+    <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/nn-image-labeling/annotation-tool" src="https://i.imgur.com/hYEucNt.png" height="70px" margin-bottom="20px"/>
+
+- [Apply NN to Videos Project](https://ecosystem.supervise.ly/apps/apply-nn-to-videos-project) - app allows to label your videos using served Supervisely models.  
+  <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/apply-nn-to-videos-project" src="https://imgur.com/LDo8K1A.png" height="70px" margin-bottom="20px" />
   
 # Screenshot
 
