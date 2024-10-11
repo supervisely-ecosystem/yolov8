@@ -67,7 +67,7 @@ Please, remember that pose estimation task requires target object to be labeled 
 
 # How To Use Your Trained Model Outside Supervisely
 
-You can use your trained models outside Supervisely platform without any dependencies on Supervisely SDK. See this [Jupyter Notebook](https://github.com/supervisely-ecosystem/yolov8/blob/master/outside_supervisely/inference_outside_supervisely.ipynb) for details.
+You can use your trained models outside Supervisely platform without any dependencies on Supervisely SDK. See this [Jupyter Notebook](https://github.com/supervisely-ecosystem/yolov8/blob/master/outside_supervisely/inference_outside_supervisely.ipynb) for details. If you also want to apply the model to a video, using the same deepsort algorithm, you can refer to the official YOLO documentation [here](https://docs.ultralytics.com/modes/track/#tracker-selection).
 
 # Related apps
 
@@ -76,6 +76,12 @@ You can use your trained models outside Supervisely platform without any depende
 
 - [Serve YOLOv8 | v9 | v10](https://ecosystem.supervise.ly/apps/yolov8/serve) - app allows to deploy YOLOv8 | v9 | v10 model as REST API service.   
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/yolov8/serve" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/721f5344-013c-4466-bc05-88cc3efef5ca" height="70px" margin-bottom="20px"/>
+
+- [Apply NN to Images Project]([https://ecosystem.supervise.ly/apps/yolov8/serve](https://ecosystem.supervisely.com/apps/nn-image-labeling/project-dataset)) - app allows to apply the model to the images project or dataset.   
+    <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/nn-image-labeling/project-dataset" src="https://github.com/user-attachments/assets/20e33e22-80d3-4398-8f6c-53ce5106b420" height="70px" margin-bottom="20px"/>
+
+- [Apply NN to Videos Project]([[https://ecosystem.supervise.ly/apps/yolov8/serve](https://ecosystem.supervisely.com/apps/nn-image-labeling/project-dataset](https://ecosystem.supervisely.com/apps/apply-nn-to-videos-project))) - app allows to apply the model to the video, and predictions on every frame are combined into tracks automatically.  
+    <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/apply-nn-to-videos-project" src="https://github.com/user-attachments/assets/c397fbbc-e3cd-4a31-8ef8-83633bbb5feb" height="70px" margin-bottom="20px"/>
   
 # Screenshot
 
