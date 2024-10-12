@@ -2277,7 +2277,7 @@ def auto_train(request: Request):
     task_type_select.set_value(task_type)
     models_table_columns = [
         key
-        for key in g.models_data[0].keys()
+        for key in models_data[0].keys()
         if key not in ["weights_url", "yaml_config"]
     ]
     models_table_subtitles = [None] * len(models_table_columns)
