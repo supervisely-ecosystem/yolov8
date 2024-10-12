@@ -2282,7 +2282,7 @@ def auto_train(request: Request):
     ]
     models_table_subtitles = [None] * len(models_table_columns)
     models_table_rows = []
-    for element in g.seg_models_data:
+    for element in models_data:
         models_table_rows.append(list(element.values())[:-2])
     models_table.set_data(
         columns=models_table_columns,
