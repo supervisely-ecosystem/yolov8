@@ -2571,26 +2571,6 @@ def auto_train(request: Request):
     pd.set_option("display.width", None)
     pd.set_option("display.max_colwidth", None)
 
-    save_train_params_button.hide()
-    train_params_done.show()
-    reselect_train_params_button.show()
-    select_train_mode.disable()
-    n_epochs_input.disable()
-    patience_input.disable()
-    batch_size_input.disable()
-    image_size_input.disable()
-    select_optimizer.disable()
-    n_workers_input.disable()
-    run_model_benchmark_checkbox.disable()
-    run_speedtest_checkbox.disable()
-    export_model_switch.disable()
-    export_onnx_checkbox.disable()
-    export_tensorrt_checkbox.disable()
-    train_settings_editor.readonly = True
-    stepper.set_active_step(5)
-    card_train_progress.unlock()
-    card_train_progress.uncollapse()
-
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
     plotted_train_batches = []
     remote_images_path = (
@@ -2670,46 +2650,101 @@ def auto_train(request: Request):
 
         threading.Thread(target=train_batch_watcher_func, daemon=True).start()
 
+    # extract training hyperparameters
+    n_epochs = state.get("n_epochs", n_epochs_input.get_value())
+    patience = state.get("patience", patience_input.get_value())
+    batch_size = state.get("batch_size", batch_size_input.get_value())
+    image_size = state.get("input_image_size", image_size_input.get_value())
+    n_workers = state.get("n_workers", n_workers_input.get_value())
+    optimizer = state.get("optimizer", select_optimizer.get_value())
+    lr0 = state.get("lr0", additional_params["lr0"])
+    lrf = state.get("lrf", additional_params["lr0"])
+    momentum = state.get("momentum", additional_params["momentum"])
+    weight_decay = state.get("weight_decay", additional_params["weight_decay"])
+    warmup_epochs = state.get("warmup_epochs", additional_params["warmup_epochs"])
+    warmup_momentum = state.get("warmup_momentum", additional_params["warmup_momentum"])
+    warmup_bias_lr = state.get("warmup_bias_lr", additional_params["warmup_bias_lr"])
+    amp = state.get("amp", additional_params["amp"])
+    hsv_h = state.get("hsv_h", additional_params["hsv_h"])
+    hsv_s = state.get("hsv_s", additional_params["hsv_s"])
+    hsv_v = state.get("hsv_v", additional_params["hsv_v"])
+    degrees = state.get("degrees", additional_params["degrees"])
+    translate = state.get("translate", additional_params["translate"])
+    scale = state.get("scale", additional_params["scale"])
+    shear = state.get("shear", additional_params["shear"])
+    perspective = state.get("perspective", additional_params["perspective"])
+    flipud = state.get("flipud", additional_params["flipud"])
+    fliplr = state.get("fliplr", additional_params["fliplr"])
+    mosaic = state.get("mosaic", additional_params["mosaic"])
+    mixup = state.get("mixup", additional_params["mixup"])
+    copy_paste = state.get("copy_paste", additional_params["copy_paste"])
+
+    if pretrained:
+        select_train_mode.set_value(value="Finetune mode")
+    else:
+        select_train_mode.set_value(value="Scratch mode")
+
+    n_epochs_input.value = n_epochs
+    patience_input.value = patience
+    batch_size_input.value = batch_size
+    image_size_input.value = image_size
+    select_optimizer.set_value(value=optimizer)
+    n_workers_input.value = n_workers
+
+    save_train_params_button.hide()
+    train_params_done.show()
+    reselect_train_params_button.show()
+    select_train_mode.disable()
+    n_epochs_input.disable()
+    patience_input.disable()
+    batch_size_input.disable()
+    image_size_input.disable()
+    select_optimizer.disable()
+    n_workers_input.disable()
+    run_model_benchmark_checkbox.disable()
+    run_speedtest_checkbox.disable()
+    export_model_switch.disable()
+    export_onnx_checkbox.disable()
+    export_tensorrt_checkbox.disable()
+    train_settings_editor.readonly = True
+    stepper.set_active_step(5)
+    card_train_progress.unlock()
+    card_train_progress.uncollapse()
+
     def train_model():
         model.train(
             data=data_path,
             project=checkpoint_dir,
-            epochs=state.get("n_epochs", n_epochs_input.get_value()),
-            patience=state.get("patience", patience_input.get_value()),
-            batch=state.get("batch_size", batch_size_input.get_value()),
-            imgsz=state.get("input_image_size", image_size_input.get_value()),
+            epochs=n_epochs,
+            patience=patience,
+            batch=batch_size,
+            imgsz=image_size,
             save_period=1000,
             device=device,
-            workers=state.get("n_workers", n_workers_input.get_value()),
-            optimizer=state.get("optimizer", select_optimizer.get_value()),
+            workers=n_workers,
+            optimizer=optimizer,
             pretrained=pretrained,
-            lr0=state.get("lr0", additional_params["lr0"]),
-            lrf=state.get("lrf", additional_params["lr0"]),
-            momentum=state.get("momentum", additional_params["momentum"]),
-            weight_decay=state.get("weight_decay", additional_params["weight_decay"]),
-            warmup_epochs=state.get(
-                "warmup_epochs", additional_params["warmup_epochs"]
-            ),
-            warmup_momentum=state.get(
-                "warmup_momentum", additional_params["warmup_momentum"]
-            ),
-            warmup_bias_lr=state.get(
-                "warmup_bias_lr", additional_params["warmup_bias_lr"]
-            ),
-            amp=state.get("amp", additional_params["amp"]),
-            hsv_h=state.get("hsv_h", additional_params["hsv_h"]),
-            hsv_s=state.get("hsv_s", additional_params["hsv_s"]),
-            hsv_v=state.get("hsv_v", additional_params["hsv_v"]),
-            degrees=state.get("degrees", additional_params["degrees"]),
-            translate=state.get("translate", additional_params["translate"]),
-            scale=state.get("scale", additional_params["scale"]),
-            shear=state.get("shear", additional_params["shear"]),
-            perspective=state.get("perspective", additional_params["perspective"]),
-            flipud=state.get("flipud", additional_params["flipud"]),
-            fliplr=state.get("fliplr", additional_params["fliplr"]),
-            mosaic=state.get("mosaic", additional_params["mosaic"]),
-            mixup=state.get("mixup", additional_params["mixup"]),
-            copy_paste=state.get("copy_paste", additional_params["copy_paste"]),
+            lr0=lr0,
+            lrf=lrf,
+            momentum=momentum,
+            weight_decay=weight_decay,
+            warmup_epochs=warmup_epochs,
+            warmup_momentum=warmup_momentum,
+            warmup_bias_lr=warmup_bias_lr,
+            amp=amp,
+            hsv_h=hsv_h,
+            hsv_s=hsv_s,
+            hsv_v=hsv_v,
+            degrees=degrees,
+            translate=translate,
+            scale=scale,
+            shear=shear,
+            perspective=perspective,
+            flipud=flipud,
+            fliplr=fliplr,
+            mosaic=mosaic,
+            mixup=mixup,
+            copy_paste=copy_paste,
         )
 
     stop_training_tooltip.show()
