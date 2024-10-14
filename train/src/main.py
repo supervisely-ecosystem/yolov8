@@ -2462,7 +2462,7 @@ def auto_train(request: Request):
         weights_url = selected_dict["weights_url"]
         model_filename = weights_url.split("/")[-1]
         selected_model_name = selected_dict["Model"].split(" ")[0]  # "YOLOv8n-det"
-        if "train_mode" in state and state["train_mode"] == "Finetune mode":
+        if "train_mode" in state and state["train_mode"] == "finetune":
             pretrained = True
             weights_dst_path = os.path.join(g.app_data_dir, model_filename)
             with urlopen(weights_url) as file:
