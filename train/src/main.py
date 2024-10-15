@@ -2676,7 +2676,9 @@ def auto_train(request: Request):
     watcher = Watcher(
         watch_file,
         on_results_file_changed,
-        progress_bar_epochs(message="Epochs:", total=n_epochs_input.get_value()),
+        progress_bar_epochs(
+            message="Epochs:", total=state.get("n_epochs", n_epochs_input.get_value())
+        ),
     )
     # train model and upload best checkpoints to team files
     device = 0 if torch.cuda.is_available() else "cpu"
@@ -2854,6 +2856,8 @@ def auto_train(request: Request):
     train_thread.start()
     train_thread.join()
     watcher.running = False
+    progress_bar_iters.hide()
+    progress_bar_epochs.hide()
 
     # visualize model predictions
     making_training_vis_f.show()
