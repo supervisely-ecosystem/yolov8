@@ -2568,10 +2568,14 @@ def auto_train(request: Request):
     additional_params = yaml.safe_load(additional_params)
     if task_type == "pose estimation":
         additional_params["fliplr"] = 0.0
+
     # set up epoch progress bar and grid plot
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
     pd.set_option("display.max_colwidth", None)
+
+    grid_plot_f.show()
+    plot_notification.show()
 
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
     plotted_train_batches = []
@@ -2587,10 +2591,71 @@ def auto_train(request: Request):
             return False
 
     def on_results_file_changed(filepath, pbar):
+        # read results file
         results = pd.read_csv(filepath)
         results.columns = [col.replace(" ", "") for col in results.columns]
         print(results.tail(1))
+        # get losses values
+        train_box_loss = results["train/box_loss"].iat[-1]
+        train_cls_loss = results["train/cls_loss"].iat[-1]
+        train_dfl_loss = results["train/dfl_loss"].iat[-1]
+        if "train/pose_loss" in results.columns:
+            train_pose_loss = results["train/pose_loss"].iat[-1]
+        if "train/kobj_loss" in results.columns:
+            train_kobj_loss = results["train/kobj_loss"].iat[-1]
+        if "train/seg_loss" in results.columns:
+            train_seg_loss = results["train/seg_loss"].iat[-1]
+        precision = results["metrics/precision(B)"].iat[-1]
+        recall = results["metrics/recall(B)"].iat[-1]
+        val_box_loss = results["val/box_loss"].iat[-1]
+        val_cls_loss = results["val/cls_loss"].iat[-1]
+        val_dfl_loss = results["val/dfl_loss"].iat[-1]
+        if "val/pose_loss" in results.columns:
+            val_pose_loss = results["val/pose_loss"].iat[-1]
+        if "val/kobj_loss" in results.columns:
+            val_kobj_loss = results["val/kobj_loss"].iat[-1]
+        if "val/seg_loss" in results.columns:
+            val_seg_loss = results["val/seg_loss"].iat[-1]
+        # update progress bar
         x = results["epoch"].iat[-1]
+        pbar.update(int(x) + 1 - pbar.n)
+        # add new points to plots
+        if check_number(float(train_box_loss)):
+            grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
+        if check_number(float(train_cls_loss)):
+            grid_plot.add_scalar("train/cls loss", float(train_cls_loss), int(x))
+        if check_number(float(train_dfl_loss)):
+            grid_plot.add_scalar("train/dfl loss", float(train_dfl_loss), int(x))
+        if "train/pose_loss" in results.columns:
+            if check_number(float(train_pose_loss)):
+                grid_plot.add_scalar("train/pose loss", float(train_pose_loss), int(x))
+        if "train/kobj_loss" in results.columns:
+            if check_number(float(train_kobj_loss)):
+                grid_plot.add_scalar("train/kobj loss", float(train_kobj_loss), int(x))
+        if "train/seg_loss" in results.columns:
+            if check_number(float(train_seg_loss)):
+                grid_plot.add_scalar("train/seg loss", float(train_seg_loss), int(x))
+        if check_number(float(precision)):
+            grid_plot.add_scalar(
+                "precision & recall/precision", float(precision), int(x)
+            )
+        if check_number(float(recall)):
+            grid_plot.add_scalar("precision & recall/recall", float(recall), int(x))
+        if check_number(float(val_box_loss)):
+            grid_plot.add_scalar("val/box loss", float(val_box_loss), int(x))
+        if check_number(float(val_cls_loss)):
+            grid_plot.add_scalar("val/cls loss", float(val_cls_loss), int(x))
+        if check_number(float(val_dfl_loss)):
+            grid_plot.add_scalar("val/dfl loss", float(val_dfl_loss), int(x))
+        if "val/pose_loss" in results.columns:
+            if check_number(float(val_pose_loss)):
+                grid_plot.add_scalar("val/pose loss", float(val_pose_loss), int(x))
+        if "val/kobj_loss" in results.columns:
+            if check_number(float(val_kobj_loss)):
+                grid_plot.add_scalar("val/kobj loss", float(val_kobj_loss), int(x))
+        if "val/seg_loss" in results.columns:
+            if check_number(float(val_seg_loss)):
+                grid_plot.add_scalar("val/seg loss", float(val_seg_loss), int(x))
         # visualize train batch
         batch = f"train_batch{x-1}.jpg"
         local_train_batches_path = os.path.join(local_artifacts_dir, batch)
@@ -2604,6 +2669,9 @@ def auto_train(request: Request):
             tf_train_batches_info = api.file.upload(
                 team_id, local_train_batches_path, remote_train_batches_path
             )
+            train_batches_gallery.append(tf_train_batches_info.storage_path)
+            if x == 1:
+                train_batches_gallery_f.show()
 
     watcher = Watcher(
         watch_file,
@@ -2788,6 +2856,8 @@ def auto_train(request: Request):
     watcher.running = False
 
     # visualize model predictions
+    making_training_vis_f.show()
+    # visualize model predictions
     for i in range(4):
         val_batch_labels_id, val_batch_preds_id = None, None
         labels_path = os.path.join(local_artifacts_dir, f"val_batch{i}_labels.jpg")
@@ -2796,12 +2866,27 @@ def auto_train(request: Request):
                 remote_images_path, f"val_batch{i}_labels.jpg"
             )
             tf_labels_info = api.file.upload(team_id, labels_path, remote_labels_path)
+            val_batch_labels_id = val_batches_gallery.append(
+                image_url=tf_labels_info.storage_path,
+                title="labels",
+            )
         preds_path = os.path.join(local_artifacts_dir, f"val_batch{i}_pred.jpg")
         if os.path.exists(preds_path):
             remote_preds_path = os.path.join(
                 remote_images_path, f"val_batch{i}_pred.jpg"
             )
             tf_preds_info = api.file.upload(team_id, preds_path, remote_preds_path)
+            val_batch_preds_id = val_batches_gallery.append(
+                image_url=tf_preds_info.storage_path,
+                title="predictions",
+            )
+        if val_batch_labels_id and val_batch_preds_id:
+            val_batches_gallery.sync_images([val_batch_labels_id, val_batch_preds_id])
+        if i == 0:
+            val_batches_gallery_f.show()
+
+    stop_training_tooltip.loading = False
+    stop_training_tooltip.hide()
 
     # visualize additional training results
     confusion_matrix_path = os.path.join(
@@ -2814,32 +2899,47 @@ def auto_train(request: Request):
         tf_confusion_matrix_info = api.file.upload(
             team_id, confusion_matrix_path, remote_confusion_matrix_path
         )
+        if not app.is_stopped():
+            additional_gallery.append(tf_confusion_matrix_info.storage_path)
+            additional_gallery_f.show()
     pr_curve_path = os.path.join(local_artifacts_dir, "PR_curve.png")
     if os.path.exists(pr_curve_path):
         remote_pr_curve_path = os.path.join(remote_images_path, "PR_curve.png")
         tf_pr_curve_info = api.file.upload(team_id, pr_curve_path, remote_pr_curve_path)
+        if not app.is_stopped():
+            additional_gallery.append(tf_pr_curve_info.storage_path)
     f1_curve_path = os.path.join(local_artifacts_dir, "F1_curve.png")
     if os.path.exists(f1_curve_path):
         remote_f1_curve_path = os.path.join(remote_images_path, "F1_curve.png")
         tf_f1_curve_info = api.file.upload(team_id, f1_curve_path, remote_f1_curve_path)
+        if not app.is_stopped():
+            additional_gallery.append(tf_f1_curve_info.storage_path)
     box_f1_curve_path = os.path.join(local_artifacts_dir, "BoxF1_curve.png")
     if os.path.exists(box_f1_curve_path):
         remote_box_f1_curve_path = os.path.join(remote_images_path, "BoxF1_curve.png")
         tf_box_f1_curve_info = api.file.upload(
             team_id, box_f1_curve_path, remote_box_f1_curve_path
         )
+        if not app.is_stopped():
+            additional_gallery.append(tf_box_f1_curve_info.storage_path)
     pose_f1_curve_path = os.path.join(local_artifacts_dir, "PoseF1_curve.png")
     if os.path.exists(pose_f1_curve_path):
         remote_pose_f1_curve_path = os.path.join(remote_images_path, "PoseF1_curve.png")
         tf_pose_f1_curve_info = api.file.upload(
             team_id, pose_f1_curve_path, remote_pose_f1_curve_path
         )
+        if not app.is_stopped():
+            additional_gallery.append(tf_pose_f1_curve_info.storage_path)
     mask_f1_curve_path = os.path.join(local_artifacts_dir, "MaskF1_curve.png")
     if os.path.exists(mask_f1_curve_path):
         remote_mask_f1_curve_path = os.path.join(remote_images_path, "MaskF1_curve.png")
         tf_mask_f1_curve_info = api.file.upload(
             team_id, mask_f1_curve_path, remote_mask_f1_curve_path
         )
+        if not app.is_stopped():
+            additional_gallery.append(tf_mask_f1_curve_info.storage_path)
+
+    making_training_vis_f.hide()
 
     # rename best checkpoint file
     if not os.path.isfile(watch_file):
