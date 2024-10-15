@@ -75,6 +75,8 @@ from supervisely.nn.inference import SessionJSON
 from supervisely.nn import TaskType
 from ultralytics.utils.metrics import ConfusionMatrix
 from src.early_stopping.custom_yolo import YOLO as CustomYOLO
+import ruamel.yaml
+import io
 
 
 ConfusionMatrix.plot = custom_plot
@@ -2690,6 +2692,37 @@ def auto_train(request: Request):
     image_size_input.value = image_size
     select_optimizer.set_value(value=optimizer)
     n_workers_input.value = n_workers
+
+    additional_params_text = train_settings_editor.get_text()
+    ryaml = ruamel.yaml.YAML()
+    additional_params_dict = ryaml.load(additional_params_text)
+    additional_params_dict["lr0"] = lr0
+    additional_params_dict["lrf"] = lrf
+    additional_params_dict["momentum"] = momentum
+    additional_params_dict["weight_decay"] = weight_decay
+    additional_params_dict["warmup_epochs"] = warmup_epochs
+    additional_params_dict["warmup_momentum"] = warmup_momentum
+    additional_params_dict["warmup_bias_lr"] = warmup_bias_lr
+    additional_params_dict["amp"] = amp
+    additional_params_dict["hsv_h"] = hsv_h
+    additional_params_dict["hsv_s"] = hsv_s
+    additional_params_dict["hsv_v"] = hsv_v
+    additional_params_dict["degrees"] = degrees
+    additional_params_dict["translate"] = translate
+    additional_params_dict["scale"] = scale
+    additional_params_dict["shear"] = shear
+    additional_params_dict["perspective"] = perspective
+    additional_params_dict["flipud"] = flipud
+    additional_params_dict["fliplr"] = fliplr
+    if task_type == "pose estimation":
+        additional_params_dict["fliplr"] = 0.0
+    additional_params_dict["mixup"] = mixup
+    additional_params_dict["copy_paste"] = copy_paste
+    stream = io.BytesIO()
+    ryaml.dump(additional_params_dict, stream)
+    additional_params_str = stream.getvalue()
+    additional_params_str = additional_params_str.decode("utf-8")
+    train_settings_editor.set_text(additional_params_str)
 
     save_train_params_button.hide()
     train_params_done.show()
