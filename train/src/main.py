@@ -2253,6 +2253,10 @@ def start_training():
 def auto_train(request: Request):
     sly.logger.info("Starting automatic training session...")
     state = request.state.state
+
+    if "yaml_string" in state:
+        state = yaml.safe_load(state["yaml_string"])
+
     project_id = state["project_id"]
     task_type = state["task_type"]
     use_cache = state.get("use_cache", True)

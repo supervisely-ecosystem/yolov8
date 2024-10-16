@@ -60,43 +60,16 @@ else:
 
 sly.logger.info(f"Session started: #{task_id}")
 
+# read yaml file with training parameters
+train_params_filepath = "scripts/auto_train_params.yaml"
+with open(train_params_filepath, "r") as f:
+    train_params = f.read()
 # :green_book: You can set any parameters you want to customize training in the data field
 api.task.send_request(
     task_id,
     "auto_train",
     data={
-        "project_id": PROJECT_ID,
-        # "dataset_ids": [DATASET_ID], # optional (specify if you want to train on specific datasets)
-        "task_type": task_type,
-        "model": "YOLOv8n-det (COCO)",
-        "train_mode": "finetune",  # finetune / scratch
-        "n_epochs": 10,
-        "patience": 30,
-        "batch_size": 16,
-        "input_image_size": 640,
-        "optimizer": "AdamW",  # AdamW, Adam, SGD, RMSProp
-        "n_workers": 8,
-        "lr0": 0.01,
-        "lrf": 0.01,
-        "momentum": 0.7,
-        "weight_decay": 0.0005,
-        "warmup_epochs": 3.0,
-        "warmup_momentum": 0.8,
-        "warmup_bias_lr": 0.1,
-        "amp": True,
-        "hsv_h": 0.015,
-        "hsv_s": 0.4,
-        "hsv_v": 0.4,
-        "degrees": 0.0,
-        "translate": 0.0,
-        "scale": 0.0,
-        "shear": 0.0,
-        "perspective": 0.0,
-        "flipud": 0.0,
-        "fliplr": 0.5,
-        "mosaic": 0.0,
-        "mixup": 0.0,
-        "copy_paste": 0.0,
+        "yaml_string": train_params,
     },  # :green_book: train paramaters
     timeout=10e6,
 )
