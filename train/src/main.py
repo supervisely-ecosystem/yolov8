@@ -73,9 +73,10 @@ from supervisely.nn.benchmark import (
 )
 from supervisely.nn.inference import SessionJSON
 from supervisely.nn import TaskType
-from ultralytics import YOLO
 from ultralytics.utils.metrics import ConfusionMatrix
 from src.early_stopping.custom_yolo import YOLO as CustomYOLO
+import ruamel.yaml
+import io
 
 
 ConfusionMatrix.plot = custom_plot
@@ -90,6 +91,7 @@ api = sly.Api(retry_count=7)
 team_id = sly.env.team_id()
 server_address = sly.env.server_address()
 
+
 def update_split_tabs_for_nested_datasets(selected_dataset_ids):
     global dataset_ids, train_val_split, ds_name_to_id
     sum_items_count = 0
@@ -99,6 +101,7 @@ def update_split_tabs_for_nested_datasets(selected_dataset_ids):
 
     dataset_id_to_info = {}
     ds_name_to_id = {}
+
     def _get_dataset_ids_infos_map(ds_tree):
         for ds_info in ds_tree.keys():
             dataset_id_to_info[ds_info.id] = ds_info
@@ -116,12 +119,13 @@ def update_split_tabs_for_nested_datasets(selected_dataset_ids):
         return full_name
 
     for ds_id in selected_dataset_ids:
+
         def _get_dataset_infos(ds_tree, nested=False):
 
             for ds_info in ds_tree.keys():
                 need_add = ds_info.id == ds_id or nested
                 if need_add:
-                    temp_dataset_infos.append(ds_info)                        
+                    temp_dataset_infos.append(ds_info)
                     name = _get_full_name(ds_info.id)
                     temp_dataset_names.add(name)
                     ds_name_to_id[name] = ds_info.id
@@ -140,7 +144,9 @@ def update_split_tabs_for_nested_datasets(selected_dataset_ids):
 
     split_methods.append("Random")
     tabs_descriptions.append("Shuffle data and split with defined probability")
-    contents.append(Container([RandomSplitsTable(sum_items_count)], direction="vertical", gap=5))
+    contents.append(
+        Container([RandomSplitsTable(sum_items_count)], direction="vertical", gap=5)
+    )
 
     split_methods.append("Based on item tags")
     tabs_descriptions.append("Images should have assigned train or val tag")
@@ -168,10 +174,14 @@ def update_split_tabs_for_nested_datasets(selected_dataset_ids):
         title="Validation dataset(s)",
         description="all images in selected dataset(s) are considered as validation set",
     )
-    
-    contents.append(Container(
-        widgets=[notification_box, train_field, val_field], direction="vertical", gap=5
-    ))
+
+    contents.append(
+        Container(
+            widgets=[notification_box, train_field, val_field],
+            direction="vertical",
+            gap=5,
+        )
+    )
     content = RadioTabs(
         titles=split_methods,
         descriptions=tabs_descriptions,
@@ -180,6 +190,7 @@ def update_split_tabs_for_nested_datasets(selected_dataset_ids):
     train_val_split._content = content
     train_val_split.update_data()
     train_val_split_area.reload()
+
 
 # function for updating global variables
 def update_globals(new_dataset_ids):
@@ -518,7 +529,9 @@ n_frozen_layers_input_f = Field(
 n_frozen_layers_input_f.hide()
 
 # Model Benchmark evaluation
-run_model_benchmark_checkbox = Checkbox(content="Run Model Benchmark evaluation", checked=True)
+run_model_benchmark_checkbox = Checkbox(
+    content="Run Model Benchmark evaluation", checked=True
+)
 run_speedtest_checkbox = Checkbox(content="Run speed test", checked=True)
 model_benchmark_f = Field(
     Container(
@@ -531,7 +544,9 @@ model_benchmark_f = Field(
     description=f"Generate evaluation dashboard with visualizations and detailed analysis of the model performance after training. The best checkpoint will be used for evaluation. You can also run speed test to evaluate model inference speed.",
 )
 docs_link = '<a href="https://docs.supervisely.com/neural-networks/model-evaluation-benchmark/" target="_blank">documentation</a>'
-model_benchmark_learn_more = Text(f"Learn more about Model Benchmark in the {docs_link}.", status="info")
+model_benchmark_learn_more = Text(
+    f"Learn more about Model Benchmark in the {docs_link}.", status="info"
+)
 
 # ONNX / TensorRT export
 export_model_switch = Switch(switched=False)
@@ -542,18 +557,22 @@ export_model_switch_f = Field(
     "Exported model can be deployed in various frameworks and used for efficient inference on edge devices.",
 )
 export_onnx_checkbox = Checkbox(content="Export to ONNX", checked=False)
-export_tensorrt_checkbox = Checkbox(content="Export to TensorRT (may take some time)", checked=False)
+export_tensorrt_checkbox = Checkbox(
+    content="Export to TensorRT (may take some time)", checked=False
+)
 export_fp16_switch = Switch(switched=False)
 export_fp16_switch_f = Field(
     content=export_fp16_switch,
     title="FP16 mode",
     description="Export model in FP16 precision to reduce model size and increase inference speed.",
 )
-export_model_container = Container([
-    export_onnx_checkbox,
-    export_tensorrt_checkbox,
-    export_fp16_switch_f,
-])
+export_model_container = Container(
+    [
+        export_onnx_checkbox,
+        export_tensorrt_checkbox,
+        export_fp16_switch_f,
+    ]
+)
 export_model_container.hide()
 
 additional_config_items = [
@@ -1902,12 +1921,13 @@ def start_training():
                 "nodes_order": nodes_order,
             }
         torch.save(weights_dict, weights_filepath)
-    
+
     # add model name to saved weights
     def add_sly_metadata_to_ckpt(ckpt_path):
         loaded = torch.load(ckpt_path, map_location="cpu")
         loaded["sly_metadata"] = {"model_name": selected_model_name}
         torch.save(loaded, ckpt_path)
+
     best_path = os.path.join(local_artifacts_dir, "weights", best_filename)
     last_path = os.path.join(local_artifacts_dir, "weights", "last.pt")
     if os.path.exists(best_path):
@@ -1993,7 +2013,9 @@ def start_training():
                 )
                 creating_report_f.show()
                 model_benchmark_pbar.show()
-                model_benchmark_pbar(message="Starting Model Benchmark evaluation...", total=1)
+                model_benchmark_pbar(
+                    message="Starting Model Benchmark evaluation...", total=1
+                )
 
                 # 0. Serve trained model
                 m = YOLOv8ModelMB(
@@ -2018,7 +2040,7 @@ def start_training():
                 )
                 m._load_model(deploy_params)
                 m.serve()
-                m.model.overrides['verbose'] = False
+                m.model.overrides["verbose"] = False
                 session = SessionJSON(api, session_url="http://localhost:8000")
                 sly.fs.remove_dir(g.app_data_dir + "/benchmark")
 
@@ -2035,24 +2057,34 @@ def start_training():
                         benchmark_dataset_ids = (
                             train_val_split._val_ds_select.get_selected_ids()
                         )
-                        train_dataset_ids = train_val_split._train_ds_select.get_selected_ids()
+                        train_dataset_ids = (
+                            train_val_split._train_ds_select.get_selected_ids()
+                        )
                     else:
                         benchmark_dataset_ids = [
-                            ds_name_to_id[d] for d in train_val_split._val_ds_select.get_value()
+                            ds_name_to_id[d]
+                            for d in train_val_split._val_ds_select.get_value()
                         ]
                         train_dataset_ids = [
-                            ds_name_to_id[d] for d in train_val_split._train_ds_select.get_value()
+                            ds_name_to_id[d]
+                            for d in train_val_split._train_ds_select.get_value()
                         ]
                 else:
+
                     def get_image_infos_by_split(split: list):
-                        ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
+                        ds_infos_dict = {
+                            ds_info.name: ds_info for ds_info in dataset_infos
+                        }
                         image_names_per_dataset = {}
                         for item in split:
-                            image_names_per_dataset.setdefault(item.dataset_name, []).append(
-                                item.name
-                            )
+                            image_names_per_dataset.setdefault(
+                                item.dataset_name, []
+                            ).append(item.name)
                         image_infos = []
-                        for dataset_name, image_names in image_names_per_dataset.items():
+                        for (
+                            dataset_name,
+                            image_names,
+                        ) in image_names_per_dataset.items():
                             if "/" in dataset_name:
                                 dataset_name = dataset_name.split("/")[-1]
                             ds_info = ds_infos_dict[dataset_name]
@@ -2069,6 +2101,7 @@ def start_training():
                                 )
                             )
                         return image_infos
+
                     val_image_infos = get_image_infos_by_split(val_set)
                     train_image_infos = get_image_infos_by_split(train_set)
                     benchmark_images_ids = [img_info.id for img_info in val_image_infos]
@@ -2100,7 +2133,7 @@ def start_training():
                     raise ValueError(
                         f"Model benchmark for task type {task_type} is not implemented (coming soon)"
                     )
-                
+
                 train_info = {
                     "app_session_id": g.app_session_id,
                     "train_dataset_ids": train_dataset_ids,
@@ -2113,7 +2146,9 @@ def start_training():
                 bm.run_inference(session)
 
                 # 3. Pull results from the server
-                gt_project_path, dt_project_path = bm.download_projects(save_images=False)
+                gt_project_path, dt_project_path = bm.download_projects(
+                    save_images=False
+                )
 
                 # 4. Evaluate
                 bm._evaluate(gt_project_path, dt_project_path)
@@ -2168,7 +2203,11 @@ def start_training():
     if not model_benchmark_done:
         benchmark_report_template = None
     w.workflow_output(
-        api, model_filename, remote_artifacts_dir, best_filename, benchmark_report_template
+        api,
+        model_filename,
+        remote_artifacts_dir,
+        best_filename,
+        benchmark_report_template,
     )
     # ----------------------------------------------- - ---------------------------------------------- #
 
@@ -2214,9 +2253,15 @@ def start_training():
 def auto_train(request: Request):
     sly.logger.info("Starting automatic training session...")
     state = request.state.state
+
+    if "yaml_string" in state:
+        state = yaml.safe_load(state["yaml_string"])
+
     project_id = state["project_id"]
     task_type = state["task_type"]
     use_cache = state.get("use_cache", True)
+
+    select_data_button.hide()
 
     local_dir = g.root_model_checkpoint_dir
     if task_type == "object detection":
@@ -2235,6 +2280,22 @@ def auto_train(request: Request):
         local_artifacts_dir = os.path.join(local_dir, "segment", "train")
         models_data = g.seg_models_data
 
+    task_type_select.set_value(task_type)
+    models_table_columns = [
+        key
+        for key in models_data[0].keys()
+        if key not in ["weights_url", "yaml_config"]
+    ]
+    models_table_subtitles = [None] * len(models_table_columns)
+    models_table_rows = []
+    for element in models_data:
+        models_table_rows.append(list(element.values())[:-2])
+    models_table.set_data(
+        columns=models_table_columns,
+        rows=models_table_rows,
+        subtitles=models_table_subtitles,
+    )
+
     sly.logger.info(f"Local artifacts dir: {local_artifacts_dir}")
 
     if os.path.exists(local_artifacts_dir):
@@ -2250,6 +2311,16 @@ def auto_train(request: Request):
             api.dataset.get_info_by_id(dataset_id) for dataset_id in dataset_ids
         ]
 
+    dataset_selector.disable()
+    classes_table.read_project_from_id(project_id, dataset_ids=dataset_ids)
+    classes_table.select_all()
+    selected_classes = classes_table.get_selected_classes()
+    _update_select_classes_button(selected_classes)
+
+    stepper.set_active_step(1)
+    card_classes.unlock()
+    card_classes.uncollapse()
+
     n_images = sum([info.images_count for info in dataset_infos])
     download_project(
         api=api,
@@ -2259,9 +2330,23 @@ def auto_train(request: Request):
         progress=progress_bar_download_project,
     )
 
-    # remove unselected classes
     project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
     selected_classes = [cls.name for cls in project_meta.obj_classes]
+
+    n_classes = len(classes_table.get_selected_classes())
+    if n_classes > 1:
+        classes_done.text = f"{n_classes} classes were selected successfully"
+    else:
+        classes_done.text = f"{n_classes} class was selected successfully"
+
+    select_classes_button.hide()
+    classes_done.show()
+    select_other_classes_button.show()
+    classes_table.disable()
+    task_type_select.disable()
+    stepper.set_active_step(2)
+    card_train_val_split.unlock()
+    card_train_val_split.uncollapse()
 
     # remove classes with unnecessary shapes
     if task_type != "object detection":
@@ -2327,6 +2412,16 @@ def auto_train(request: Request):
         train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
         train_set, val_set = train_val_split.get_splits()
     verify_train_val_sets(train_set, val_set)
+
+    train_val_split.disable()
+    unlabeled_images_select.disable()
+    split_done.show()
+    split_data_button.hide()
+    resplit_data_button.show()
+    stepper.set_active_step(3)
+    card_model_selection.unlock()
+    card_model_selection.uncollapse()
+
     # convert dataset from supervisely to yolo format
     if os.path.exists(g.yolov8_project_dir):
         sly.fs.clean_dir(g.yolov8_project_dir)
@@ -2373,7 +2468,7 @@ def auto_train(request: Request):
         weights_url = selected_dict["weights_url"]
         model_filename = weights_url.split("/")[-1]
         selected_model_name = selected_dict["Model"].split(" ")[0]  # "YOLOv8n-det"
-        if "train_mode" in state and state["train_mode"] == "Finetune mode":
+        if "train_mode" in state and state["train_mode"] == "finetune":
             pretrained = True
             weights_dst_path = os.path.join(g.app_data_dir, model_filename)
             with urlopen(weights_url) as file:
@@ -2436,6 +2531,17 @@ def auto_train(request: Request):
     #     except Exception:
     #         selected_model_name = "custom_model.pt"
 
+    model_select_done.show()
+    model_not_found_text.hide()
+    select_model_button.hide()
+    model_tabs.disable()
+    models_table.disable()
+    model_path_input.disable()
+    reselect_model_button.show()
+    stepper.set_active_step(4)
+    card_train_params.unlock()
+    card_train_params.uncollapse()
+
     # ---------------------------------- Init And Set Workflow Input --------------------------------- #
     w.workflow_input(api, project_info, file_info)
     # ----------------------------------------------- - ---------------------------------------------- #
@@ -2466,10 +2572,14 @@ def auto_train(request: Request):
     additional_params = yaml.safe_load(additional_params)
     if task_type == "pose estimation":
         additional_params["fliplr"] = 0.0
+
     # set up epoch progress bar and grid plot
     pd.set_option("display.max_columns", None)
     pd.set_option("display.width", None)
     pd.set_option("display.max_colwidth", None)
+
+    grid_plot_f.show()
+    plot_notification.show()
 
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
     plotted_train_batches = []
@@ -2485,10 +2595,71 @@ def auto_train(request: Request):
             return False
 
     def on_results_file_changed(filepath, pbar):
+        # read results file
         results = pd.read_csv(filepath)
         results.columns = [col.replace(" ", "") for col in results.columns]
         print(results.tail(1))
+        # get losses values
+        train_box_loss = results["train/box_loss"].iat[-1]
+        train_cls_loss = results["train/cls_loss"].iat[-1]
+        train_dfl_loss = results["train/dfl_loss"].iat[-1]
+        if "train/pose_loss" in results.columns:
+            train_pose_loss = results["train/pose_loss"].iat[-1]
+        if "train/kobj_loss" in results.columns:
+            train_kobj_loss = results["train/kobj_loss"].iat[-1]
+        if "train/seg_loss" in results.columns:
+            train_seg_loss = results["train/seg_loss"].iat[-1]
+        precision = results["metrics/precision(B)"].iat[-1]
+        recall = results["metrics/recall(B)"].iat[-1]
+        val_box_loss = results["val/box_loss"].iat[-1]
+        val_cls_loss = results["val/cls_loss"].iat[-1]
+        val_dfl_loss = results["val/dfl_loss"].iat[-1]
+        if "val/pose_loss" in results.columns:
+            val_pose_loss = results["val/pose_loss"].iat[-1]
+        if "val/kobj_loss" in results.columns:
+            val_kobj_loss = results["val/kobj_loss"].iat[-1]
+        if "val/seg_loss" in results.columns:
+            val_seg_loss = results["val/seg_loss"].iat[-1]
+        # update progress bar
         x = results["epoch"].iat[-1]
+        pbar.update(int(x) + 1 - pbar.n)
+        # add new points to plots
+        if check_number(float(train_box_loss)):
+            grid_plot.add_scalar("train/box loss", float(train_box_loss), int(x))
+        if check_number(float(train_cls_loss)):
+            grid_plot.add_scalar("train/cls loss", float(train_cls_loss), int(x))
+        if check_number(float(train_dfl_loss)):
+            grid_plot.add_scalar("train/dfl loss", float(train_dfl_loss), int(x))
+        if "train/pose_loss" in results.columns:
+            if check_number(float(train_pose_loss)):
+                grid_plot.add_scalar("train/pose loss", float(train_pose_loss), int(x))
+        if "train/kobj_loss" in results.columns:
+            if check_number(float(train_kobj_loss)):
+                grid_plot.add_scalar("train/kobj loss", float(train_kobj_loss), int(x))
+        if "train/seg_loss" in results.columns:
+            if check_number(float(train_seg_loss)):
+                grid_plot.add_scalar("train/seg loss", float(train_seg_loss), int(x))
+        if check_number(float(precision)):
+            grid_plot.add_scalar(
+                "precision & recall/precision", float(precision), int(x)
+            )
+        if check_number(float(recall)):
+            grid_plot.add_scalar("precision & recall/recall", float(recall), int(x))
+        if check_number(float(val_box_loss)):
+            grid_plot.add_scalar("val/box loss", float(val_box_loss), int(x))
+        if check_number(float(val_cls_loss)):
+            grid_plot.add_scalar("val/cls loss", float(val_cls_loss), int(x))
+        if check_number(float(val_dfl_loss)):
+            grid_plot.add_scalar("val/dfl loss", float(val_dfl_loss), int(x))
+        if "val/pose_loss" in results.columns:
+            if check_number(float(val_pose_loss)):
+                grid_plot.add_scalar("val/pose loss", float(val_pose_loss), int(x))
+        if "val/kobj_loss" in results.columns:
+            if check_number(float(val_kobj_loss)):
+                grid_plot.add_scalar("val/kobj loss", float(val_kobj_loss), int(x))
+        if "val/seg_loss" in results.columns:
+            if check_number(float(val_seg_loss)):
+                grid_plot.add_scalar("val/seg loss", float(val_seg_loss), int(x))
         # visualize train batch
         batch = f"train_batch{x-1}.jpg"
         local_train_batches_path = os.path.join(local_artifacts_dir, batch)
@@ -2502,11 +2673,16 @@ def auto_train(request: Request):
             tf_train_batches_info = api.file.upload(
                 team_id, local_train_batches_path, remote_train_batches_path
             )
+            train_batches_gallery.append(tf_train_batches_info.storage_path)
+            if x == 1:
+                train_batches_gallery_f.show()
 
     watcher = Watcher(
         watch_file,
         on_results_file_changed,
-        progress_bar_epochs(message="Epochs:", total=n_epochs_input.get_value()),
+        progress_bar_epochs(
+            message="Epochs:", total=state.get("n_epochs", n_epochs_input.get_value())
+        ),
     )
     # train model and upload best checkpoints to team files
     device = 0 if torch.cuda.is_available() else "cpu"
@@ -2550,46 +2726,132 @@ def auto_train(request: Request):
 
         threading.Thread(target=train_batch_watcher_func, daemon=True).start()
 
+    # extract training hyperparameters
+    n_epochs = state.get("n_epochs", n_epochs_input.get_value())
+    patience = state.get("patience", patience_input.get_value())
+    batch_size = state.get("batch_size", batch_size_input.get_value())
+    image_size = state.get("input_image_size", image_size_input.get_value())
+    n_workers = state.get("n_workers", n_workers_input.get_value())
+    optimizer = state.get("optimizer", select_optimizer.get_value())
+    lr0 = state.get("lr0", additional_params["lr0"])
+    lrf = state.get("lrf", additional_params["lr0"])
+    momentum = state.get("momentum", additional_params["momentum"])
+    weight_decay = state.get("weight_decay", additional_params["weight_decay"])
+    warmup_epochs = state.get("warmup_epochs", additional_params["warmup_epochs"])
+    warmup_momentum = state.get("warmup_momentum", additional_params["warmup_momentum"])
+    warmup_bias_lr = state.get("warmup_bias_lr", additional_params["warmup_bias_lr"])
+    amp = state.get("amp", additional_params["amp"])
+    hsv_h = state.get("hsv_h", additional_params["hsv_h"])
+    hsv_s = state.get("hsv_s", additional_params["hsv_s"])
+    hsv_v = state.get("hsv_v", additional_params["hsv_v"])
+    degrees = state.get("degrees", additional_params["degrees"])
+    translate = state.get("translate", additional_params["translate"])
+    scale = state.get("scale", additional_params["scale"])
+    shear = state.get("shear", additional_params["shear"])
+    perspective = state.get("perspective", additional_params["perspective"])
+    flipud = state.get("flipud", additional_params["flipud"])
+    fliplr = state.get("fliplr", additional_params["fliplr"])
+    mosaic = state.get("mosaic", additional_params["mosaic"])
+    mixup = state.get("mixup", additional_params["mixup"])
+    copy_paste = state.get("copy_paste", additional_params["copy_paste"])
+
+    if pretrained:
+        select_train_mode.set_value(value="Finetune mode")
+    else:
+        select_train_mode.set_value(value="Scratch mode")
+
+    n_epochs_input.value = n_epochs
+    patience_input.value = patience
+    batch_size_input.value = batch_size
+    image_size_input.value = image_size
+    select_optimizer.set_value(value=optimizer)
+    n_workers_input.value = n_workers
+
+    additional_params_text = train_settings_editor.get_text()
+    ryaml = ruamel.yaml.YAML()
+    additional_params_dict = ryaml.load(additional_params_text)
+    additional_params_dict["lr0"] = lr0
+    additional_params_dict["lrf"] = lrf
+    additional_params_dict["momentum"] = momentum
+    additional_params_dict["weight_decay"] = weight_decay
+    additional_params_dict["warmup_epochs"] = warmup_epochs
+    additional_params_dict["warmup_momentum"] = warmup_momentum
+    additional_params_dict["warmup_bias_lr"] = warmup_bias_lr
+    additional_params_dict["amp"] = amp
+    additional_params_dict["hsv_h"] = hsv_h
+    additional_params_dict["hsv_s"] = hsv_s
+    additional_params_dict["hsv_v"] = hsv_v
+    additional_params_dict["degrees"] = degrees
+    additional_params_dict["translate"] = translate
+    additional_params_dict["scale"] = scale
+    additional_params_dict["shear"] = shear
+    additional_params_dict["perspective"] = perspective
+    additional_params_dict["flipud"] = flipud
+    additional_params_dict["fliplr"] = fliplr
+    if task_type == "pose estimation":
+        additional_params_dict["fliplr"] = 0.0
+    additional_params_dict["mixup"] = mixup
+    additional_params_dict["copy_paste"] = copy_paste
+    stream = io.BytesIO()
+    ryaml.dump(additional_params_dict, stream)
+    additional_params_str = stream.getvalue()
+    additional_params_str = additional_params_str.decode("utf-8")
+    train_settings_editor.set_text(additional_params_str)
+
+    save_train_params_button.hide()
+    train_params_done.show()
+    reselect_train_params_button.show()
+    select_train_mode.disable()
+    n_epochs_input.disable()
+    patience_input.disable()
+    batch_size_input.disable()
+    image_size_input.disable()
+    select_optimizer.disable()
+    n_workers_input.disable()
+    run_model_benchmark_checkbox.disable()
+    run_speedtest_checkbox.disable()
+    export_model_switch.disable()
+    export_onnx_checkbox.disable()
+    export_tensorrt_checkbox.disable()
+    train_settings_editor.readonly = True
+    stepper.set_active_step(5)
+    card_train_progress.unlock()
+    card_train_progress.uncollapse()
+
     def train_model():
         model.train(
             data=data_path,
             project=checkpoint_dir,
-            epochs=state.get("n_epochs", n_epochs_input.get_value()),
-            patience=state.get("patience", patience_input.get_value()),
-            batch=state.get("batch_size", batch_size_input.get_value()),
-            imgsz=state.get("input_image_size", image_size_input.get_value()),
+            epochs=n_epochs,
+            patience=patience,
+            batch=batch_size,
+            imgsz=image_size,
             save_period=1000,
             device=device,
-            workers=state.get("n_workers", n_workers_input.get_value()),
-            optimizer=state.get("optimizer", select_optimizer.get_value()),
+            workers=n_workers,
+            optimizer=optimizer,
             pretrained=pretrained,
-            lr0=state.get("lr0", additional_params["lr0"]),
-            lrf=state.get("lrf", additional_params["lr0"]),
-            momentum=state.get("momentum", additional_params["momentum"]),
-            weight_decay=state.get("weight_decay", additional_params["weight_decay"]),
-            warmup_epochs=state.get(
-                "warmup_epochs", additional_params["warmup_epochs"]
-            ),
-            warmup_momentum=state.get(
-                "warmup_momentum", additional_params["warmup_momentum"]
-            ),
-            warmup_bias_lr=state.get(
-                "warmup_bias_lr", additional_params["warmup_bias_lr"]
-            ),
-            amp=state.get("amp", additional_params["amp"]),
-            hsv_h=state.get("hsv_h", additional_params["hsv_h"]),
-            hsv_s=state.get("hsv_s", additional_params["hsv_s"]),
-            hsv_v=state.get("hsv_v", additional_params["hsv_v"]),
-            degrees=state.get("degrees", additional_params["degrees"]),
-            translate=state.get("translate", additional_params["translate"]),
-            scale=state.get("scale", additional_params["scale"]),
-            shear=state.get("shear", additional_params["shear"]),
-            perspective=state.get("perspective", additional_params["perspective"]),
-            flipud=state.get("flipud", additional_params["flipud"]),
-            fliplr=state.get("fliplr", additional_params["fliplr"]),
-            mosaic=state.get("mosaic", additional_params["mosaic"]),
-            mixup=state.get("mixup", additional_params["mixup"]),
-            copy_paste=state.get("copy_paste", additional_params["copy_paste"]),
+            lr0=lr0,
+            lrf=lrf,
+            momentum=momentum,
+            weight_decay=weight_decay,
+            warmup_epochs=warmup_epochs,
+            warmup_momentum=warmup_momentum,
+            warmup_bias_lr=warmup_bias_lr,
+            amp=amp,
+            hsv_h=hsv_h,
+            hsv_s=hsv_s,
+            hsv_v=hsv_v,
+            degrees=degrees,
+            translate=translate,
+            scale=scale,
+            shear=shear,
+            perspective=perspective,
+            flipud=flipud,
+            fliplr=fliplr,
+            mosaic=mosaic,
+            mixup=mixup,
+            copy_paste=copy_paste,
         )
 
     stop_training_tooltip.show()
@@ -2598,7 +2860,11 @@ def auto_train(request: Request):
     train_thread.start()
     train_thread.join()
     watcher.running = False
+    progress_bar_iters.hide()
+    progress_bar_epochs.hide()
 
+    # visualize model predictions
+    making_training_vis_f.show()
     # visualize model predictions
     for i in range(4):
         val_batch_labels_id, val_batch_preds_id = None, None
@@ -2608,12 +2874,27 @@ def auto_train(request: Request):
                 remote_images_path, f"val_batch{i}_labels.jpg"
             )
             tf_labels_info = api.file.upload(team_id, labels_path, remote_labels_path)
+            val_batch_labels_id = val_batches_gallery.append(
+                image_url=tf_labels_info.storage_path,
+                title="labels",
+            )
         preds_path = os.path.join(local_artifacts_dir, f"val_batch{i}_pred.jpg")
         if os.path.exists(preds_path):
             remote_preds_path = os.path.join(
                 remote_images_path, f"val_batch{i}_pred.jpg"
             )
             tf_preds_info = api.file.upload(team_id, preds_path, remote_preds_path)
+            val_batch_preds_id = val_batches_gallery.append(
+                image_url=tf_preds_info.storage_path,
+                title="predictions",
+            )
+        if val_batch_labels_id and val_batch_preds_id:
+            val_batches_gallery.sync_images([val_batch_labels_id, val_batch_preds_id])
+        if i == 0:
+            val_batches_gallery_f.show()
+
+    stop_training_tooltip.loading = False
+    stop_training_tooltip.hide()
 
     # visualize additional training results
     confusion_matrix_path = os.path.join(
@@ -2626,32 +2907,47 @@ def auto_train(request: Request):
         tf_confusion_matrix_info = api.file.upload(
             team_id, confusion_matrix_path, remote_confusion_matrix_path
         )
+        if not app.is_stopped():
+            additional_gallery.append(tf_confusion_matrix_info.storage_path)
+            additional_gallery_f.show()
     pr_curve_path = os.path.join(local_artifacts_dir, "PR_curve.png")
     if os.path.exists(pr_curve_path):
         remote_pr_curve_path = os.path.join(remote_images_path, "PR_curve.png")
         tf_pr_curve_info = api.file.upload(team_id, pr_curve_path, remote_pr_curve_path)
+        if not app.is_stopped():
+            additional_gallery.append(tf_pr_curve_info.storage_path)
     f1_curve_path = os.path.join(local_artifacts_dir, "F1_curve.png")
     if os.path.exists(f1_curve_path):
         remote_f1_curve_path = os.path.join(remote_images_path, "F1_curve.png")
         tf_f1_curve_info = api.file.upload(team_id, f1_curve_path, remote_f1_curve_path)
+        if not app.is_stopped():
+            additional_gallery.append(tf_f1_curve_info.storage_path)
     box_f1_curve_path = os.path.join(local_artifacts_dir, "BoxF1_curve.png")
     if os.path.exists(box_f1_curve_path):
         remote_box_f1_curve_path = os.path.join(remote_images_path, "BoxF1_curve.png")
         tf_box_f1_curve_info = api.file.upload(
             team_id, box_f1_curve_path, remote_box_f1_curve_path
         )
+        if not app.is_stopped():
+            additional_gallery.append(tf_box_f1_curve_info.storage_path)
     pose_f1_curve_path = os.path.join(local_artifacts_dir, "PoseF1_curve.png")
     if os.path.exists(pose_f1_curve_path):
         remote_pose_f1_curve_path = os.path.join(remote_images_path, "PoseF1_curve.png")
         tf_pose_f1_curve_info = api.file.upload(
             team_id, pose_f1_curve_path, remote_pose_f1_curve_path
         )
+        if not app.is_stopped():
+            additional_gallery.append(tf_pose_f1_curve_info.storage_path)
     mask_f1_curve_path = os.path.join(local_artifacts_dir, "MaskF1_curve.png")
     if os.path.exists(mask_f1_curve_path):
         remote_mask_f1_curve_path = os.path.join(remote_images_path, "MaskF1_curve.png")
         tf_mask_f1_curve_info = api.file.upload(
             team_id, mask_f1_curve_path, remote_mask_f1_curve_path
         )
+        if not app.is_stopped():
+            additional_gallery.append(tf_mask_f1_curve_info.storage_path)
+
+    making_training_vis_f.hide()
 
     # rename best checkpoint file
     if not os.path.isfile(watch_file):
@@ -2692,6 +2988,7 @@ def auto_train(request: Request):
         loaded = torch.load(ckpt_path, map_location="cpu")
         loaded["sly_metadata"] = {"model_name": selected_model_name}
         torch.save(loaded, ckpt_path)
+
     best_path = os.path.join(local_artifacts_dir, "weights", best_filename)
     last_path = os.path.join(local_artifacts_dir, "weights", "last.pt")
     if os.path.exists(best_path):
@@ -2754,6 +3051,7 @@ def auto_train(request: Request):
                 remote_dir=upload_artifacts_dir,
                 progress_size_cb=progress_cb,
             )
+        progress_bar_upload_artifacts.hide()
     else:
         sly.logger.info(
             "Uploading training artifacts before stopping the app... (progress bar is disabled)"
@@ -2776,7 +3074,9 @@ def auto_train(request: Request):
                 )
                 creating_report_f.show()
                 model_benchmark_pbar.show()
-                model_benchmark_pbar(message="Starting Model Benchmark evaluation...", total=1)
+                model_benchmark_pbar(
+                    message="Starting Model Benchmark evaluation...", total=1
+                )
 
                 # 0. Serve trained model
                 m = YOLOv8ModelMB(
@@ -2801,7 +3101,7 @@ def auto_train(request: Request):
                 )
                 m._load_model(deploy_params)
                 m.serve()
-                m.model.overrides['verbose'] = False
+                m.model.overrides["verbose"] = False
                 session = SessionJSON(api, session_url="http://localhost:8000")
                 sly.fs.remove_dir(g.app_data_dir + "/benchmark")
 
@@ -2817,17 +3117,25 @@ def auto_train(request: Request):
                     benchmark_dataset_ids = (
                         train_val_split._val_ds_select.get_selected_ids()
                     )
-                    train_dataset_ids = train_val_split._train_ds_select.get_selected_ids()
+                    train_dataset_ids = (
+                        train_val_split._train_ds_select.get_selected_ids()
+                    )
                 else:
+
                     def get_image_infos_by_split(split: list):
-                        ds_infos_dict = {ds_info.name: ds_info for ds_info in dataset_infos}
+                        ds_infos_dict = {
+                            ds_info.name: ds_info for ds_info in dataset_infos
+                        }
                         image_names_per_dataset = {}
                         for item in split:
-                            image_names_per_dataset.setdefault(item.dataset_name, []).append(
-                                item.name
-                            )
+                            image_names_per_dataset.setdefault(
+                                item.dataset_name, []
+                            ).append(item.name)
                         image_infos = []
-                        for dataset_name, image_names in image_names_per_dataset.items():
+                        for (
+                            dataset_name,
+                            image_names,
+                        ) in image_names_per_dataset.items():
                             ds_info = ds_infos_dict[dataset_name]
                             image_infos.extend(
                                 api.image.get_list(
@@ -2842,6 +3150,7 @@ def auto_train(request: Request):
                                 )
                             )
                         return image_infos
+
                     val_image_infos = get_image_infos_by_split(val_set)
                     train_image_infos = get_image_infos_by_split(train_set)
                     benchmark_images_ids = [img_info.id for img_info in val_image_infos]
@@ -2873,7 +3182,7 @@ def auto_train(request: Request):
                     raise ValueError(
                         f"Model benchmark for task type {task_type} is not implemented (coming soon)"
                     )
-                
+
                 train_info = {
                     "app_session_id": g.app_session_id,
                     "train_dataset_ids": train_dataset_ids,
@@ -2886,7 +3195,9 @@ def auto_train(request: Request):
                 bm.run_inference(session)
 
                 # 3. Pull results from the server
-                gt_project_path, dt_project_path = bm.download_projects(save_images=False)
+                gt_project_path, dt_project_path = bm.download_projects(
+                    save_images=False
+                )
 
                 # 4. Evaluate
                 bm._evaluate(gt_project_path, dt_project_path)
@@ -2941,7 +3252,11 @@ def auto_train(request: Request):
     if not model_benchmark_done:
         benchmark_report_template = None
     w.workflow_output(
-        api, model_filename, remote_artifacts_dir, best_filename, benchmark_report_template
+        api,
+        model_filename,
+        remote_artifacts_dir,
+        best_filename,
+        benchmark_report_template,
     )
     # ----------------------------------------------- - ---------------------------------------------- #
 
@@ -2978,11 +3293,14 @@ def auto_train(request: Request):
 
 def export_weights(weights_path, selected_model_name, progress: SlyTqdm):
     from src.model_export import export_checkpoint
+
     checkpoint_info_path = dump_yaml_checkpoint_info(weights_path, selected_model_name)
     pbar = None
     fp16 = export_fp16_switch.is_switched()
     if export_tensorrt_checkbox.is_checked():
-        pbar = progress(message="Exporting model to TensorRT, this may take some time...", total=1)
+        pbar = progress(
+            message="Exporting model to TensorRT, this may take some time...", total=1
+        )
         export_checkpoint(weights_path, format="engine", fp16=fp16, dynamic=False)
         pbar.update(1)
     if export_onnx_checkbox.is_checked():
