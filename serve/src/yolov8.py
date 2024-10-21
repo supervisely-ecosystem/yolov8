@@ -666,12 +666,19 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
 
 def parse_model_name(checkpoint_name: str):
     # yolov8n
-    p = r"yolov(\d+)(\w)"
+    if "11" in checkpoint_name:
+        p = r"yolo(\d+)(\w)"
+    else:
+        p = r"yolov(\d+)(\w)"
     match = re.match(p, checkpoint_name.lower())
     version = match.group(1)
     variant = match.group(2)
-    model_name = f"YOLOv{version}{variant}"
-    architecture = f"YOLOv{version}"
+    if "11" in checkpoint_name:
+        model_name = f"YOLO{version}{variant}"
+        architecture = f"YOLO{version}"
+    else:
+        model_name = f"YOLOv{version}{variant}"
+        architecture = f"YOLOv{version}"
     return model_name, architecture
 
 
