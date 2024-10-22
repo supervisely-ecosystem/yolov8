@@ -2,8 +2,8 @@ setuptools>=70.3.0
 wheel>=0.41.0
 build>=0.10.0
 
+cachetools==4.2.4
 git+https://github.com/supervisely/supervisely.git@update-dependencies
 
 trimesh==4.5.0
 websockets==13.1
-cachetools==4.2.4
