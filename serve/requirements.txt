@@ -1,0 +1,5 @@
+git+https://github.com/supervisely/supervisely.git@update-dependencies
+
+trimesh==4.5.0
+websockets==13.1
+cachetools==5.5.0
