@@ -1,8 +1,8 @@
 
 <div align="center" markdown>
-<img src="https://github.com/user-attachments/assets/820466a4-8623-4682-bde1-414a46960291"/>  
+<img src="https://github.com/user-attachments/assets/37456854-3675-4b86-8c2c-35e6e8daf352"/>  
 
-# Train YOLOv8 | v9 | v10
+# Train YOLOv8 | v9 | v10 | 11
 
 <p align="center">
   <a href="#Overview">Overview</a> •
@@ -24,7 +24,7 @@
 
 # Overview
 
-🔥 Application now supports different checkpoints from YOLOv8, YOLOv9 and YOLOv10 architectures.
+🔥 Application now supports different checkpoints from YOLOv8, YOLOv9, YOLOv10 and YOLO11 architectures.
 
 YOLOv8 is a powerful neural network architecture that provides both decent accuracy of predictions and high speed of inference. In comparison to YOLOv5, YOLOv8 uses an anchor-free head (allowing to speed up the non-max suppression (NMS) process), a new backbone, and new loss functions.
 
@@ -32,7 +32,7 @@ YOLOv9 builds on the advancements of YOLOv8 by further improving the model's per
 
 YOLOv10, the latest iteration, introduces consistent dual assignments for NMS-free training and adopts a holistic efficiency-accuracy-driven model design strategy.
 
-This app allows you to train models using YOLOv8, YOLOv9 and YOLOv10 on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
+This app allows you to train models using YOLOv8, YOLOv9, YOLOv10 and YOLO11 on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
 
 **Export to ONNX / TensorRT:**
 

@@ -1,8 +1,8 @@
 
 <div align="center" markdown>
-<img src="https://github.com/user-attachments/assets/6cd42ea1-1dda-483e-b907-19ed48e06c45"/>  
+<img src="https://github.com/user-attachments/assets/8d234078-7d17-4c55-8c53-5534297e1e8c"/>  
 
-# Serve YOLOv8 | v9 | v10
+# Serve YOLOv8 | v9 | v10 | 11
 
 <p align="center">
   <a href="#Overview">Overview</a> •

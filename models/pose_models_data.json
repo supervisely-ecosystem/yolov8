@@ -6,7 +6,7 @@
         "params (M)": "3.3",
         "FLOPs (B)": "9.2",
         "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8n-pose.pt",
-        "yaml_config": "yolov8-pose.yaml"
+        "yaml_config": "yolov8n-pose.yaml"
     },
     {
         "Model": "YOLOv8s-pose",
@@ -15,7 +15,7 @@
         "params (M)": "11.6",
         "FLOPs (B)": "30.2",
         "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8s-pose.pt",
-        "yaml_config": "yolov8-pose.yaml"
+        "yaml_config": "yolov8s-pose.yaml"
     },
     {
         "Model": "YOLOv8m-pose",
@@ -24,7 +24,7 @@
         "params (M)": "26.4",
         "FLOPs (B)": "81.0",
         "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8m-pose.pt",
-        "yaml_config": "yolov8-pose.yaml"
+        "yaml_config": "yolov8m-pose.yaml"
     },
     {
         "Model": "YOLOv8l-pose",
@@ -33,7 +33,7 @@
         "params (M)": "44.4",
         "FLOPs (B)": "168.6",
         "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8l-pose.pt",
-        "yaml_config": "yolov8-pose.yaml"
+        "yaml_config": "yolov8l-pose.yaml"
     },
     {
         "Model": "YOLOv8x-pose",
@@ -42,7 +42,7 @@
         "params (M)": "69.4",
         "FLOPs (B)": "263.2",
         "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8x-pose.pt",
-        "yaml_config": "yolov8-pose.yaml"
+        "yaml_config": "yolov8x-pose.yaml"
     },
     {
         "Model": "YOLOv8x-pose-p6",
@@ -52,5 +52,50 @@
         "FLOPs (B)": "1066.4",
         "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8x-pose-p6.pt",
         "yaml_config": "yolov8-pose-p6.yaml"
+    },
+    {
+        "Model": "YOLO11n-pose",
+        "Size (pixels)": "640",
+        "mAP": "50.0",
+        "params (M)": "2.9",
+        "FLOPs (B)": "7.6",
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11n-pose.pt",
+        "yaml_config": "yolo11n-pose.yaml"
+    },
+    {
+        "Model": "YOLO11s-pose",
+        "Size (pixels)": "640",
+        "mAP": "58.9",
+        "params (M)": "9.9",
+        "FLOPs (B)": "23.2",
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11s-pose.pt",
+        "yaml_config": "yolo11s-pose.yaml"
+    },
+    {
+        "Model": "YOLO11m-pose",
+        "Size (pixels)": "640",
+        "mAP": "64.9",
+        "params (M)": "20.9",
+        "FLOPs (B)": "71.7",
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11m-pose.pt",
+        "yaml_config": "yolo11m-pose.yaml"
+    },
+    {
+        "Model": "YOLO11l-pose",
+        "Size (pixels)": "640",
+        "mAP": "66.1",
+        "params (M)": "26.2",
+        "FLOPs (B)": "90.7",
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11l-pose.pt",
+        "yaml_config": "yolo11l-pose.yaml"
+    },
+    {
+        "Model": "YOLO11x-pose",
+        "Size (pixels)": "640",
+        "mAP": "69.5",
+        "params (M)": "58.8",
+        "FLOPs (B)": "203.3",
+        "weights_url": "https://github.com/ultralytics/assets/releases/download/v8.3.0/yolo11x-pose.pt",
+        "yaml_config": "yolo11x-pose.yaml"
     }
 ]

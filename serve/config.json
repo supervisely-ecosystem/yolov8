@@ -1,8 +1,8 @@
 {
-  "name": "Serve YOLOv8 | v9 | v10",
+  "name": "Serve YOLOv8 | v9 | v10 | 11",
   "type": "app",
   "version": "2.0.0",
-  "description": "Deploy YOLOv8 | v9 | v10 as REST API service",
+  "description": "Deploy YOLOv8 | v9 | v10 | 11 as REST API service",
   "categories": [
     "neural network",
     "images",
@@ -11,16 +11,16 @@
     "instance segmentation",
     "serve"
   ],
-  "icon": "https://github.com/user-attachments/assets/634b2530-3a40-4c70-9b87-35af49de6338",
+  "icon": "https://github.com/user-attachments/assets/712dc827-1153-46a0-b749-f76850aca4eb",
   "icon_cover": true,
-  "poster": "https://github.com/user-attachments/assets/6cd42ea1-1dda-483e-b907-19ed48e06c45",
+  "poster": "https://github.com/user-attachments/assets/8d234078-7d17-4c55-8c53-5534297e1e8c",
   "need_gpu": false,
   "gpu": "preferred",
   "session_tags": [
     "deployed_nn"
   ],
   "community_agent": false,
-  "docker_image": "supervisely/yolov8:1.0.30",
+  "docker_image": "supervisely/yolov8:1.0.31",
   "instance_version": "6.11.19",
   "entrypoint": "python -m uvicorn src.main:m.app --app-dir ./serve --host 0.0.0.0 --port 8000 --ws websockets",
   "port": 8000,

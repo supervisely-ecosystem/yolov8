@@ -1,5 +1,5 @@
 {
-  "name": "Train YOLOv8 | v9 | v10",
+  "name": "Train YOLOv8 | v9 | v10 | 11",
   "version": "2.0.0",
   "type": "app",
   "categories": [
@@ -10,17 +10,17 @@
     "pose estimation",
     "train"
   ],
-  "description": "Dashboard to configure, start and monitor YOLOv8 | v9 | v10 training",
-  "docker_image": "supervisely/yolov8:1.0.30",
+  "description": "Dashboard to configure, start and monitor YOLOv8 | v9 | v10 | 11 training",
+  "docker_image": "supervisely/yolov8:1.0.31",
   "instance_version": "6.11.19",
   "entrypoint": "python -m uvicorn src.main:app --app-dir ./train --host 0.0.0.0 --port 8000 --ws websockets",
   "task_location": "workspace_tasks",
   "need_gpu": true,
   "gpu": "required",
   "isolate": true,
-  "icon": "https://github.com/user-attachments/assets/a61fd5ab-8aec-4daa-a4f3-67e08dce06f6",
+  "icon": "https://github.com/user-attachments/assets/fa74ebcc-f77c-49bb-be0a-3939c5f33a75",
   "icon_cover": true,
-  "poster": "https://github.com/user-attachments/assets/820466a4-8623-4682-bde1-414a46960291",
+  "poster": "https://github.com/user-attachments/assets/37456854-3675-4b86-8c2c-35e6e8daf352",
   "context_menu": {
     "target": [
       "images_project"

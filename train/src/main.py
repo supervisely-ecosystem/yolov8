@@ -1700,7 +1700,10 @@ def start_training():
             tf_train_batches_info = api.file.upload(
                 team_id, local_train_batches_path, remote_train_batches_path
             )
-            train_batches_gallery.append(tf_train_batches_info.storage_path)
+            if sly.is_production():
+                train_batches_gallery.append(tf_train_batches_info.storage_path)
+            else:
+                train_batches_gallery.append(tf_train_batches_info.full_storage_url)
             if x == 1:
                 train_batches_gallery_f.show()
 
@@ -1813,20 +1816,32 @@ def start_training():
                 remote_images_path, f"val_batch{i}_labels.jpg"
             )
             tf_labels_info = api.file.upload(team_id, labels_path, remote_labels_path)
-            val_batch_labels_id = val_batches_gallery.append(
-                image_url=tf_labels_info.storage_path,
-                title="labels",
-            )
+            if sly.is_production():
+                val_batch_labels_id = val_batches_gallery.append(
+                    image_url=tf_labels_info.storage_path,
+                    title="labels",
+                )
+            else:
+                val_batch_labels_id = val_batches_gallery.append(
+                    image_url=tf_labels_info.full_storage_url,
+                    title="labels",
+                )
         preds_path = os.path.join(local_artifacts_dir, f"val_batch{i}_pred.jpg")
         if os.path.exists(preds_path):
             remote_preds_path = os.path.join(
                 remote_images_path, f"val_batch{i}_pred.jpg"
             )
             tf_preds_info = api.file.upload(team_id, preds_path, remote_preds_path)
-            val_batch_preds_id = val_batches_gallery.append(
-                image_url=tf_preds_info.storage_path,
-                title="predictions",
-            )
+            if sly.is_production():
+                val_batch_preds_id = val_batches_gallery.append(
+                    image_url=tf_preds_info.storage_path,
+                    title="predictions",
+                )
+            else:
+                val_batch_preds_id = val_batches_gallery.append(
+                    image_url=tf_preds_info.full_storage_url,
+                    title="predictions",
+                )
         if val_batch_labels_id and val_batch_preds_id:
             val_batches_gallery.sync_images([val_batch_labels_id, val_batch_preds_id])
         if i == 0:
@@ -1847,20 +1862,29 @@ def start_training():
             team_id, confusion_matrix_path, remote_confusion_matrix_path
         )
         if not app.is_stopped():
-            additional_gallery.append(tf_confusion_matrix_info.storage_path)
+            if sly.is_production():
+                additional_gallery.append(tf_confusion_matrix_info.storage_path)
+            else:
+                additional_gallery.append(tf_confusion_matrix_info.full_storage_url)
             additional_gallery_f.show()
     pr_curve_path = os.path.join(local_artifacts_dir, "PR_curve.png")
     if os.path.exists(pr_curve_path):
         remote_pr_curve_path = os.path.join(remote_images_path, "PR_curve.png")
         tf_pr_curve_info = api.file.upload(team_id, pr_curve_path, remote_pr_curve_path)
         if not app.is_stopped():
-            additional_gallery.append(tf_pr_curve_info.storage_path)
+            if sly.is_production():
+                additional_gallery.append(tf_pr_curve_info.storage_path)
+            else:
+                additional_gallery.append(tf_pr_curve_info.full_storage_url)
     f1_curve_path = os.path.join(local_artifacts_dir, "F1_curve.png")
     if os.path.exists(f1_curve_path):
         remote_f1_curve_path = os.path.join(remote_images_path, "F1_curve.png")
         tf_f1_curve_info = api.file.upload(team_id, f1_curve_path, remote_f1_curve_path)
         if not app.is_stopped():
-            additional_gallery.append(tf_f1_curve_info.storage_path)
+            if sly.is_production():
+                additional_gallery.append(tf_f1_curve_info.storage_path)
+            else:
+                additional_gallery.append(tf_f1_curve_info.full_storage_url)
     box_f1_curve_path = os.path.join(local_artifacts_dir, "BoxF1_curve.png")
     if os.path.exists(box_f1_curve_path):
         remote_box_f1_curve_path = os.path.join(remote_images_path, "BoxF1_curve.png")
@@ -1868,7 +1892,10 @@ def start_training():
             team_id, box_f1_curve_path, remote_box_f1_curve_path
         )
         if not app.is_stopped():
-            additional_gallery.append(tf_box_f1_curve_info.storage_path)
+            if sly.is_production():
+                additional_gallery.append(tf_box_f1_curve_info.storage_path)
+            else:
+                additional_gallery.append(tf_box_f1_curve_info.full_storage_url)
     pose_f1_curve_path = os.path.join(local_artifacts_dir, "PoseF1_curve.png")
     if os.path.exists(pose_f1_curve_path):
         remote_pose_f1_curve_path = os.path.join(remote_images_path, "PoseF1_curve.png")
@@ -1876,7 +1903,10 @@ def start_training():
             team_id, pose_f1_curve_path, remote_pose_f1_curve_path
         )
         if not app.is_stopped():
-            additional_gallery.append(tf_pose_f1_curve_info.storage_path)
+            if sly.is_production():
+                additional_gallery.append(tf_pose_f1_curve_info.storage_path)
+            else:
+                additional_gallery.append(tf_pose_f1_curve_info.full_storage_url)
     mask_f1_curve_path = os.path.join(local_artifacts_dir, "MaskF1_curve.png")
     if os.path.exists(mask_f1_curve_path):
         remote_mask_f1_curve_path = os.path.join(remote_images_path, "MaskF1_curve.png")
@@ -1884,7 +1914,10 @@ def start_training():
             team_id, mask_f1_curve_path, remote_mask_f1_curve_path
         )
         if not app.is_stopped():
-            additional_gallery.append(tf_mask_f1_curve_info.storage_path)
+            if sly.is_production():
+                additional_gallery.append(tf_mask_f1_curve_info.storage_path)
+            else:
+                additional_gallery.append(tf_mask_f1_curve_info.full_storage_url)
 
     making_training_vis_f.hide()
     # rename best checkpoint file
@@ -2226,7 +2259,7 @@ def start_training():
         stepper.set_active_step(curr_step)
         card_train_artifacts.unlock()
         card_train_artifacts.uncollapse()
-        card_train_progress.collapse()
+        # card_train_progress.collapse()
 
     # upload sly_metadata.json
     yolov8_artifacts.generate_metadata(
