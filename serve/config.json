@@ -1,8 +1,8 @@
 {
-  "name": "Serve YOLOv8 | v9 | v10 | 11",
+  "name": "Serve YOLOv8 | v9 | v10 | v11",
   "type": "app",
   "version": "2.0.0",
-  "description": "Deploy YOLOv8 | v9 | v10 | 11 as REST API service",
+  "description": "Deploy YOLOv8 | v9 | v10 | v11 as REST API service",
   "categories": [
     "neural network",
     "images",
