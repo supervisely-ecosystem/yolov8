@@ -2,12 +2,12 @@
 <div align="center" markdown>
 <img src="https://github.com/user-attachments/assets/8d234078-7d17-4c55-8c53-5534297e1e8c"/>  
 
-# Serve YOLOv8 | v9 | v10 | 11
+# Serve YOLOv8 | v9 | v10 | v11
 
 <p align="center">
   <a href="#Overview">Overview</a> •
   <a href="#How-To-Run">How To Run</a> •
-  <a href="#example-apply-yolov8-to-image-in-labeling-tool">Example: apply YOLOv8 | v9 | v10 to image in labeling tool</a> •
+  <a href="#example-apply-yolov8-to-image-in-labeling-tool">Example: apply YOLOv8 | v9 | v10 | v11 to image in labeling tool</a> •
   <a href="#Related-apps">Related Apps</a> •
   <a href="#Acknowledgment">Acknowledgment</a>
 </p>
@@ -79,7 +79,7 @@ Copy model file path from **Team Files** and select task type:
 
 https://user-images.githubusercontent.com/91027877/249001911-d92ac00e-bfa7-448d-bfd5-599b4ca3e415.mp4
 
-# Example: apply YOLOv8 | v9 | v10 to image in labeling tool
+# Example: apply YOLOv8 | v9 | v10 | v11 to image in labeling tool
 
 Run **NN Image Labeling** app, connect to "YOLOv8 | v9 | v10 app" session, and click on `Apply model to image`, or if you want to apply model only to the region within the bounding box, select the bbox and click on `Apply model to ROI`:
 
