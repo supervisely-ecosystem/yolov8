@@ -2,7 +2,7 @@
 <div align="center" markdown>
 <img src="https://github.com/user-attachments/assets/37456854-3675-4b86-8c2c-35e6e8daf352"/>  
 
-# Train YOLOv8 | v9 | v10 | 11
+# Train YOLOv8 | v9 | v10 | v11
 
 <p align="center">
   <a href="#Overview">Overview</a> •
