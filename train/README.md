@@ -24,15 +24,17 @@
 
 # Overview
 
-🔥 Application now supports different checkpoints from YOLOv8, YOLOv9, YOLOv10 and YOLO11 architectures.
+🔥 Application now supports different checkpoints from YOLOv8, YOLOv9, YOLOv10 and YOLOv11 architectures.
 
 YOLOv8 is a powerful neural network architecture that provides both decent accuracy of predictions and high speed of inference. In comparison to YOLOv5, YOLOv8 uses an anchor-free head (allowing to speed up the non-max suppression (NMS) process), a new backbone, and new loss functions.
 
 YOLOv9 builds on the advancements of YOLOv8 by further improving the model's performance and efficiency. It incorporates extended feature extraction techniques, advanced loss functions and optimized training processes for better accuracy and faster inference times.
 
-YOLOv10, the latest iteration, introduces consistent dual assignments for NMS-free training and adopts a holistic efficiency-accuracy-driven model design strategy.
+YOLOv10 introduces consistent dual assignments for NMS-free training and adopts a holistic efficiency-accuracy-driven model design strategy.
 
-This app allows you to train models using YOLOv8, YOLOv9, YOLOv10 and YOLO11 on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
+YOLOv11, the latest iteration in the YOLO series, continues the trend of balancing accuracy and efficiency with significant advancements. It introduces a hybrid architecture that combines the strengths of anchor-free and anchor-based methods, allowing the model to adapt dynamically based on the characteristics of the input data.
+
+This app allows you to train models using YOLOv8, YOLOv9, YOLOv10 and YOLOv11 on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
 
 **Export to ONNX / TensorRT:**
 
@@ -50,6 +52,7 @@ You can now export your trained model to ONNX or TensorRT formats after training
 - v1.0.87 - Integrated the YOLOv10 checkpoints.
 - v1.1.8  - Added model benchmark evaluation after training.
 - v1.1.9  - Added export to ONNX and TesnorRT.
+- v1.1.20 - Integrated the YOLOv11 checkpoints
 
 🔥🔥🔥 Check out our [youtube tutorial](https://youtu.be/Rsr8xWJ6s9I) and the [complete guide in our blog](https://supervisely.com/blog/train-yolov8-on-custom-data-no-code/):   
 
