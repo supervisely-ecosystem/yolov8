@@ -22,7 +22,7 @@
 
 # Overview
 
-🔥 Application now supports different checkpoints from YOLOv8, YOLOv9 and YOLOv10 architectures.
+🔥 Application now supports different checkpoints from YOLOv8, YOLOv9, YOLOv10 and YOLOv11 architectures.
 
 YOLOv8 is a powerful neural network architecture that provides both decent accuracy of predictions and high speed of inference. In comparison to YOLOv5, YOLOv8 uses an anchor-free head (allowing to speed up the non-max suppression (NMS) process), a new backbone, and new loss functions.
 
