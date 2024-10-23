@@ -2,7 +2,7 @@
 <div align="center" markdown>
 <img src="https://github.com/user-attachments/assets/37456854-3675-4b86-8c2c-35e6e8daf352"/>  
 
-# Train YOLOv8 | v9 | v10 | 11
+# Train YOLOv8 | v9 | v10 | v11
 
 <p align="center">
   <a href="#Overview">Overview</a> •
@@ -24,15 +24,17 @@
 
 # Overview
 
-🔥 Application now supports different checkpoints from YOLOv8, YOLOv9, YOLOv10 and YOLO11 architectures.
+🔥 Application now supports different checkpoints from YOLOv8, YOLOv9, YOLOv10 and YOLOv11 architectures.
 
 YOLOv8 is a powerful neural network architecture that provides both decent accuracy of predictions and high speed of inference. In comparison to YOLOv5, YOLOv8 uses an anchor-free head (allowing to speed up the non-max suppression (NMS) process), a new backbone, and new loss functions.
 
 YOLOv9 builds on the advancements of YOLOv8 by further improving the model's performance and efficiency. It incorporates extended feature extraction techniques, advanced loss functions and optimized training processes for better accuracy and faster inference times.
 
-YOLOv10, the latest iteration, introduces consistent dual assignments for NMS-free training and adopts a holistic efficiency-accuracy-driven model design strategy.
+YOLOv10 introduces consistent dual assignments for NMS-free training and adopts a holistic efficiency-accuracy-driven model design strategy.
 
-This app allows you to train models using YOLOv8, YOLOv9, YOLOv10 and YOLO11 on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
+YOLOv11, the latest iteration in the YOLO series, continues the trend of balancing accuracy and efficiency with significant advancements. It introduces a hybrid architecture that combines the strengths of anchor-free and anchor-based methods, allowing the model to adapt dynamically based on the characteristics of the input data.
+
+This app allows you to train models using YOLOv8, YOLOv9, YOLOv10 and YOLOv11 on a selected dataset. You can define model checkpoints, data split methods, training hyperparameters, data augmentation, and many other features related to model training. The app supports both models pretrained on COCO or Open Images V7 dataset and models trained on custom datasets. Supported task types include object detection, instance segmentation, and pose estimation.
 
 **Export to ONNX / TensorRT:**
 
@@ -50,6 +52,7 @@ You can now export your trained model to ONNX or TensorRT formats after training
 - v1.0.87 - Integrated the YOLOv10 checkpoints.
 - v1.1.8  - Added model benchmark evaluation after training.
 - v1.1.9  - Added export to ONNX and TesnorRT.
+- v1.1.20 - Integrated the YOLOv11 checkpoints
 
 🔥🔥🔥 Check out our [youtube tutorial](https://youtu.be/Rsr8xWJ6s9I) and the [complete guide in our blog](https://supervisely.com/blog/train-yolov8-on-custom-data-no-code/):   
 
@@ -74,7 +77,7 @@ You can use your trained models outside Supervisely platform without any depende
 - [Export to YOLOv8 format](https://ecosystem.supervise.ly/apps/export-to-yolov8) - app allows to transform data from Supervisely format to YOLOv8 format.   
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/export-to-yolov8" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/01d6658f-11c3-40a3-8ff5-100a27fa1480" height="70px" margin-bottom="20px"/>  
 
-- [Serve YOLOv8 | v9 | v10](https://ecosystem.supervise.ly/apps/yolov8/serve) - app allows to deploy YOLOv8 | v9 | v10 model as REST API service.   
+- [Serve YOLOv8 | v9 | v10 | v11](https://ecosystem.supervise.ly/apps/yolov8/serve) - app allows to deploy YOLOv8 | v9 | v10 | v11 model as REST API service.   
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/yolov8/serve" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/721f5344-013c-4466-bc05-88cc3efef5ca" height="70px" margin-bottom="20px"/>
 
 - [NN Image Labeling](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%252Fnn-image-labeling%252Fannotation-tool) - integrate any deployed NN to Supervisely Image Labeling UI. Configure inference settings and model output classes. Press `Apply` button (or use hotkey) and detections with their confidences will immediately appear on the image.   
