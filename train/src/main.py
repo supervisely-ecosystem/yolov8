@@ -2023,6 +2023,7 @@ def start_training():
                 remote_dir=upload_artifacts_dir,
                 progress_size_cb=progress_cb,
             )
+        progress_bar_upload_artifacts.hide()
     else:
         sly.logger.info(
             "Uploading training artifacts before stopping the app... (progress bar is disabled)"
