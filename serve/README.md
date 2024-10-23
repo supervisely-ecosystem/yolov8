@@ -7,7 +7,7 @@
 <p align="center">
   <a href="#Overview">Overview</a> •
   <a href="#How-To-Run">How To Run</a> •
-  <a href="#example-apply-yolov8-to-image-in-labeling-tool">Example: apply YOLOv8 | v9 | v10 | v11 to image in labeling tool</a> •
+  <a href="#example-apply-yolov8--v9--v10--v11-to-image-in-labeling-tool">Example: apply YOLOv8 | v9 | v10 | v11 to image in labeling tool</a> •
   <a href="#Related-apps">Related Apps</a> •
   <a href="#Acknowledgment">Acknowledgment</a>
 </p>
