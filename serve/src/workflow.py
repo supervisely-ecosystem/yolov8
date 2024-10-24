@@ -15,6 +15,8 @@ def workflow_input(api: sly.Api, model_params: dict):
                 model_name = "YOLOv9"
             elif "v10" in checkpoint_name:
                 model_name = "YOLOv10"
+            elif "v11" in checkpoint_name:
+                model_name = "YOLOv11"
 
         meta = sly.WorkflowMeta(node_settings=sly.WorkflowSettings(title=f"Serve {model_name}"))
 

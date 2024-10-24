@@ -13,7 +13,7 @@ def workflow_input(
     file_info: sly.api.file_api.FileInfo = None,
 ):
     try:
-        version_in_title = "v8 | v9 | v10"
+        version_in_title = "v8 | v9 | v10 | v11"
         if file_info is not None:
             if "v8" in file_info.name:
                 version_in_title = "v8"
@@ -21,6 +21,8 @@ def workflow_input(
                 version_in_title = "v9"
             elif "v10" in file_info.name:
                 version_in_title = "v10"
+            elif "v11" in file_info.name:
+                version_in_title = "v11"
         project_version_id = api.project.version.create(
             project_info,
             f"Train YOLO{version_in_title}",
@@ -68,6 +70,8 @@ def workflow_output(
             model_name = "YOLOv9"
         elif model_filename and "v10" in model_filename:
             model_name = "YOLOv10"
+        elif model_filename and "v11" in model_filename:
+            model_name = "YOLOv11"
             
         node_settings = sly.WorkflowSettings(
             title=f"Train {model_name}",
