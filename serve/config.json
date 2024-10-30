@@ -14,8 +14,9 @@
   "icon": "https://github.com/user-attachments/assets/712dc827-1153-46a0-b749-f76850aca4eb",
   "icon_cover": true,
   "poster": "https://github.com/user-attachments/assets/8d234078-7d17-4c55-8c53-5534297e1e8c",
-  "need_gpu": false,
-  "gpu": "preferred",
+  "need_gpu": true,
+  "gpu": "required",
+  "min_nvidia_driver_version": "530.30.02",
   "session_tags": [
     "deployed_nn"
   ],
