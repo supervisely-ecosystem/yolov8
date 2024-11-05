@@ -12,11 +12,11 @@
   <a href="#Acknowledgment">Acknowledgment</a>
 </p>
 
-[![](https://img.shields.io/badge/supervisely-ecosystem-brightgreen)](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/yolov8/serve)
-[![](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://supervise.ly/slack)
+[![](https://img.shields.io/badge/supervisely-ecosystem-brightgreen)](https://ecosystem.supervisely.com/apps/supervisely-ecosystem/yolov8/serve)
+[![](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://supervisely.com/slack)
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/supervisely-ecosystem/yolov8)
-[![views](https://app.supervise.ly/img/badges/views/supervisely-ecosystem/yolov8/serve.png)](https://supervise.ly)
-[![runs](https://app.supervise.ly/img/badges/runs/supervisely-ecosystem/yolov8/serve.png)](https://supervise.ly)
+[![views](https://app.supervisely.com/img/badges/views/supervisely-ecosystem/yolov8/serve.png)](https://supervisely.com)
+[![runs](https://app.supervisely.com/img/badges/runs/supervisely-ecosystem/yolov8/serve.png)](https://supervisely.com)
 
 </div>
 
@@ -94,16 +94,16 @@ https://user-images.githubusercontent.com/91027877/249004380-e8a4758b-0356-4efc-
 
 # Related apps
 
-- [NN Image Labeling](https://ecosystem.supervise.ly/apps/supervisely-ecosystem%252Fnn-image-labeling%252Fannotation-tool) - integrate any deployed NN to Supervisely Image Labeling UI. Configure inference settings and model output classes. Press `Apply` button (or use hotkey) and detections with their confidences will immediately appear on the image.   
+- [NN Image Labeling](https://ecosystem.supervisely.com/apps/supervisely-ecosystem%252Fnn-image-labeling%252Fannotation-tool) - integrate any deployed NN to Supervisely Image Labeling UI. Configure inference settings and model output classes. Press `Apply` button (or use hotkey) and detections with their confidences will immediately appear on the image.   
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/nn-image-labeling/annotation-tool" src="https://i.imgur.com/hYEucNt.png" height="70px" margin-bottom="20px"/>
 
-- [Apply NN to Videos Project](https://ecosystem.supervise.ly/apps/apply-nn-to-videos-project) - app allows to label your videos using served Supervisely models.  
+- [Apply NN to Videos Project](https://ecosystem.supervisely.com/apps/apply-nn-to-videos-project) - app allows to label your videos using served Supervisely models.  
   <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/apply-nn-to-videos-project" src="https://imgur.com/LDo8K1A.png" height="70px" margin-bottom="20px" />
 
-- [Train YOLOv8 | v9 | v10 | v11](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/yolov8/train) - app allows to create custom YOLO (v8, v9, v10, v11) weights through training process.
+- [Train YOLOv8 | v9 | v10 | v11](https://ecosystem.supervisely.com/apps/supervisely-ecosystem/yolov8/train) - app allows to create custom YOLO (v8, v9, v10, v11) weights through training process.
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/yolov8/train" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/82348f9a-38fc-4736-885c-d6786e37a218" height="70px" margin-bottom="20px"/>
 
-- [Export to YOLOv8 format](https://ecosystem.supervise.ly/apps/supervisely-ecosystem/export-to-yolov8) - transform annotations from Supervisely format to YOLOv8 format.
+- [Export to YOLOv8 format](https://ecosystem.supervisely.com/apps/supervisely-ecosystem/export-to-yolov8) - transform annotations from Supervisely format to YOLOv8 format.
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/export-to-yolov8" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/01d6658f-11c3-40a3-8ff5-100a27fa1480" height="70px" margin-bottom="20px"/>
     
 # Acknowledgment
