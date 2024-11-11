@@ -103,12 +103,12 @@ def workflow_output(
         
         if model_benchmark_report:
             mb_relation_settings = sly.WorkflowSettings(
-                title="Model Benchmark",
+                title="Model Evaluation",
                 icon="assignment",
-                icon_color="#674EA7",
-                icon_bg_color="#CCCCFF",
+                icon_color="#dcb0ff",
+                icon_bg_color="#faebff",
                 url=f"/model-benchmark?id={model_benchmark_report.id}",
-                url_title="Open Report",
+                url_title="Open Benchmark Report",
             )
 
             meta = sly.WorkflowMeta(
