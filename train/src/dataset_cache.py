@@ -42,7 +42,7 @@ def _no_cache_download(
         # )
 
 
-def _get_dataset_parents(api, dataset_infos, dataset_id) -> List[int]:
+def _get_dataset_parents(api, dataset_infos, dataset_id):
     dataset_infos_dict = {info.id: info for info in dataset_infos}
     this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
     if this_dataset_info.parent_id is None:
@@ -50,7 +50,10 @@ def _get_dataset_parents(api, dataset_infos, dataset_id) -> List[int]:
     parent = _get_dataset_parents(
         api, list(dataset_infos_dict.values()), this_dataset_info.parent_id
     )
-    return [*parent, this_dataset_info.name]
+    this_parent_name = dataset_infos_dict.get(
+        this_dataset_info.parent_id, api.dataset.get_info_by_id(dataset_id)
+    ).name
+    return [*parent, this_parent_name]
 
 
 def _get_dataset_path(api, dataset_infos, dataset_id):
