@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import List
 import supervisely as sly
@@ -26,6 +27,7 @@ def _no_cache_download(
                 api=api,
                 project_id=project_info.id,
                 dest_dir=g.project_dir,
+                semaphore=asyncio.Semaphore(100),
                 dataset_ids=dataset_ids,
                 progress_cb=pbar.update,
                 save_images=True,
