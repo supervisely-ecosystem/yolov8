@@ -9,6 +9,7 @@ from supervisely.project.download import (
     is_cached,
     get_cache_size,
 )
+from supervisely.project.project import Dataset
 
 
 def _no_cache_download(
@@ -30,6 +31,24 @@ def _no_cache_download(
             save_images=True,
             save_image_info=True,
         )
+
+
+def _get_dataset_parents(api, dataset_infos, dataset_id) -> List[int]:
+    dataset_infos_dict = {info.id: info for info in dataset_infos}
+    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    if this_dataset_info.parent_id is None:
+        return []
+    parent = _get_dataset_parents(
+        api, list(dataset_infos_dict.values()), this_dataset_info.parent_id
+    )
+    return [*parent, this_dataset_info.name]
+
+
+def _get_dataset_path(api, dataset_infos, dataset_id):
+    parents = _get_dataset_parents(api, dataset_infos, dataset_id)
+    dataset_infos_dict = {info.id: info for info in dataset_infos}
+    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    return Dataset._get_dataset_path(this_dataset_info.name, parents)
 
 
 def download_project(
@@ -77,7 +96,7 @@ def download_project(
                 progress_cb=pbar.update,
             )
         # copy datasets from cache
-        total = sum([get_cache_size(project_info.id, ds.name) for ds in dataset_infos])
+        total = sum([get_cache_size(project_info.id, _get_dataset_path(api, dataset_infos, ds.id)) for ds in dataset_infos])
         with progress(
             message="Retreiving data from cache...",
             total=total,
@@ -85,7 +104,7 @@ def download_project(
             unit_scale=True,
             unit_divisor=1024,
         ) as pbar:
-            dataset_names = [ds_info.name for ds_info in dataset_infos]
+            dataset_names = [_get_dataset_path(api, dataset_infos, ds_info.id) for ds_info in dataset_infos]
             copy_from_cache(
                 project_id=project_info.id,
                 dest_dir=g.project_dir,
