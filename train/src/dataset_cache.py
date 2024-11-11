@@ -21,16 +21,25 @@ def _no_cache_download(
     dataset_ids = [dataset_info.id for dataset_info in dataset_infos]
     total = sum([dataset_info.images_count for dataset_info in dataset_infos])
     with progress(message="Downloading input data...", total=total) as pbar:
-        sly.download_project(
+        sly.download_async(
             api=api,
             project_id=project_info.id,
             dest_dir=g.project_dir,
             dataset_ids=dataset_ids,
-            log_progress=True,
             progress_cb=pbar.update,
             save_images=True,
             save_image_info=True,
         )
+        # sly.download_project(
+        #     api=api,
+        #     project_id=project_info.id,
+        #     dest_dir=g.project_dir,
+        #     dataset_ids=dataset_ids,
+        #     log_progress=True,
+        #     progress_cb=pbar.update,
+        #     save_images=True,
+        #     save_image_info=True,
+        # )
 
 
 def _get_dataset_parents(api, dataset_infos, dataset_id) -> List[int]:
