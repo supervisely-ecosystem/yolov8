@@ -18,16 +18,17 @@ def _no_cache_download(
     project_info: sly.ProjectInfo,
     dataset_infos: List[sly.DatasetInfo],
     progress: Progress,
+    semaphore: asyncio.Semaphore = None,
 ):
     dataset_ids = [dataset_info.id for dataset_info in dataset_infos]
     total = sum([dataset_info.images_count for dataset_info in dataset_infos])
     try:
-        with progress(message="Downloading input data...", total=total) as pbar:
+        with progress(message="Downloading input data...", total=total) as pbar:                        
             sly.download_async(
                 api=api,
                 project_id=project_info.id,
                 dest_dir=g.project_dir,
-                semaphore=asyncio.Semaphore(100),
+                semaphore=semaphore,
                 dataset_ids=dataset_ids,
                 progress_cb=pbar.update,
                 save_images=True,
@@ -77,11 +78,15 @@ def download_project(
     dataset_infos: List[sly.DatasetInfo],
     use_cache: bool,
     progress: Progress,
-):
+):  
+    if api.server_address.startswith("https://"):
+        semaphore = asyncio.Semaphore(100)
+    else:
+        semaphore = None
     if os.path.exists(g.project_dir):
         sly.fs.clean_dir(g.project_dir)
     if not use_cache:
-        return _no_cache_download(api, project_info, dataset_infos, progress)
+        return _no_cache_download(api, project_info, dataset_infos, progress, semaphore=semaphore)
     try:
         # get datasets to download and cached
         to_download = [
@@ -114,6 +119,7 @@ def download_project(
                 dataset_infos=dataset_infos,
                 log_progress=True,
                 progress_cb=pbar.update,
+                semaphore=semaphore,
             )
         # copy datasets from cache
         total = sum([get_cache_size(project_info.id, _get_dataset_path(api, dataset_infos, ds.id)) for ds in dataset_infos])
@@ -137,4 +143,4 @@ def download_project(
         )
         if os.path.exists(g.project_dir):
             sly.fs.clean_dir(g.project_dir)
-        _no_cache_download(api, project_info, dataset_infos, progress)
+        _no_cache_download(api, project_info, dataset_infos, progress, semaphore=semaphore)
