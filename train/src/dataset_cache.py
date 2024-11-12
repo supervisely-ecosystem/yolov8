@@ -1,3 +1,4 @@
+import asyncio
 import os
 from typing import List
 import supervisely as sly
@@ -9,6 +10,7 @@ from supervisely.project.download import (
     is_cached,
     get_cache_size,
 )
+from supervisely.project.project import Dataset
 
 
 def _no_cache_download(
@@ -16,20 +18,58 @@ def _no_cache_download(
     project_info: sly.ProjectInfo,
     dataset_infos: List[sly.DatasetInfo],
     progress: Progress,
+    semaphore: asyncio.Semaphore = None,
 ):
     dataset_ids = [dataset_info.id for dataset_info in dataset_infos]
     total = sum([dataset_info.images_count for dataset_info in dataset_infos])
-    with progress(message="Downloading input data...", total=total) as pbar:
-        sly.download_project(
-            api=api,
-            project_id=project_info.id,
-            dest_dir=g.project_dir,
-            dataset_ids=dataset_ids,
-            log_progress=True,
-            progress_cb=pbar.update,
-            save_images=True,
-            save_image_info=True,
+    try:
+        with progress(message="Downloading input data...", total=total) as pbar:                        
+            sly.download_async(
+                api=api,
+                project_id=project_info.id,
+                dest_dir=g.project_dir,
+                semaphore=semaphore,
+                dataset_ids=dataset_ids,
+                progress_cb=pbar.update,
+                save_images=True,
+                save_image_info=True,
+            )
+    except Exception:
+        api.logger.warning(
+            "Failed to download project using async download. Trying sync download..."
         )
+        with progress(message="Downloading input data...", total=total) as pbar:
+            sly.download_project(
+                api=api,
+                project_id=project_info.id,
+                dest_dir=g.project_dir,
+                dataset_ids=dataset_ids,
+                log_progress=True,
+                progress_cb=pbar.update,
+                save_images=True,
+                save_image_info=True,
+            )
+
+
+def _get_dataset_parents(api, dataset_infos, dataset_id):
+    dataset_infos_dict = {info.id: info for info in dataset_infos}
+    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    if this_dataset_info.parent_id is None:
+        return []
+    parent = _get_dataset_parents(
+        api, list(dataset_infos_dict.values()), this_dataset_info.parent_id
+    )
+    this_parent_name = dataset_infos_dict.get(
+        this_dataset_info.parent_id, api.dataset.get_info_by_id(dataset_id)
+    ).name
+    return [*parent, this_parent_name]
+
+
+def _get_dataset_path(api, dataset_infos, dataset_id):
+    parents = _get_dataset_parents(api, dataset_infos, dataset_id)
+    dataset_infos_dict = {info.id: info for info in dataset_infos}
+    this_dataset_info = dataset_infos_dict.get(dataset_id, api.dataset.get_info_by_id(dataset_id))
+    return Dataset._get_dataset_path(this_dataset_info.name, parents)
 
 
 def download_project(
@@ -38,11 +78,15 @@ def download_project(
     dataset_infos: List[sly.DatasetInfo],
     use_cache: bool,
     progress: Progress,
-):
+):  
+    if api.server_address.startswith("https://"):
+        semaphore = asyncio.Semaphore(100)
+    else:
+        semaphore = None
     if os.path.exists(g.project_dir):
         sly.fs.clean_dir(g.project_dir)
     if not use_cache:
-        return _no_cache_download(api, project_info, dataset_infos, progress)
+        return _no_cache_download(api, project_info, dataset_infos, progress, semaphore=semaphore)
     try:
         # get datasets to download and cached
         to_download = [
@@ -75,9 +119,10 @@ def download_project(
                 dataset_infos=dataset_infos,
                 log_progress=True,
                 progress_cb=pbar.update,
+                semaphore=semaphore,
             )
         # copy datasets from cache
-        total = sum([get_cache_size(project_info.id, ds.name) for ds in dataset_infos])
+        total = sum([get_cache_size(project_info.id, _get_dataset_path(api, dataset_infos, ds.id)) for ds in dataset_infos])
         with progress(
             message="Retreiving data from cache...",
             total=total,
@@ -85,7 +130,7 @@ def download_project(
             unit_scale=True,
             unit_divisor=1024,
         ) as pbar:
-            dataset_names = [ds_info.name for ds_info in dataset_infos]
+            dataset_names = [_get_dataset_path(api, dataset_infos, ds_info.id) for ds_info in dataset_infos]
             copy_from_cache(
                 project_id=project_info.id,
                 dest_dir=g.project_dir,
@@ -98,4 +143,4 @@ def download_project(
         )
         if os.path.exists(g.project_dir):
             sly.fs.clean_dir(g.project_dir)
-        _no_cache_download(api, project_info, dataset_infos, progress)
+        _no_cache_download(api, project_info, dataset_infos, progress, semaphore=semaphore)
