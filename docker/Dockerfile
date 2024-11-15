@@ -16,7 +16,7 @@ RUN pip3 install dill==0.3.8
 RUN pip3 install ruamel.yaml==0.17.21
 
 RUN pip3 install ultralytics==8.3.15
-RUN python3 -m pip install supervisely[tracking,model-benchmark]==6.73.230
+RUN python3 -m pip install supervisely[tracking,model-benchmark]==6.73.232
 RUN python3 -c "from supervisely.nn.tracker import *"
 
-LABEL python_sdk_version=6.73.230
+LABEL python_sdk_version=6.73.232

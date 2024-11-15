@@ -11,7 +11,7 @@
     "train"
   ],
   "description": "Dashboard to configure, start and monitor YOLOv8 | v9 | v10 | v11 training",
-  "docker_image": "supervisely/yolov8:1.0.34",
+  "docker_image": "supervisely/yolov8:1.0.35",
   "instance_version": "6.12.5",
   "entrypoint": "python3 -m uvicorn src.main:app --app-dir ./train --host 0.0.0.0 --port 8000 --ws websockets",
   "task_location": "workspace_tasks",
