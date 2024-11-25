@@ -2217,9 +2217,6 @@ def start_training():
                 sly.logger.info(
                     f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}"
                 )
-                sly.logger.info(
-                    f"Differences project name: {bm.diff_project_info.name}. Workspace_id: {bm.diff_project_info.workspace_id}"
-                )
         except Exception as e:
             sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
             creating_report_f.hide()
@@ -2228,8 +2225,6 @@ def start_training():
             try:
                 if bm.dt_project_info:
                     api.project.remove(bm.dt_project_info.id)
-                if bm.diff_project_info:
-                    api.project.remove(bm.diff_project_info.id)
             except Exception as e2:
                 pass
     # ----------------------------------------------- - ---------------------------------------------- #
@@ -3171,6 +3166,8 @@ def auto_train(request: Request):
                             dataset_name,
                             image_names,
                         ) in image_names_per_dataset.items():
+                            if "/" in dataset_name:
+                                dataset_name = dataset_name.split("/")[-1]
                             ds_info = ds_infos_dict[dataset_name]
                             image_infos.extend(
                                 api.image.get_list(
@@ -3236,6 +3233,7 @@ def auto_train(request: Request):
 
                 # 4. Evaluate
                 bm._evaluate(gt_project_path, dt_project_path)
+                bm._dump_eval_inference_info(bm._eval_inference_info)
 
                 # 5. Upload evaluation results
                 eval_res_dir = get_eval_results_dir_name(
@@ -3266,9 +3264,6 @@ def auto_train(request: Request):
                 sly.logger.info(
                     f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}"
                 )
-                sly.logger.info(
-                    f"Differences project name: {bm.diff_project_info.name}. Workspace_id: {bm.diff_project_info.workspace_id}"
-                )
         except Exception as e:
             sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
             creating_report_f.hide()
@@ -3277,8 +3272,6 @@ def auto_train(request: Request):
             try:
                 if bm.dt_project_info:
                     api.project.remove(bm.dt_project_info.id)
-                if bm.diff_project_info:
-                    api.project.remove(bm.diff_project_info.id)
             except Exception as e2:
                 pass
     # ----------------------------------------------- - ---------------------------------------------- #
