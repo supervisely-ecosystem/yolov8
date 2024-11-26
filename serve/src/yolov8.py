@@ -578,7 +578,14 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 self._dump_yaml_checkpoint_info(model, os.path.dirname(weights_path))
         else:
             exported_weights_path = weights_path
-        model = YOLO(exported_weights_path)
+
+        task_type_map = {
+            "object detection": "detect",
+            "instance segmentation": "segment",
+            "pose estimation": "pose",
+        }
+        
+        model = YOLO(exported_weights_path, task=task_type_map[self.task_type])
         return model
 
     def _load_onnx(self, weights_path: str):
