@@ -1,6 +1,6 @@
 git+https://github.com/supervisely/supervisely.git@update-libs
 
-pyyaml==5.4.0
+# pyyaml==5.4.0
 opencv-python==4.6.0.66
 scipy==1.8.0
 pillow==9.0.1
