@@ -1,1 +1,11 @@
 git+https://github.com/supervisely/supervisely.git@update-libs
+
+pyyaml==5.4.0
+opencv-python==4.6.0.66
+scipy==1.8.0
+pillow==9.0.1
+certifi==2023.7.22
+transformers==4.36.0
+protobuf==3.19.5
+opencv-python-headless==4.8.1.78
+fonttools==4.43.0

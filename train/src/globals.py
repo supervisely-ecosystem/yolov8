@@ -43,3 +43,9 @@ node_id2label = {}
 IN_PROGRESS = False
 
 stop_event = None
+
+import pkg_resources
+
+packages = {dist.project_name: dist.version for dist in pkg_resources.working_set}
+
+sly.logger.info("PACKAGES:", extra=packages)
