@@ -1,5 +1,6 @@
 {
   "name": "Export YOLOv8 weights",
+  "type": "app",
   "description": "to TorchScript and ONNX formats",
   "categories": [
     "neural network",
