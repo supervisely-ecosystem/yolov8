@@ -578,7 +578,14 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 self._dump_yaml_checkpoint_info(model, os.path.dirname(weights_path))
         else:
             exported_weights_path = weights_path
-        model = YOLO(exported_weights_path)
+
+        task_type_map = {
+            "object detection": "detect",
+            "instance segmentation": "segment",
+            "pose estimation": "pose",
+        }
+        
+        model = YOLO(exported_weights_path, task=task_type_map[self.task_type])
         return model
 
     def _load_onnx(self, weights_path: str):
@@ -684,7 +691,10 @@ def parse_model_name(checkpoint_name: str):
 
 def get_arch_from_model_name(model_name: str):
     # yolov8n-det
-    p = r"yolov(\d+)"
+    if "11" in model_name:
+        p = r"yolo(\d+)"
+    else:
+        p = r"yolov(\d+)"
     match = re.match(p, model_name.lower())
     if match:
         return f"YOLOv{match.group(1)}"
