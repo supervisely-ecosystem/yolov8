@@ -691,7 +691,10 @@ def parse_model_name(checkpoint_name: str):
 
 def get_arch_from_model_name(model_name: str):
     # yolov8n-det
-    p = r"yolov(\d+)"
+    if "11" in model_name:
+        p = r"yolo(\d+)"
+    else:
+        p = r"yolov(\d+)"
     match = re.match(p, model_name.lower())
     if match:
         return f"YOLOv{match.group(1)}"
