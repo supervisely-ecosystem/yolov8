@@ -16,7 +16,6 @@
   "poster": "https://github.com/user-attachments/assets/8d234078-7d17-4c55-8c53-5534297e1e8c",
   "need_gpu": true,
   "gpu": "required",
-  "min_nvidia_driver_version": "530.30.02",
   "session_tags": [
     "deployed_nn"
   ],

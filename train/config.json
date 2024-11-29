@@ -17,7 +17,6 @@
   "task_location": "workspace_tasks",
   "need_gpu": true,
   "gpu": "required",
-  "min_nvidia_driver_version": "530.30.02",
   "isolate": true,
   "icon": "https://github.com/user-attachments/assets/fa74ebcc-f77c-49bb-be0a-3939c5f33a75",
   "icon_cover": true,
