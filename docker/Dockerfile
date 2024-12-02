@@ -22,7 +22,7 @@ RUN pip3 install ultralytics==8.3.15
 RUN pip3 install onnxruntime-gpu==1.18.0
 RUN pip3 install dill==0.2.8.2 tf2onnx==1.16.1 skl2onnx==1.17.0
 RUN pip3 uninstall -y nvidia-cudnn-cu11
-RUN python3 -m pip install supervisely[tracking,model-benchmark]==6.73.239
+RUN python3 -m pip install supervisely[tracking,model-benchmark]==6.73.243
 RUN python3 -c "from supervisely.nn.tracker import *"
 
-LABEL python_sdk_version=6.73.232
+LABEL python_sdk_version=6.73.243
