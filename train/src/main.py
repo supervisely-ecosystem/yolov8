@@ -837,7 +837,12 @@ def on_dataset_selected(new_dataset_ids):
 
 @select_data_button.click
 def select_input_data():
-    update_globals(dataset_selector.get_selected_ids())
+    selected_datasets = set()
+    for dataset_id in dataset_selector.get_selected_ids():
+        selected_datasets.add(dataset_id)
+        for ds in api.dataset.get_nested(project_id=project_id, dataset_id=dataset_id):
+            selected_datasets.add(ds.id)
+    update_globals(list(selected_datasets))
     update_split_tabs_for_nested_datasets(dataset_ids)
     sly.logger.debug(f"Select data button clicked, selected datasets: {dataset_ids}")
     project_shapes = [
