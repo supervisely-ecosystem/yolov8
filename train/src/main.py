@@ -230,7 +230,10 @@ sly.logger.info(f"App root directory: {g.app_root_directory}")
 ### 1. Dataset selection
 # dataset_selector = SelectDataset(project_id=project_id, multiselect=True, select_all_datasets=True)
 dataset_selector = SelectDatasetTree(
-    project_id=project_id, multiselect=True, select_all_datasets=True
+    project_id=project_id,
+    multiselect=True,
+    select_all_datasets=True,
+    allowed_project_types=[sly.ProjectType.IMAGES],
 )
 use_cache_text = Text(
     "Use cached data stored on the agent to optimize project download"
