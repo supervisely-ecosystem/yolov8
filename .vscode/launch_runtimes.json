@@ -49,11 +49,10 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}:/root/supervisely",
                 "LOG_LEVEL": "DEBUG",
-                // "ENV": "production",
                 "TEAM_ID": "440",
                 "DEBUG_WITH_SLY_NET": "1",
                 "PROJECT_ID": "41442",
-                "WORKSPACE_ID": "1076",
+                "WORKSPACE_ID": "1076"
             }
         },
         {
@@ -64,7 +63,7 @@
             "justMyCode": false,
             "env": {
                 "PYTHONPATH": "${workspaceFolder}:${workspaceFolder}/serve:${PYTHONPATH}:/root/supervisely",
-                "LOG_LEVEL": "DEBUG",
+                "LOG_LEVEL": "DEBUG"
             }
         },
         {
@@ -75,8 +74,8 @@
             "console": "integratedTerminal",
             "justMyCode": false,
             "env": {
-                "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}:/root/supervisely",
+                "PYTHONPATH": "${workspaceFolder}:${PYTHONPATH}:/root/supervisely"
             }
-        },
+        }
     ]
 }

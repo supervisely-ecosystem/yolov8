@@ -22,7 +22,7 @@ def _no_cache_download(
     dataset_ids = [dataset_info.id for dataset_info in dataset_infos]
     total = sum([dataset_info.images_count for dataset_info in dataset_infos])
     try:
-        with progress(message="Downloading input data...", total=total) as pbar:                        
+        with progress(message="Downloading input data...", total=total) as pbar:
             sly.download_async(
                 api=api,
                 project_id=project_info.id,
