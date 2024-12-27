@@ -1,6 +1,7 @@
 # bounding box confidence threshold
 conf: 0.25
 # intersection over union (IoU) threshold for NMS
+# (no effect for YOLOv10 models)
 iou: 0.7
 # use half precision (FP16)
 half: False
