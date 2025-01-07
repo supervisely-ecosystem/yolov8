@@ -525,7 +525,7 @@ freeze_layers_f = Field(
         "fine-tuning model on small datasets"
     ),
 )
-n_frozen_layers_input = InputNumber(value=1, min=1, max=200)
+n_frozen_layers_input = InputNumber(value=1, min=1, max=90)
 n_frozen_layers_input_f = Field(
     content=n_frozen_layers_input, title="Number of layers to freeze"
 )
