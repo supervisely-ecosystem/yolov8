@@ -2140,6 +2140,7 @@ def start_training():
                                                 "value": batched_names,
                                             }
                                         ],
+                                        force_metadata_for_links=False,
                                     )
                                 image_infos.extend(batch)
                         return image_infos
@@ -3187,6 +3188,7 @@ def auto_train(request: Request):
                                                 "value": batched_names,
                                             }
                                         ],
+                                        force_metadata_for_links=False,
                                     )
                                 image_infos.extend(batch)
                         return image_infos
