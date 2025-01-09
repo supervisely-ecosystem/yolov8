@@ -2130,18 +2130,18 @@ def start_training():
                             if "/" in dataset_name:
                                 dataset_name = dataset_name.split("/")[-1]
                             ds_info = ds_infos_dict[dataset_name]
-                            image_infos.extend(
-                                api.image.get_list(
-                                    ds_info.id,
-                                    filters=[
-                                        {
-                                            "field": "name",
-                                            "operator": "in",
-                                            "value": image_names,
-                                        }
-                                    ],
-                                )
-                            )
+                            for batched_names in sly.batched(image_names, 200):
+                                batch = api.image.get_list(
+                                        ds_info.id,
+                                        filters=[
+                                            {
+                                                "field": "name",
+                                                "operator": "in",
+                                                "value": batched_names,
+                                            }
+                                        ],
+                                    )
+                                image_infos.extend(batch)
                         return image_infos
 
                     val_image_infos = get_image_infos_by_split(val_set)
@@ -3177,18 +3177,18 @@ def auto_train(request: Request):
                             if "/" in dataset_name:
                                 dataset_name = dataset_name.split("/")[-1]
                             ds_info = ds_infos_dict[dataset_name]
-                            image_infos.extend(
-                                api.image.get_list(
-                                    ds_info.id,
-                                    filters=[
-                                        {
-                                            "field": "name",
-                                            "operator": "in",
-                                            "value": image_names,
-                                        }
-                                    ],
-                                )
-                            )
+                            for batched_names in sly.batched(image_names, 200):
+                                batch = api.image.get_list(
+                                        ds_info.id,
+                                        filters=[
+                                            {
+                                                "field": "name",
+                                                "operator": "in",
+                                                "value": batched_names,
+                                            }
+                                        ],
+                                    )
+                                image_infos.extend(batch)
                         return image_infos
 
                     val_image_infos = get_image_infos_by_split(val_set)
