@@ -2130,19 +2130,29 @@ def start_training():
                             if "/" in dataset_name:
                                 dataset_name = dataset_name.split("/")[-1]
                             ds_info = ds_infos_dict[dataset_name]
-                            for batched_names in sly.batched(image_names, 200):
-                                batch = api.image.get_list(
-                                        ds_info.id,
-                                        filters=[
-                                            {
-                                                "field": "name",
-                                                "operator": "in",
-                                                "value": batched_names,
-                                            }
-                                        ],
-                                        force_metadata_for_links=False,
-                                    )
-                                image_infos.extend(batch)
+                            batch_size = 500
+                            min_batch_size = 50
+                            while batch_size >= min_batch_size:
+                                try:
+                                    for batched_names in sly.batched(image_names, batch_size):
+                                        batch = api.image.get_list(
+                                                ds_info.id,
+                                                filters=[
+                                                    {
+                                                        "field": "name",
+                                                        "operator": "in",
+                                                        "value": batched_names,
+                                                    }
+                                                ],
+                                                force_metadata_for_links=False,
+                                            )
+                                        image_infos.extend(batch)
+                                    break
+                                except Exception as e:
+                                    sly.logger.warning(f"Error occurred: {e}. Reducing batch size for filter to {batch_size // 2}")
+                                    batch_size //= 2
+                                    if batch_size < min_batch_size:
+                                        raise RuntimeError(f"Batch size for filter in listing images reduced to {batch_size} and still not working. Aborting.")
                         return image_infos
 
                     val_image_infos = get_image_infos_by_split(val_set)
@@ -3178,19 +3188,29 @@ def auto_train(request: Request):
                             if "/" in dataset_name:
                                 dataset_name = dataset_name.split("/")[-1]
                             ds_info = ds_infos_dict[dataset_name]
-                            for batched_names in sly.batched(image_names, 200):
-                                batch = api.image.get_list(
-                                        ds_info.id,
-                                        filters=[
-                                            {
-                                                "field": "name",
-                                                "operator": "in",
-                                                "value": batched_names,
-                                            }
-                                        ],
-                                        force_metadata_for_links=False,
-                                    )
-                                image_infos.extend(batch)
+                            batch_size = 500
+                            min_batch_size = 50
+                            while batch_size >= min_batch_size:
+                                try:
+                                    for batched_names in sly.batched(image_names, batch_size):
+                                        batch = api.image.get_list(
+                                                ds_info.id,
+                                                filters=[
+                                                    {
+                                                        "field": "name",
+                                                        "operator": "in",
+                                                        "value": batched_names,
+                                                    }
+                                                ],
+                                                force_metadata_for_links=False,
+                                            )
+                                        image_infos.extend(batch)
+                                    break
+                                except Exception as e:
+                                    sly.logger.warning(f"Error occurred: {e}. Reducing batch size for filter to {batch_size // 2}")
+                                    batch_size //= 2
+                                    if batch_size < min_batch_size:
+                                        raise RuntimeError(f"Batch size for filter in listing images reduced to {batch_size} and still not working. Aborting.")
                         return image_infos
 
                     val_image_infos = get_image_infos_by_split(val_set)
