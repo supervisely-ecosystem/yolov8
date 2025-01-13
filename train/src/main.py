@@ -1445,6 +1445,8 @@ def start_training():
         n_images_after = project.total_items
         if n_images_before != n_images_after:
             train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
+            train_val_split._project_id = None
+            train_val_split.update_data()
             train_set, val_set = train_val_split.get_splits()
             val_part = len(val_set) / (len(train_set) + len(val_set))
             new_val_count = round(n_images_after * val_part)
