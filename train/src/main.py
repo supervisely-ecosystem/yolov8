@@ -2017,7 +2017,7 @@ def start_training():
     upload_artifacts_dir = os.path.join(
         "/experiments",
         f"{project_info.id}_{project_info.name}",
-        f"{g.app_session_id}_{YOLOv8.framework_name}",
+        f"{g.app_session_id}_{yolov8_artifacts.framework_name}",
     )
 
     if not app.is_stopped():
@@ -2335,7 +2335,7 @@ def start_training():
 
     experiment_info = {
         "experiment_name": f"{g.app_session_id}_{project_info.name}_{selected_model_name}",
-        "framework_name": YOLOv8.framework_name,
+        "framework_name": yolov8_artifacts.framework_name,
         "model_name": selected_model_name,
         "task_type": task_type,
         "project_id": project_info.id,
@@ -2366,8 +2366,8 @@ def start_training():
     }
     
     experiment_info_filename = "experiment_info.json"
-    local_experiment_info_path = os.path.join(local_dir, experiment_info_filename)
-    remote_experiment_info_path = os.path.join(remote_dir, experiment_info_filename)
+    local_experiment_info_path = os.path.join(local_artifacts_dir, experiment_info_filename)
+    remote_experiment_info_path = os.path.join(remote_artifacts_dir, experiment_info_filename)
 
     sly.json.dump_json_file(experiment_info, local_experiment_info_path)
     sly.logger.debug(f"Uploading 'experiment_info.json' to Supervisely")
@@ -2721,6 +2721,11 @@ def auto_train(request: Request):
 
     watch_file = os.path.join(local_artifacts_dir, "results.csv")
     plotted_train_batches = []
+    
+    # Experiments update
+    # remote_images_path = os.path.join(upload_artifacts_dir, "images", g.app_session_id)
+    
+    # old impl
     remote_images_path = (
         f"{framework_folder}/{task_type}/{project_info.name}/images/{g.app_session_id}/"
     )
@@ -3168,7 +3173,7 @@ def auto_train(request: Request):
     upload_artifacts_dir = os.path.join(
         "/experiments",
         f"{project_info.id}_{project_info.name}",
-        f"{g.app_session_id}_{YOLOv8.framework_name}",
+        f"{g.app_session_id}_{yolov8_artifacts.framework_name}",
     )
 
     if not app.is_stopped():
@@ -3466,7 +3471,7 @@ def auto_train(request: Request):
     )
     experiment_info = {
         "experiment_name": f"{g.app_session_id}_{project_info.name}_{selected_model_name}",
-        "framework_name": YOLOv8.framework_name,
+        "framework_name": yolov8_artifacts.framework_name,
         "model_name": selected_model_name,
         "task_type": task_type,
         "project_id": project_info.id,
@@ -3497,8 +3502,8 @@ def auto_train(request: Request):
     }
     
     experiment_info_filename = "experiment_info.json"
-    local_experiment_info_path = os.path.join(local_dir, experiment_info_filename)
-    remote_experiment_info_path = os.path.join(remote_dir, experiment_info_filename)
+    local_experiment_info_path = os.path.join(local_artifacts_dir, experiment_info_filename)
+    remote_experiment_info_path = os.path.join(remote_artifacts_dir, experiment_info_filename)
 
     sly.json.dump_json_file(experiment_info, local_experiment_info_path)
     sly.logger.debug(f"Uploading 'experiment_info.json' to Supervisely")
