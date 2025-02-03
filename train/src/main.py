@@ -2075,7 +2075,7 @@ def start_training():
     
     # ------------------------------------- Model Benchmark ------------------------------------- #
     model_benchmark_done = False
-    report_id, eval_metrics, primary_metric_name = None, None, None
+    report_link, report_id, eval_metrics, primary_metric_name = None, None, None, None
     if run_model_benchmark_checkbox.is_checked():
         try:
             if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
@@ -3226,7 +3226,7 @@ def auto_train(request: Request):
 
     # ------------------------------------- Model Benchmark ------------------------------------- #
     model_benchmark_done = False
-    report_id, eval_metrics, primary_metric_name = None, None, None
+    report_link, report_id, eval_metrics, primary_metric_name = None, None, None, None
     if run_model_benchmark_checkbox.is_checked():
         try:
             if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
