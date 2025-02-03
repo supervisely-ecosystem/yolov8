@@ -1,6 +1,8 @@
 import os
+import shutil
 import re
 from dotenv import load_dotenv
+from datetime import datetime
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import math
@@ -86,7 +88,8 @@ root_source_path = str(Path(__file__).parents[2])
 # authentication
 if sly.is_development():
     load_dotenv("local.env")
-    load_dotenv("supervisely.env")
+    load_dotenv(os.path.expanduser("~/supervisely.env"))
+
 api = sly.Api(retry_count=7)
 team_id = sly.env.team_id()
 server_address = sly.env.server_address()
@@ -199,15 +202,13 @@ def update_globals(new_dataset_ids):
     dataset_ids = new_dataset_ids
     if dataset_ids and all(ds_id is not None for ds_id in dataset_ids):
         project_id = api.dataset.get_info_by_id(dataset_ids[0]).project_id
-        workspace_id = api.project.get_info_by_id(project_id).workspace_id
-        project_info = api.project.get_info_by_id(project_id)
+        project_info = api.project.get_info_by_id(project_id, raise_error=True)
+        workspace_id = project_info.workspace_id
         project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
         print(f"Project is {project_info.name}, {dataset_ids}")
     elif project_id:
-        workspace_id = api.project.get_info_by_id(
-            project_id, raise_error=True
-        ).workspace_id
-        project_info = api.project.get_info_by_id(project_id)
+        project_info = api.project.get_info_by_id(project_id, raise_error=True)
+        workspace_id = project_info.workspace_id
         project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
     else:
         print("All globals set to None")
@@ -1947,13 +1948,15 @@ def start_training():
     print(results)
     best_epoch = results["fitness"].idxmax()
     best_filename = f"best_{best_epoch}.pt"
-    current_best_filepath = os.path.join(local_artifacts_dir, "weights", "best.pt")
-    new_best_filepath = os.path.join(local_artifacts_dir, "weights", best_filename)
+    current_best_filepath = os.path.join(local_artifacts_dir, "checkpoints", "best.pt")
+    new_best_filepath = os.path.join(local_artifacts_dir, "checkpoints", best_filename)
     os.rename(current_best_filepath, new_best_filepath)
 
     # add geometry config to saved weights for pose estimation task
     if task_type == "pose estimation":
-        weights_filepath = os.path.join(local_artifacts_dir, "weights", best_filename)
+        weights_filepath = os.path.join(
+            local_artifacts_dir, "checkpoints", best_filename
+        )
         weights_dict = torch.load(weights_filepath)
         if len(cls2config.keys()) == 1:
             geometry_config = list(cls2config.values())[0]
@@ -1971,8 +1974,8 @@ def start_training():
         loaded["sly_metadata"] = {"model_name": selected_model_name}
         torch.save(loaded, ckpt_path)
 
-    best_path = os.path.join(local_artifacts_dir, "weights", best_filename)
-    last_path = os.path.join(local_artifacts_dir, "weights", "last.pt")
+    best_path = os.path.join(local_artifacts_dir, "checkpoints", best_filename)
+    last_path = os.path.join(local_artifacts_dir, "checkpoints", "last.pt")
     if os.path.exists(best_path):
         add_sly_metadata_to_ckpt(best_path)
     if os.path.exists(last_path):
@@ -1985,22 +1988,34 @@ def start_training():
         print(app_url, file=text_file)
 
     # Exporting to ONNX / TensorRT
+    export_dir = os.path.join(local_artifacts_dir, "export")
+    export_info = None
     if export_model_switch.is_switched() and os.path.exists(best_path):
         try:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            export_weights(best_path, selected_model_name, model_benchmark_pbar)
+            export_info = export_weights(
+                best_path, selected_model_name, model_benchmark_pbar, export_dir
+            )
         except Exception as e:
             sly.logger.error(f"Error during model export: {e}")
         finally:
             model_benchmark_pbar.hide()
 
     # upload training artifacts to team files
+    # old impl
+    # upload_artifacts_dir = os.path.join(
+    # framework_folder,
+    # task_type_select.get_value(),
+    # project_info.name,
+    # str(g.app_session_id),
+    # )
+
+    # Experiments update
     upload_artifacts_dir = os.path.join(
-        framework_folder,
-        task_type_select.get_value(),
-        project_info.name,
-        str(g.app_session_id),
+        "/experiments",
+        f"{project_info.id}_{project_info.name}",
+        f"{g.app_session_id}_{YOLOv8.framework_name}",
     )
 
     if not app.is_stopped():
@@ -2045,10 +2060,16 @@ def start_training():
         )
         sly.logger.info("Training artifacts uploaded successfully")
     uploading_artefacts_f.hide()
-    remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
 
+    # old implt
+    # remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
+    
+    # Experiments update
+    remote_weights_dir = os.path.join(remote_artifacts_dir, "checkpoints")
+    
     # ------------------------------------- Model Benchmark ------------------------------------- #
     model_benchmark_done = False
+    report_id, eval_metrics, primary_metric_name = None, None, None
     if run_model_benchmark_checkbox.is_checked():
         try:
             if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
@@ -2134,16 +2155,16 @@ def start_training():
                             ds_info = ds_infos_dict[dataset_name]
                             for batched_names in sly.batched(image_names, 200):
                                 batch = api.image.get_list(
-                                        ds_info.id,
-                                        filters=[
-                                            {
-                                                "field": "name",
-                                                "operator": "in",
-                                                "value": batched_names,
-                                            }
-                                        ],
-                                        force_metadata_for_links=False,
-                                    )
+                                    ds_info.id,
+                                    filters=[
+                                        {
+                                            "field": "name",
+                                            "operator": "in",
+                                            "value": batched_names,
+                                        }
+                                    ],
+                                    force_metadata_for_links=False,
+                                )
                                 image_infos.extend(batch)
                         return image_infos
 
@@ -2216,6 +2237,14 @@ def start_training():
                 remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
                 report = bm.upload_report_link(remote_dir)
 
+                # Experiments update
+                report_id = bm.report.id
+                eval_metrics = bm.key_metrics
+                primary_metric_name = bm.primary_metric_name
+                bm.upload_report_link(
+                    remote_artifacts_dir, report_id, local_artifacts_dir
+                )
+
                 # 8. UI updates
                 benchmark_report_template = api.file.get_info_by_path(
                     sly.env.team_id(), remote_dir + "template.vue"
@@ -2270,16 +2299,76 @@ def start_training():
         # card_train_progress.collapse()
 
     # upload sly_metadata.json
-    yolov8_artifacts.generate_metadata(
-        app_name=yolov8_artifacts.app_name,
-        task_id=g.app_session_id,
-        artifacts_folder=remote_artifacts_dir,
-        weights_folder=remote_weights_dir,
-        weights_ext=yolov8_artifacts.weights_ext,
-        project_name=project_info.name,
-        task_type=task_type,
-        config_path=None,
+    # yolov8_artifacts.generate_metadata(
+    #     app_name=yolov8_artifacts.app_name,
+    #     task_id=g.app_session_id,
+    #     artifacts_folder=remote_artifacts_dir,
+    #     weights_folder=remote_weights_dir,
+    #     weights_ext=yolov8_artifacts.weights_ext,
+    #     project_name=project_info.name,
+    #     task_type=task_type,
+    #     config_path=None,
+    # )
+
+    # Experiments update
+    if report_id is not None:
+        report_link = abs_url(f"/model-benchmark?id={str(report_id)}")
+
+    if export_info is not None:
+        experiment_export = {rt:f"export/{sly.fs.get_file_name_with_ext(path)}" for rt,path in export_info}
+    else:
+        experiment_export = None
+
+    train_val_file_info, train_set_size, val_set_size = generate_train_val_splits(
+        train_set, val_set, local_artifacts_dir, remote_artifacts_dir
     )
+    model_meta_file_info = generate_model_meta(
+        local_artifacts_dir, remote_artifacts_dir
+    )
+    experiment_info = {
+        "experiment_name": f"{g.app_session_id}_{project_info.name}_{selected_model_name}",
+        "framework_name": YOLOv8.framework_name,
+        "model_name": selected_model_name,
+        "task_type": task_type,
+        "project_id": project_info.id,
+        "task_id": g.app_session_id,
+        "model_files": {},  # No additional files
+        "checkpoints": [
+            f"checkpoints/{checkpoint}"
+            for checkpoint in os.listdir(
+                os.path.join(local_artifacts_dir, "checkpoints")
+            )
+        ],
+        "best_checkpoint": best_filename,
+        "export": experiment_export,
+        "app_state": None,
+        "model_meta": model_meta_file_info.name,
+        "train_val_split": train_val_file_info.name,
+        "train_size": train_set_size,
+        "val_size": val_set_size,
+        "hyperparameters": None,
+        "hyperparameters_id": None,
+        "artifacts_dir": remote_artifacts_dir,
+        "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "evaluation_report_id": report_id,
+        "evaluation_report_link": report_link,
+        "primary_metric": primary_metric_name,
+        "evaluation_metrics": eval_metrics,
+        "logs": None,
+    }
+    
+    experiment_info_filename = "experiment_info.json"
+    local_experiment_info_path = os.path.join(local_dir, experiment_info_filename)
+    remote_experiment_info_path = os.path.join(remote_dir, experiment_info_filename)
+
+    sly.json.dump_json_file(experiment_info, local_experiment_info_path)
+    sly.logger.debug(f"Uploading 'experiment_info.json' to Supervisely")
+    experiment_file_info = api.file.upload(
+        team_id,
+        local_experiment_info_path,
+        remote_experiment_info_path,
+    )
+    api.task.set_output_experiment(g.app_session_id, experiment_info)
 
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
@@ -3006,13 +3095,13 @@ def auto_train(request: Request):
     print(results)
     best_epoch = results["fitness"].idxmax()
     best_filename = f"best_{best_epoch}.pt"
-    current_best_filepath = os.path.join(local_artifacts_dir, "weights", "best.pt")
-    new_best_filepath = os.path.join(local_artifacts_dir, "weights", best_filename)
+    current_best_filepath = os.path.join(local_artifacts_dir, "checkpoints", "best.pt")
+    new_best_filepath = os.path.join(local_artifacts_dir, "checkpoints", best_filename)
     os.rename(current_best_filepath, new_best_filepath)
 
     # add geometry config to saved weights for pose estimation task
     if task_type == "pose estimation":
-        weights_filepath = os.path.join(local_artifacts_dir, "weights", best_filename)
+        weights_filepath = os.path.join(local_artifacts_dir, "checkpoints", best_filename)
         weights_dict = torch.load(weights_filepath)
         if len(cls2config.keys()) == 1:
             geometry_config = list(cls2config.values())[0]
@@ -3030,8 +3119,8 @@ def auto_train(request: Request):
         loaded["sly_metadata"] = {"model_name": selected_model_name}
         torch.save(loaded, ckpt_path)
 
-    best_path = os.path.join(local_artifacts_dir, "weights", best_filename)
-    last_path = os.path.join(local_artifacts_dir, "weights", "last.pt")
+    best_path = os.path.join(local_artifacts_dir, "checkpoints", best_filename)
+    last_path = os.path.join(local_artifacts_dir, "checkpoints", "last.pt")
     if os.path.exists(best_path):
         add_sly_metadata_to_ckpt(best_path)
     if os.path.exists(last_path):
@@ -3044,22 +3133,34 @@ def auto_train(request: Request):
         print(app_url, file=text_file)
 
     # Exporting to ONNX / TensorRT
+    export_dir = os.path.join(local_artifacts_dir, "export")
+    export_info = None
     if export_model_switch.is_switched() and os.path.exists(best_path):
         try:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            export_weights(best_path, selected_model_name, model_benchmark_pbar)
+            export_info = export_weights(
+                best_path, selected_model_name, model_benchmark_pbar, export_dir
+            )
         except Exception as e:
             sly.logger.error(f"Error during model export: {e}")
         finally:
             model_benchmark_pbar.hide()
 
     # upload training artifacts to team files
+    # old impl
+    # upload_artifacts_dir = os.path.join(
+    # framework_folder,
+    # task_type_select.get_value(),
+    # project_info.name,
+    # str(g.app_session_id),
+    # )
+
+    # Experiments update
     upload_artifacts_dir = os.path.join(
-        framework_folder,
-        task_type_select.get_value(),
-        project_info.name,
-        str(g.app_session_id),
+        "/experiments",
+        f"{project_info.id}_{project_info.name}",
+        f"{g.app_session_id}_{YOLOv8.framework_name}",
     )
 
     if not app.is_stopped():
@@ -3103,10 +3204,16 @@ def auto_train(request: Request):
             remote_dir=upload_artifacts_dir,
         )
         sly.logger.info("Training artifacts uploaded successfully")
-    remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
+    
+    # old implt
+    # remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
+    
+    # Experiments update
+    remote_weights_dir = os.path.join(remote_artifacts_dir, "checkpoints")
 
     # ------------------------------------- Model Benchmark ------------------------------------- #
     model_benchmark_done = False
+    report_id, eval_metrics, primary_metric_name = None, None, None
     if run_model_benchmark_checkbox.is_checked():
         try:
             if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
@@ -3182,16 +3289,16 @@ def auto_train(request: Request):
                             ds_info = ds_infos_dict[dataset_name]
                             for batched_names in sly.batched(image_names, 200):
                                 batch = api.image.get_list(
-                                        ds_info.id,
-                                        filters=[
-                                            {
-                                                "field": "name",
-                                                "operator": "in",
-                                                "value": batched_names,
-                                            }
-                                        ],
-                                        force_metadata_for_links=False,
-                                    )
+                                    ds_info.id,
+                                    filters=[
+                                        {
+                                            "field": "name",
+                                            "operator": "in",
+                                            "value": batched_names,
+                                        }
+                                    ],
+                                    force_metadata_for_links=False,
+                                )
                                 image_infos.extend(batch)
                         return image_infos
 
@@ -3264,6 +3371,14 @@ def auto_train(request: Request):
                 remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
                 report = bm.upload_report_link(remote_dir)
 
+                # Experiments update
+                report_id = bm.report.id
+                eval_metrics = bm.key_metrics
+                primary_metric_name = bm.primary_metric_name
+                bm.upload_report_link(
+                    remote_artifacts_dir, report_id, local_artifacts_dir
+                )
+                
                 # 8. UI updates
                 benchmark_report_template = api.file.get_info_by_path(
                     sly.env.team_id(), remote_dir + "template.vue"
@@ -3310,16 +3425,76 @@ def auto_train(request: Request):
         card_train_artifacts.uncollapse()
 
     # upload sly_metadata.json
-    yolov8_artifacts.generate_metadata(
-        app_name=yolov8_artifacts.app_name,
-        task_id=g.app_session_id,
-        artifacts_folder=remote_artifacts_dir,
-        weights_folder=remote_weights_dir,
-        weights_ext=yolov8_artifacts.weights_ext,
-        project_name=project_info.name,
-        task_type=task_type,
-        config_path=None,
+    # yolov8_artifacts.generate_metadata(
+    #     app_name=yolov8_artifacts.app_name,
+    #     task_id=g.app_session_id,
+    #     artifacts_folder=remote_artifacts_dir,
+    #     weights_folder=remote_weights_dir,
+    #     weights_ext=yolov8_artifacts.weights_ext,
+    #     project_name=project_info.name,
+    #     task_type=task_type,
+    #     config_path=None,
+    # )
+
+    # Experiments update
+    if report_id is not None:
+        report_link = abs_url(f"/model-benchmark?id={str(report_id)}")
+
+    if export_info is not None:
+        experiment_export = {rt:f"export/{sly.fs.get_file_name_with_ext(path)}" for rt,path in export_info}
+    else:
+        experiment_export = None
+
+    train_val_file_info, train_set_size, val_set_size = generate_train_val_splits(
+        train_set, val_set, local_artifacts_dir, remote_artifacts_dir
     )
+    model_meta_file_info = generate_model_meta(
+        local_artifacts_dir, remote_artifacts_dir
+    )
+    experiment_info = {
+        "experiment_name": f"{g.app_session_id}_{project_info.name}_{selected_model_name}",
+        "framework_name": YOLOv8.framework_name,
+        "model_name": selected_model_name,
+        "task_type": task_type,
+        "project_id": project_info.id,
+        "task_id": g.app_session_id,
+        "model_files": {},  # No additional files
+        "checkpoints": [
+            f"checkpoints/{checkpoint}"
+            for checkpoint in os.listdir(
+                os.path.join(local_artifacts_dir, "checkpoints")
+            )
+        ],
+        "best_checkpoint": best_filename,
+        "export": experiment_export,
+        "app_state": None,
+        "model_meta": model_meta_file_info.name,
+        "train_val_split": train_val_file_info.name,
+        "train_size": train_set_size,
+        "val_size": val_set_size,
+        "hyperparameters": None,
+        "hyperparameters_id": None,
+        "artifacts_dir": remote_artifacts_dir,
+        "datetime": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "evaluation_report_id": report_id,
+        "evaluation_report_link": report_link,
+        "primary_metric": primary_metric_name,
+        "evaluation_metrics": eval_metrics,
+        "logs": None,
+    }
+    
+    experiment_info_filename = "experiment_info.json"
+    local_experiment_info_path = os.path.join(local_dir, experiment_info_filename)
+    remote_experiment_info_path = os.path.join(remote_dir, experiment_info_filename)
+
+    sly.json.dump_json_file(experiment_info, local_experiment_info_path)
+    sly.logger.debug(f"Uploading 'experiment_info.json' to Supervisely")
+    experiment_file_info = api.file.upload(
+        team_id,
+        local_experiment_info_path,
+        remote_experiment_info_path,
+    )
+    api.task.set_output_experiment(g.app_session_id, experiment_info)
 
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
@@ -3331,9 +3506,12 @@ def auto_train(request: Request):
     return {"result": "successfully finished automatic training session"}
 
 
-def export_weights(weights_path, selected_model_name, progress: SlyTqdm):
+def export_weights(
+    weights_path: str, selected_model_name: str, progress: SlyTqdm, export_dir: str
+):
     from src.model_export import export_checkpoint
 
+    export_info = {}
     checkpoint_info_path = dump_yaml_checkpoint_info(weights_path, selected_model_name)
     pbar = None
     fp16 = export_fp16_switch.is_switched()
@@ -3341,13 +3519,24 @@ def export_weights(weights_path, selected_model_name, progress: SlyTqdm):
         pbar = progress(
             message="Exporting model to TensorRT, this may take some time...", total=1
         )
-        export_checkpoint(weights_path, format="engine", fp16=fp16, dynamic=False)
+        export_checkpoint_path = export_checkpoint(
+            weights_path, format="engine", fp16=fp16, dynamic=False
+        )
         pbar.update(1)
+        export_info[sly.nn.inference.RuntimeType.TENSORRT] = export_checkpoint_path
     if export_onnx_checkbox.is_checked():
         pbar = progress(message="Exporting model to ONNX...", total=1)
         dynamic = not fp16  # dynamic mode is not supported for fp16
-        export_checkpoint(weights_path, format="onnx", fp16=fp16, dynamic=dynamic)
+        export_checkpoint_path = export_checkpoint(
+            weights_path, format="onnx", fp16=fp16, dynamic=dynamic
+        )
         pbar.update(1)
+        export_info[sly.nn.inference.RuntimeType.ONNXRUNTIME] = export_checkpoint_path
+
+    for runtime in export_info:
+        export_filename = sly.fs.get_file_name_with_ext(export_info[runtime])
+        shutil.move(export_info[runtime], os.path.join(export_dir, export_filename))
+    return export_info
 
 
 def dump_yaml_checkpoint_info(weights_path, selected_model_name):
@@ -3364,3 +3553,104 @@ def dump_yaml_checkpoint_info(weights_path, selected_model_name):
     with open(checkpoint_info_path, "w") as f:
         yaml.dump(checkpoint_info, f)
     return checkpoint_info_path
+
+
+# Experiment update:
+
+
+def generate_train_val_splits(train_set, val_set, local_dir: str, remote_dir: str):
+    val_dataset_ids = None
+    val_images_ids = None
+    train_dataset_ids = None
+    train_images_ids = None
+
+    split_method = train_val_split.get_split_method()
+    train_set_size, val_set_size = len(train_set), len(val_set)
+    if split_method == "Based on datasets":
+        val_dataset_ids = train_val_split.get_val_dataset_ids()
+        train_dataset_ids = train_val_split.get_train_dataset_ids()
+    else:
+        dataset_infos = [dataset for _, dataset in api.dataset.tree(project_info.id)]
+        ds_infos_dict = {}
+        for dataset in dataset_infos:
+            if dataset.parent_id is not None:
+                parent_ds = api.dataset.get_info_by_id(dataset.parent_id)
+                dataset_name = f"{parent_ds.name}/{dataset.name}"
+            else:
+                dataset_name = dataset.name
+            ds_infos_dict[dataset_name] = dataset
+
+        def get_image_infos_by_split(ds_infos_dict: dict, split: list):
+            image_names_per_dataset = {}
+            for item in split:
+                image_names_per_dataset.setdefault(item.dataset_name, []).append(
+                    item.name
+                )
+            image_infos = []
+            for dataset_name, image_names in image_names_per_dataset.items():
+                ds_info = ds_infos_dict[dataset_name]
+                for names_batch in sly.batched(image_names, 200):
+                    image_infos.extend(
+                        api.image.get_list(
+                            ds_info.id,
+                            filters=[
+                                {
+                                    "field": "name",
+                                    "operator": "in",
+                                    "value": names_batch,
+                                }
+                            ],
+                        )
+                    )
+            return image_infos
+
+        val_image_infos = get_image_infos_by_split(ds_infos_dict, val_set)
+        train_image_infos = get_image_infos_by_split(ds_infos_dict, train_set)
+        val_images_ids = [img_info.id for img_info in val_image_infos]
+        train_images_ids = [img_info.id for img_info in train_image_infos]
+
+    splits_data = {
+        "train": {
+            "dataset_ids": train_dataset_ids,
+            "images_ids": train_images_ids,
+        },
+        "val": {
+            "dataset_ids": val_dataset_ids,
+            "images_ids": val_images_ids,
+        },
+    }
+
+    train_val_split_file = "train_val_split.json"
+    local_train_val_split_path = os.path.join(local_dir, train_val_split_file)
+    remote_train_val_split_path = os.path.join(remote_dir, train_val_split_file)
+
+    data = {
+        "train": splits_data["train"]["images_ids"],
+        "val": splits_data["val"]["images_ids"],
+    }
+
+    sly.json.dump_json_file(data, local_train_val_split_path)
+    sly.logger.debug(f"Uploading '{local_train_val_split_path}' to Supervisely")
+    file_info = api.file.upload(
+        team_id,
+        local_train_val_split_path,
+        remote_train_val_split_path,
+    )
+    return file_info, train_set_size, val_set_size
+
+
+def generate_model_meta(local_dir, remote_dir):
+    model_meta_file = "model_meta.json"
+    model_meta = sly.Project(g.project_dir, sly.OpenMode.READ).meta
+
+    local_model_meta_file_path = os.path.join(local_dir, model_meta_file)
+    remote_model_meta_file_path = os.path.join(remote_dir, model_meta_file)
+
+    sly.json.dump_json_file(model_meta.to_json(), local_model_meta_file_path)
+    sly.logger.debug(f"Uploading '{local_model_meta_file_path}' to Supervisely")
+    file_info = api.file.upload(
+        team_id,
+        local_model_meta_file_path,
+        remote_model_meta_file_path,
+    )
+    return file_info
