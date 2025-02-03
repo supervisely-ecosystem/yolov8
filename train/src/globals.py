@@ -16,7 +16,7 @@ if sly.is_production():
     app_session_id = sly.io.env.task_id()
     root_model_checkpoint_dir = sly.app.get_synced_data_dir()
 else:
-    app_session_id = 67078  # for debug
+    app_session_id = 215  # for debug
     root_model_checkpoint_dir = os.path.join(app_root_directory, "runs")
 
 
