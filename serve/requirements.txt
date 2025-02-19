@@ -1,7 +1,1 @@
 git+https://github.com/supervisely/supervisely.git@attention-map-inference
-
-supervisely[model-benchmark]==6.73.276
-ultralytics==8.2.26
---extra-index-url https://download.pytorch.org/whl/cu113
-torch==1.10.1+cu113
-torchvision==0.11.2+cu113
