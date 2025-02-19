@@ -12,14 +12,15 @@ if sly.is_development():
 m = AttentionMapModel(model_dir="app_data",custom_inference_settings="serve/custom_settings.yaml")
 
 m.serve()
-m.load_model(
-    device="cpu",
-    model_source="Pretrained models",
-    task_type="instance segmentation",
-    checkpoint_name="YOLOv8n-seg.pt",
-    checkpoint_url="https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8n-seg.pt",
-    runtime="PyTorch",
-)
+deploy_params = {
+    "device": "cpu",
+    "model_source": "Pretrained models",
+    "task_type": "instance segmentation",
+    "checkpoint_name": "YOLOv8n-seg.pt",
+    "checkpoint_url": "https://github.com/ultralytics/assets/releases/download/v8.2.0/YOLOv8n-seg.pt",
+    "runtime": "PyTorch",
+}
+m._load_model(deploy_params)
 # # image_path = "serve/demo_data/image_01.jpg"
 # # settings = {
 # #     "conf": 0.25,
