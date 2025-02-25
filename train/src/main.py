@@ -310,7 +310,7 @@ card_classes.lock()
 
 
 ### 3.1 Train / validation split
-train_val_split = TrainValSplits(project_id=project_id)
+train_val_split = TrainValSplits(project_id)
 train_val_split_area = ReloadableArea(train_val_split)
 unlabeled_images_select = SelectString(
     values=["keep unlabeled images", "ignore unlabeled images"]
@@ -846,7 +846,7 @@ def select_input_data():
         for ds in api.dataset.get_nested(project_id=project_id, dataset_id=dataset_id):
             selected_datasets.add(ds.id)
     update_globals(list(selected_datasets))
-    update_split_tabs_for_nested_datasets(dataset_ids)
+    # update_split_tabs_for_nested_datasets(dataset_ids)
     sly.logger.debug(f"Select data button clicked, selected datasets: {dataset_ids}")
     project_shapes = [
         cls.geometry_type.geometry_name() for cls in project_meta.obj_classes
