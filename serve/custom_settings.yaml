@@ -11,3 +11,7 @@ max_det: 300
 agnostic_nms: False
 # point confidence threshold (for pose estimation)
 point_threshold: 0.1
+# IoU threshold to filter out predictions that significantly overlap with ground truth objects
+# (the greater the value, the fewer predictions will remain)
+# If the value is 0.0, no filtering will be done
+existing_objects_iou_thresh: 0.0
