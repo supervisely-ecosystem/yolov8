@@ -245,7 +245,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 src_path=checkpoint_url,
                 dst_path=local_weights_path,
             )
-
+        sly.logger.info("Loading model onto device: '%s'", self.device)
         if runtime == RuntimeType.PYTORCH:
             self.model = self._load_pytorch(local_weights_path)
         elif runtime == RuntimeType.ONNXRUNTIME:
@@ -255,6 +255,8 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             self._check_tensorrt_device(device)
             self.model = self._load_tensorrt(local_weights_path)
             self.max_batch_size = self.TENSORRT_MAX_BATCH_SIZE
+
+        sly.logger.info("Model has been loaded onto device: '%s'", self.model.device)
 
         self.load_model_meta(model_source, local_weights_path)
 
