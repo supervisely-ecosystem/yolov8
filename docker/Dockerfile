@@ -18,7 +18,7 @@ RUN pip3 install packaging==21.3
 RUN pip3 install dill==0.3.8
 RUN pip3 install ruamel.yaml==0.17.21
 
-RUN pip3 install ultralytics==8.3.15
+RUN pip3 install ultralytics==8.3.86
 RUN pip3 install onnxruntime-gpu==1.18.0 --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/
 RUN pip3 install dill==0.2.8.2 tf2onnx==1.16.1 skl2onnx==1.17.0
 RUN python3 -m pip install supervisely[tracking,model-benchmark]==6.73.322
