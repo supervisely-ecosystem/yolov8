@@ -511,12 +511,16 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         # RGB to BGR
         images_np = [cv2.cvtColor(img, cv2.COLOR_RGB2BGR) for img in images_np]
         retina_masks = self.task_type == "instance segmentation"
+        sly.logger.info("----------------------------------")
+        sly.logger.info(f"Device: {self.device}")
+        sly.logger.info(f"Model Device: {self.model.device}")
+        sly.logger.info("----------------------------------")
         predictions = self.model(
             source=images_np,
             conf=settings["conf"],
             iou=settings["iou"],
             half=settings["half"],
-            device=self.device,
+            device=self.model.device,
             max_det=settings["max_det"],
             agnostic_nms=settings["agnostic_nms"],
             retina_masks=retina_masks,
