@@ -1797,29 +1797,21 @@ def start_training():
     # model.add_callback("on_val_batch_end", stop_on_batch_end_if_needed)
 
     def train_model():
-        with torch.profiler.profile(
-            activities=[torch.profiler.ProfilerActivity.CPU, torch.profiler.ProfilerActivity.CUDA],
-            schedule=torch.profiler.schedule(wait=2, warmup=2, active=6),
-            on_trace_ready=torch.profiler.tensorboard_trace_handler('./logs/runProfile'),
-            record_shapes=True,
-            profile_memory=True,
-            with_stack=True
-        ) as prof:
-            model.train(
-                data=data_path,
-                epochs=n_epochs_input.get_value(),
-                patience=patience_input.get_value(),
-                batch=batch_size_input.get_value(),
-                imgsz=image_size_input.get_value(),
-                save_period=1000,
-                device=device,
-                workers=n_workers_input.get_value(),
-                optimizer=select_optimizer.get_value(),
-                pretrained=pretrained,
-                project=checkpoint_dir,
-                profiler=profiler,
-                **additional_params,
-            )
+        model.train(
+            data=data_path,
+            epochs=n_epochs_input.get_value(),
+            patience=patience_input.get_value(),
+            batch=batch_size_input.get_value(),
+            imgsz=image_size_input.get_value(),
+            save_period=1000,
+            device=device,
+            workers=n_workers_input.get_value(),
+            optimizer=select_optimizer.get_value(),
+            pretrained=pretrained,
+            project=checkpoint_dir,
+            profiler=profiler,
+            **additional_params,
+        )
 
     stop_training_tooltip.show()
 
