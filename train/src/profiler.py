@@ -83,6 +83,14 @@ class MemoryProfiler:
                 result[process.pid] = process_info
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 continue
+        total_memory = sum(info['memory_bytes'] for info in result.values())
+        result["total"] = {
+            'pid': None,
+            'name': None,
+            'memory_bytes': total_memory,
+            'memory_formatted': self._format_memory(total_memory),
+            'parent_pid': None,
+        }
 
         return result
 
