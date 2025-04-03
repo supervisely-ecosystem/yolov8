@@ -96,7 +96,7 @@ class BaseTrainer:
     """
 
     def __init__(
-        self, cfg=DEFAULT_CFG, overrides=None, _callbacks=None, stop_event=None
+        self, cfg=DEFAULT_CFG, overrides=None, _callbacks=None, stop_event=None, profiler=None
     ):
         """
         Initializes the BaseTrainer class.
@@ -113,6 +113,7 @@ class BaseTrainer:
         self.plots = {}
         init_seeds(self.args.seed + 1 + RANK, deterministic=self.args.deterministic)
         self.stop_event = stop_event
+        self.profiler = profiler
 
         # Dirs
         self.save_dir = get_save_dir(self.args)
@@ -323,10 +324,14 @@ class BaseTrainer:
             )
 
         # Dataloaders
+        if self.profiler is not None:
+            self.profiler.measure(f"Setup training")
         batch_size = self.batch_size // max(world_size, 1)
         self.train_loader = self.get_dataloader(
             self.trainset, batch_size=batch_size, rank=LOCAL_RANK, mode="train"
         )
+        if self.profiler is not None:
+            self.profiler.measure(f"Get dataloader")
         if RANK in {-1, 0}:
             # Note: When training DOTA dataset, double batch size could get OOM on images with >2000 objects.
             self.test_loader = self.get_dataloader(
@@ -335,6 +340,8 @@ class BaseTrainer:
                 rank=-1,
                 mode="val",
             )
+            if self.profiler is not None:
+                self.profiler.measure(f"Get test dataloader")
             self.validator = self.get_validator()
             metric_keys = self.validator.metrics.keys + self.label_loss_items(
                 prefix="val"
@@ -382,6 +389,8 @@ class BaseTrainer:
         if world_size > 1:
             self._setup_ddp(world_size)
         self._setup_train(world_size)
+        if self.profiler is not None:
+            self.profiler.measure("Setup training finished")
 
         nb = len(self.train_loader)  # number of batches
         nw = (
@@ -412,6 +421,8 @@ class BaseTrainer:
         self.optimizer.zero_grad()  # zero any resumed gradients to ensure stability on train start
         while True:
             self.epoch = epoch
+            if self.profiler is not None:
+                self.profiler.measure(f"Training epoch {epoch} started")
             self.run_callbacks("on_train_epoch_start")
             with warnings.catch_warnings():
                 warnings.simplefilter(
@@ -433,6 +444,8 @@ class BaseTrainer:
                 pbar = TQDM(enumerate(self.train_loader), total=nb)
             self.tloss = None
             for i, batch in pbar:
+                if self.profiler is not None:
+                    self.profiler.measure(f"Training epoch {epoch} batch {i} started")
                 self.run_callbacks("on_train_batch_start")
                 # Warmup
                 ni = i + nb * epoch
@@ -461,9 +474,13 @@ class BaseTrainer:
                                 ni, xi, [self.args.warmup_momentum, self.args.momentum]
                             )
 
+                if self.profiler is not None:
+                    self.profiler.measure(f"Training epoch: {epoch}. batch: {i}. step: worward started")
                 # Forward
                 with autocast(self.amp):
                     batch = self.preprocess_batch(batch)
+                    if self.profiler is not None:
+                        self.profiler.measure(f"Training epoch: {epoch}. batch: {i}. step: preprocess_batch")
                     self.loss, self.loss_items = self.model(batch)
                     if RANK != -1:
                         self.loss *= world_size
@@ -473,12 +490,16 @@ class BaseTrainer:
                         else self.loss_items
                     )
 
+                if self.profiler is not None:
+                        self.profiler.measure(f"Training epoch: {epoch}. batch: {i}. step: backward started")
                 # Backward
                 self.scaler.scale(self.loss).backward()
 
                 # Optimize - https://pytorch.org/docs/master/notes/amp_examples.html
                 if ni - last_opt_step >= self.accumulate:
                     self.optimizer_step()
+                    if self.profiler is not None:
+                        self.profiler.measure(f"Training epoch: {epoch}. batch: {i}. step: optimizer_step")
                     last_opt_step = ni
 
                     # Timed stopping
@@ -513,6 +534,8 @@ class BaseTrainer:
                     self.run_callbacks("on_batch_end")
                     if self.args.plots and ni in self.plot_idx:
                         self.plot_training_samples(batch, ni)
+                        if self.profiler is not None:
+                            self.profiler.measure(f"Training epoch: {epoch}. batch: {i}. step: plot_training_samples")
 
                 self.run_callbacks("on_train_batch_end")
 
@@ -569,9 +592,13 @@ class BaseTrainer:
                 self.scheduler.last_epoch = self.epoch  # do not move
                 self.stop |= epoch >= self.epochs  # stop if exceeded epochs
             self.run_callbacks("on_fit_epoch_end")
+            if self.profiler is not None:
+                self.profiler.measure(f"Training epoch: {epoch} before gc.collect")
             gc.collect()
             torch.cuda.empty_cache()  # clear GPU memory at end of epoch, may help reduce CUDA out of memory errors
 
+            self.profiler.measure(f"Training epoch {epoch} finished")
+            
             # Early Stopping
             if RANK != -1:  # if DDP training
                 broadcast_list = [self.stop if RANK == 0 else None]

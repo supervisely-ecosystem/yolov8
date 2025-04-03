@@ -827,6 +827,7 @@ class Model(nn.Module):
     def train(
         self,
         trainer=None,
+        profiler=None,
         **kwargs,
     ):
         """
@@ -900,7 +901,7 @@ class Model(nn.Module):
             args["resume"] = self.ckpt_path
 
         self.trainer = (trainer or self._smart_load("trainer"))(
-            overrides=args, _callbacks=self.callbacks, stop_event=self.stop_event
+            overrides=args, _callbacks=self.callbacks, stop_event=self.stop_event, profiler=profiler
         )
         if not args.get("resume"):  # manually set model only if not resuming
             self.trainer.model = self.trainer.get_model(
