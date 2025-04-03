@@ -78,6 +78,8 @@ from src.early_stopping.custom_yolo import YOLO as CustomYOLO
 import ruamel.yaml
 import io
 
+from src.profiler import MemoryProfiler
+
 
 ConfusionMatrix.plot = custom_plot
 plt.switch_backend("Agg")
@@ -1326,6 +1328,8 @@ def stop_training_process():
 
 @start_training_button.click
 def start_training():
+    profiler = MemoryProfiler()
+
     start_training_button.loading = True
 
     if g.IN_PROGRESS is True:
@@ -1497,6 +1501,9 @@ def start_training():
         progress_bar_convert_to_yolo,
         task_type,
     )
+
+    profiler.measure("Preprocessing finished")
+    
     # download model
     weights_type = model_tabs.get_active_tab()
 
@@ -1580,6 +1587,8 @@ def start_training():
             selected_model_name = model.ckpt["sly_metadata"]["model_name"]
         except Exception:
             selected_model_name = "custom_model.pt"
+
+    profiler.measure("Model downloaded")
 
     # ---------------------------------- Init And Set Workflow Input --------------------------------- #
     w.workflow_input(api, project_info, file_info)
@@ -1735,6 +1744,8 @@ def start_training():
 
     app.call_before_shutdown(disable_watcher)
 
+    profiler.measure("Prepared training")
+
     threading.Thread(target=watcher_func, daemon=True).start()
     if len(train_set) > 300:
         n_train_batches = math.ceil(len(train_set) / batch_size_input.get_value())
@@ -1763,6 +1774,8 @@ def start_training():
         app.call_before_shutdown(train_batch_watcher_disable)
 
         threading.Thread(target=train_batch_watcher_func, daemon=True).start()
+
+    profiler.measure("Watchers started")
 
     def stop_on_batch_end_if_needed(trainer_validator, *args, **kwargs):
         app_is_stopped = app.is_stopped()
@@ -1802,8 +1815,10 @@ def start_training():
     stop_training_tooltip.show()
 
     train_thread = threading.Thread(target=train_model, args=())
+    profiler.measure("Starting training")
     train_thread.start()
     train_thread.join()
+    profiler.measure("Training finished")
 
     # if app.is_stopped():
     #     print("Stopping the app...")
@@ -1929,6 +1944,8 @@ def start_training():
             else:
                 additional_gallery.append(tf_mask_f1_curve_info.full_storage_url)
 
+    profiler.measure("Visualization finished")
+
     making_training_vis_f.hide()
     # rename best checkpoint file
     uploading_artefacts_f.show()
@@ -1984,6 +2001,8 @@ def start_training():
     with open(app_link_path, "w") as text_file:
         print(app_url, file=text_file)
 
+    profiler.measure("Results saved")
+
     # Exporting to ONNX / TensorRT
     if export_model_switch.is_switched() and os.path.exists(best_path):
         try:
@@ -1994,6 +2013,7 @@ def start_training():
             sly.logger.error(f"Error during model export: {e}")
         finally:
             model_benchmark_pbar.hide()
+            profiler.measure("Exporting weigths finished")
 
     # upload training artifacts to team files
     upload_artifacts_dir = os.path.join(
@@ -2044,6 +2064,9 @@ def start_training():
             remote_dir=upload_artifacts_dir,
         )
         sly.logger.info("Training artifacts uploaded successfully")
+    
+    profiler.measure("Artifacts uploaded")
+
     uploading_artefacts_f.hide()
     remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
 
@@ -2051,6 +2074,7 @@ def start_training():
     model_benchmark_done = False
     if run_model_benchmark_checkbox.is_checked():
         try:
+            profiler.measure("Starting benchmark")
             if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
                 sly.logger.info(
                     f"Creating the report for the best model: {best_filename!r}"
@@ -2238,6 +2262,9 @@ def start_training():
                     api.project.remove(bm.dt_project_info.id)
             except Exception as e2:
                 pass
+
+        profiler.measure("Benchmark finished")
+
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
@@ -2288,11 +2315,14 @@ def start_training():
     sly.output.set_directory(remote_artifacts_dir)
     # stop app
     app.stop()
+    profiler.measure("App stopped")
+    profiler.upload(api, sly.env.team_id(), upload_artifacts_dir)
 
 
 @server.post("/auto_train")
 def auto_train(request: Request):
     sly.logger.info("Starting automatic training session...")
+    profiler = MemoryProfiler()
     state = request.state.state
 
     if "yaml_string" in state:
@@ -2474,6 +2504,9 @@ def auto_train(request: Request):
         progress_bar_convert_to_yolo,
         task_type,
     )
+
+    profiler.measure("Preprocessing finished")
+
     # download model
     weights_type = "Pretrained models"
 
@@ -2582,6 +2615,8 @@ def auto_train(request: Request):
     stepper.set_active_step(4)
     card_train_params.unlock()
     card_train_params.uncollapse()
+
+    profiler.measure("Model downloaded")
 
     # ---------------------------------- Init And Set Workflow Input --------------------------------- #
     w.workflow_input(api, project_info, file_info)
@@ -2738,6 +2773,8 @@ def auto_train(request: Request):
 
     app.call_before_shutdown(disable_watcher)
 
+    profiler.measure("Prepared training")
+
     threading.Thread(target=watcher_func, daemon=True).start()
     if len(train_set) > 300:
         n_train_batches = math.ceil(len(train_set) / batch_size_input.get_value())
@@ -2766,6 +2803,8 @@ def auto_train(request: Request):
         app.call_before_shutdown(train_batch_watcher_disable)
 
         threading.Thread(target=train_batch_watcher_func, daemon=True).start()
+    
+    profiler.measure("Watchers started")
 
     # extract training hyperparameters
     n_epochs = state.get("n_epochs", n_epochs_input.get_value())
@@ -2898,8 +2937,10 @@ def auto_train(request: Request):
     stop_training_tooltip.show()
 
     train_thread = threading.Thread(target=train_model, args=())
+    profiler.measure("Starting training")
     train_thread.start()
     train_thread.join()
+    profiler.measure("Training finished")
     watcher.running = False
     progress_bar_iters.hide()
     progress_bar_epochs.hide()
@@ -2990,6 +3031,8 @@ def auto_train(request: Request):
 
     making_training_vis_f.hide()
 
+    profiler.measure("Visualization finished")
+
     # rename best checkpoint file
     if not os.path.isfile(watch_file):
         sly.logger.warning(
@@ -3043,6 +3086,8 @@ def auto_train(request: Request):
     with open(app_link_path, "w") as text_file:
         print(app_url, file=text_file)
 
+    profiler.measure("Results saved")
+
     # Exporting to ONNX / TensorRT
     if export_model_switch.is_switched() and os.path.exists(best_path):
         try:
@@ -3053,6 +3098,7 @@ def auto_train(request: Request):
             sly.logger.error(f"Error during model export: {e}")
         finally:
             model_benchmark_pbar.hide()
+            profiler.measure("Exporting weigths finished")
 
     # upload training artifacts to team files
     upload_artifacts_dir = os.path.join(
@@ -3103,11 +3149,15 @@ def auto_train(request: Request):
             remote_dir=upload_artifacts_dir,
         )
         sly.logger.info("Training artifacts uploaded successfully")
+    
+    profiler.measure("Artifacts uploaded")
+
     remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
 
     # ------------------------------------- Model Benchmark ------------------------------------- #
     model_benchmark_done = False
     if run_model_benchmark_checkbox.is_checked():
+        profiler.measure("Starting benchmark")
         try:
             if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
                 sly.logger.info(
@@ -3286,6 +3336,9 @@ def auto_train(request: Request):
                     api.project.remove(bm.dt_project_info.id)
             except Exception as e2:
                 pass
+
+        profiler.measure("Benchmark finished")
+
     # ----------------------------------------------- - ---------------------------------------------- #
 
     # ------------------------------------- Set Workflow Outputs ------------------------------------- #
@@ -3328,6 +3381,8 @@ def auto_train(request: Request):
     sly.output.set_directory(remote_artifacts_dir)
     # stop app
     app.stop()
+    profiler.measure("App stopped")
+    profiler.upload(api, sly.env.team_id(), upload_artifacts_dir)
     return {"result": "successfully finished automatic training session"}
 
 
