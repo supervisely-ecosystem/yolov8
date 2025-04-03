@@ -51,7 +51,7 @@ class MemoryProfiler:
     def _format_memory(self, bytes_value: Union[int, float]) -> str:
         """Format memory size from bytes to a human-readable format."""
         for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-            if bytes_value < 1024.0 or unit == 'TB':
+            if abs(bytes_value) < 1024.0 or unit == 'TB':
                 if unit == 'B':
                     return f"{bytes_value:.0f} {unit}"
                 return f"{bytes_value:.2f} {unit}"
@@ -72,8 +72,11 @@ class MemoryProfiler:
 
                 if process.pid in self.last_cpu_memory:
                     diff = process_info['memory_bytes'] - self.last_cpu_memory[process.pid]
-                    process_info['diff_bytes'] = diff
-                    process_info['diff_formatted'] = ('+' if diff >= 0 else '') + self._format_memory(diff)
+                else:
+                    diff = process_info['memory_bytes']
+                process_info['diff_bytes'] = diff
+                process_info['diff_formatted'] = ('+' if diff >= 0 else '') + self._format_memory(diff)
+
 
                 self.last_cpu_memory[process.pid] = process_info['memory_bytes']
 
@@ -82,7 +85,7 @@ class MemoryProfiler:
                 continue
 
         return result
-    
+
     def _get_gpu_memory(self) -> Dict[int, Dict[str, Union[int, float, str]]]:
         """Get GPU memory usage for all available GPUs."""
         result = {}
