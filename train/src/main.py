@@ -506,11 +506,21 @@ save_checkpoints_content = Flexbox(
     widgets=[save_best, save_last],
     center_content=False,
 )
-n_workers_input = InputNumber(value=8, min=1)
+n_workers_input = InputNumber(value=2, min=0)
 n_workers_input_f = Field(
     content=n_workers_input,
     title="Number of workers",
-    description="Number of worker threads for data loading",
+    description="Number of worker processes for data loading.",
+)
+n_workers_input_notification = NotificationBox(
+    title="Notice: Number of workers",
+    description=(
+        "Number of workers defines how many processes will be used for data loading. "
+        "Setting it to 0 will use the main process for data loading. "
+        "Setting it to a higher number may speed up data loading, but it will also "
+        "increase memory usage and may cause an out of memory error on large datasets. "
+    ),
+    box_type="warning",
 )
 freeze_layers = Switch(switched=False)
 freeze_layers_f = Field(
@@ -642,6 +652,7 @@ train_params_content = Container(
         select_optimizer_f,
         save_checkpoints_content,
         n_workers_input_f,
+        n_workers_input_notification,
         freeze_layers_f,
         n_frozen_layers_input_f,
         model_benchmark_f,
