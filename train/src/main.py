@@ -508,7 +508,7 @@ save_checkpoints_content = Flexbox(
     widgets=[save_best, save_last],
     center_content=False,
 )
-n_workers_input = InputNumber(value=8, min=1)
+n_workers_input = InputNumber(value=0, min=0)
 n_workers_input_f = Field(
     content=n_workers_input,
     title="Number of workers",
