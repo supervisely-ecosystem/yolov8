@@ -43,3 +43,6 @@ node_id2label = {}
 IN_PROGRESS = False
 
 stop_event = None
+
+sly_yolo_generated_metadata = None
+train_size, val_size = None, None
