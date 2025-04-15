@@ -3358,6 +3358,7 @@ def auto_train(request: Request):
     )
 
     try:
+        sly.logger.info("Creating experiment info")
         create_experiment(selected_model_name, remote_artifacts_dir, report_id, eval_metrics, primary_metric_name)
     except Exception as e:
         sly.logger.warning(f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}")
