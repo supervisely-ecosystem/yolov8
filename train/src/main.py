@@ -2306,7 +2306,7 @@ def start_training():
     )
     
     try:
-        create_experiment(selected_model_name, remote_artifacts_dir, report_id, eval_metrics, primary_metric_name)
+        create_experiment(selected_model_name, remote_artifacts_dir, local_artifacts_dir, report_id, eval_metrics, primary_metric_name)
     except Exception as e:
         sly.logger.warning(f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}")
 
@@ -3359,7 +3359,7 @@ def auto_train(request: Request):
 
     try:
         sly.logger.info("Creating experiment info")
-        create_experiment(selected_model_name, remote_artifacts_dir, report_id, eval_metrics, primary_metric_name)
+        create_experiment(selected_model_name, remote_artifacts_dir, local_artifacts_dir, report_id, eval_metrics, primary_metric_name)
     except Exception as e:
         sly.logger.warning(f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}")
 
@@ -3409,7 +3409,7 @@ def dump_yaml_checkpoint_info(weights_path, selected_model_name):
 
 
 def create_experiment(
-    model_name, remote_dir, report_id=None, eval_metrics=None, primary_metric_name=None
+    model_name, remote_dir, local_dir, report_id=None, eval_metrics=None, primary_metric_name=None
 ):
     train_info = TrainInfo(**g.sly_yolo_generated_metadata)
     experiment_info = yolov8_artifacts.convert_train_to_experiment_info(train_info)
@@ -3431,7 +3431,7 @@ def create_experiment(
     experiment_info_json.pop("project_preview")
     experiment_info_json.pop("primary_metric")
 
-    experiment_info_path = os.path.join(g.artifacts_dir, "experiment_info.json")
+    experiment_info_path = os.path.join(local_dir, "experiment_info.json")
     remote_experiment_info_path = os.path.join(remote_dir, "experiment_info.json")
     sly.json.dump_json_file(experiment_info_json, experiment_info_path)
-    api.file.upload(g.team_id, experiment_info_path, remote_experiment_info_path)
+    api.file.upload(team_id, experiment_info_path, remote_experiment_info_path)
