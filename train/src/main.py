@@ -1,6 +1,7 @@
 import os
 import re
 from dotenv import load_dotenv
+from dataclasses import asdict
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import math
@@ -72,8 +73,10 @@ from supervisely.nn.benchmark import (
     InstanceSegmentationBenchmark,
 )
 from supervisely.nn.inference import SessionJSON
+from supervisely.nn.utils import ModelSource
 from supervisely.nn import TaskType
 from ultralytics.utils.metrics import ConfusionMatrix
+from supervisely.nn.artifacts.artifacts import TrainInfo
 from src.early_stopping.custom_yolo import YOLO as CustomYOLO
 import ruamel.yaml
 import io
@@ -1459,6 +1462,7 @@ def start_training():
             train_val_split._project_id = None
             train_val_split.update_data()
             train_set, val_set = train_val_split.get_splits()
+            g.train_size, g.val_size = len(train_set), len(val_set)
             val_part = len(val_set) / (len(train_set) + len(val_set))
             new_val_count = round(n_images_after * val_part)
             if new_val_count < 1:
@@ -1476,6 +1480,7 @@ def start_training():
         train_val_split._project_id = None
         train_val_split.update_data()
         train_set, val_set = train_val_split.get_splits()
+        g.train_size, g.val_size = len(train_set), len(val_set)
         train_val_split._project_id = project_id
     except Exception:
         if not use_cache:
@@ -1495,6 +1500,7 @@ def start_training():
         train_val_split._project_id = None
         train_val_split.update_data()
         train_set, val_set = train_val_split.get_splits()
+        g.train_size, g.val_size = len(train_set), len(val_set)
         train_val_split._project_id = project_id
     verify_train_val_sets(train_set, val_set)
     # convert dataset from supervisely to yolo format
@@ -1523,7 +1529,7 @@ def start_training():
 
     g.stop_event = threading.Event()
 
-    if weights_type == "Pretrained models":
+    if weights_type == ModelSource.PRETRAINED:
         selected_index = models_table.get_selected_row_index()
         selected_dict = models_data[selected_index]
         weights_url = selected_dict["weights_url"]
@@ -1558,9 +1564,10 @@ def start_training():
             yaml_config = selected_dict["yaml_config"]
             pretrained = False
             model = CustomYOLO(yaml_config, stop_event=g.stop_event)
-    elif weights_type == "Custom models":
+    elif weights_type == ModelSource.CUSTOM:
         custom_link = model_path_input.get_value()
         model_filename = "custom_model.pt"
+        selected_model_name = "Custom model"
         weights_dst_path = os.path.join(g.app_data_dir, model_filename)
         file_info = api.file.get_info_by_path(sly.env.team_id(), custom_link)
         if file_info is None:
@@ -2060,6 +2067,7 @@ def start_training():
 
     # ------------------------------------- Model Benchmark ------------------------------------- #
     model_benchmark_done = False
+    report_id, eval_metrics, primary_metric_name = None, None, None
     if run_model_benchmark_checkbox.is_checked():
         try:
             if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
@@ -2226,6 +2234,10 @@ def start_training():
                 bm.visualize()
                 remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
                 report = bm.upload_report_link(remote_dir)
+                report_id = bm.report.id
+                eval_metrics = bm.key_metrics
+                primary_metric_name = bm.primary_metric_name
+                
 
                 # 8. UI updates
                 benchmark_report_template = api.file.get_info_by_path(
@@ -2241,6 +2253,7 @@ def start_training():
                 )
         except Exception as e:
             sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
+            report_id, eval_metrics, primary_metric_name = None, None, None
             creating_report_f.hide()
             model_benchmark_pbar.hide()
             model_benchmark_pbar_secondary.hide()
@@ -2281,7 +2294,7 @@ def start_training():
         # card_train_progress.collapse()
 
     # upload sly_metadata.json
-    yolov8_artifacts.generate_metadata(
+    g.sly_yolo_generated_metadata = yolov8_artifacts.generate_metadata(
         app_name=yolov8_artifacts.app_name,
         task_id=g.app_session_id,
         artifacts_folder=remote_artifacts_dir,
@@ -2291,6 +2304,11 @@ def start_training():
         task_type=task_type,
         config_path=None,
     )
+    
+    try:
+        create_experiment(selected_model_name, remote_artifacts_dir, report_id, eval_metrics, primary_metric_name)
+    except Exception as e:
+        sly.logger.warning(f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}")
 
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
@@ -2447,6 +2465,7 @@ def auto_train(request: Request):
     try:
         train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
         train_set, val_set = train_val_split.get_splits()
+        g.train_size, g.val_size = len(train_set), len(val_set)
     except Exception:
         if not use_cache:
             raise
@@ -2463,6 +2482,7 @@ def auto_train(request: Request):
         )
         train_val_split._project_fs = sly.Project(g.project_dir, sly.OpenMode.READ)
         train_set, val_set = train_val_split.get_splits()
+        g.train_size, g.val_size = len(train_set), len(val_set)
     verify_train_val_sets(train_set, val_set)
 
     train_val_split.disable()
@@ -2500,7 +2520,7 @@ def auto_train(request: Request):
 
     g.stop_event = threading.Event()
 
-    if weights_type == "Pretrained models":
+    if weights_type == ModelSource.PRETRAINED:
         if "model" not in state:
             selected_index = 0
         else:
@@ -3118,6 +3138,7 @@ def auto_train(request: Request):
 
     # ------------------------------------- Model Benchmark ------------------------------------- #
     model_benchmark_done = False
+    report_id, eval_metrics, primary_metric_name = None, None, None
     if run_model_benchmark_checkbox.is_checked():
         try:
             if task_type in [TaskType.INSTANCE_SEGMENTATION, TaskType.OBJECT_DETECTION]:
@@ -3274,6 +3295,9 @@ def auto_train(request: Request):
                 bm.visualize()
                 remote_dir = bm.upload_visualizations(eval_res_dir + "/visualizations/")
                 report = bm.upload_report_link(remote_dir)
+                report_id = bm.report.id
+                eval_metrics = bm.key_metrics
+                primary_metric_name = bm.primary_metric_name
 
                 # 8. UI updates
                 benchmark_report_template = api.file.get_info_by_path(
@@ -3288,6 +3312,7 @@ def auto_train(request: Request):
                     f"Predictions project name: {bm.dt_project_info.name}. Workspace_id: {bm.dt_project_info.workspace_id}"
                 )
         except Exception as e:
+            report_id, eval_metrics, primary_metric_name = None, None, None
             sly.logger.error(f"Model benchmark failed. {repr(e)}", exc_info=True)
             creating_report_f.hide()
             model_benchmark_pbar.hide()
@@ -3332,6 +3357,11 @@ def auto_train(request: Request):
         config_path=None,
     )
 
+    try:
+        create_experiment(selected_model_name, remote_artifacts_dir, report_id, eval_metrics, primary_metric_name)
+    except Exception as e:
+        sly.logger.warning(f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}")
+
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
     sly.fs.silent_remove("train_batches.txt")
@@ -3375,3 +3405,32 @@ def dump_yaml_checkpoint_info(weights_path, selected_model_name):
     with open(checkpoint_info_path, "w") as f:
         yaml.dump(checkpoint_info, f)
     return checkpoint_info_path
+
+
+def create_experiment(
+    model_name, remote_dir, report_id=None, eval_metrics=None, primary_metric_name=None
+):
+    train_info = TrainInfo(**g.sly_yolo_generated_metadata)
+    experiment_info = yolov8_artifacts.convert_train_to_experiment_info(train_info)
+    experiment_info.experiment_name = f"{g.app_session_id}_{project_info.name}_{model_name}"
+    experiment_info.model_name = model_name
+    experiment_info.framework_name = f"{yolov8_artifacts.framework_name}"
+    experiment_info.train_size = g.train_size
+    experiment_info.val_size = g.val_size
+    experiment_info.evaluation_report_id = report_id
+    if report_id is not None:
+        experiment_info.evaluation_report_link = f"/model-benchmark?id={str(report_id)}"
+    experiment_info.evaluation_metrics = eval_metrics
+
+    experiment_info_json = asdict(experiment_info)
+    experiment_info_json["project_preview"] = project_info.image_preview_url
+    experiment_info_json["primary_metric"] = primary_metric_name
+
+    api.task.set_output_experiment(g.app_session_id, experiment_info_json)
+    experiment_info_json.pop("project_preview")
+    experiment_info_json.pop("primary_metric")
+
+    experiment_info_path = os.path.join(g.artifacts_dir, "experiment_info.json")
+    remote_experiment_info_path = os.path.join(remote_dir, "experiment_info.json")
+    sly.json.dump_json_file(experiment_info_json, experiment_info_path)
+    api.file.upload(g.team_id, experiment_info_path, remote_experiment_info_path)
