@@ -371,6 +371,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             boxes_data = prediction.boxes.data
             if prediction.masks:
                 masks = prediction.masks.data
+                include_boxes = settings.get("include_bboxes_instance_seg", False)
                 for box, mask in zip(boxes_data, masks):
                     left, top, right, bottom, confidence, cls_index = (
                         int(box[0]),
@@ -385,7 +386,8 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     dtos.append(PredictionMask(mask_class_name, mask, confidence))
                     bbox_class_name = self.general_class_names[cls_index] + "_bbox"
                     bbox = [top, left, bottom, right]
-                    dtos.append(PredictionBBox(bbox_class_name, bbox, confidence))
+                    if include_boxes:
+                        dtos.append(PredictionBBox(bbox_class_name, bbox, confidence))
         elif self.task_type == "pose estimation":
             boxes_data = prediction.boxes.data
             keypoints_data = prediction.keypoints.data
