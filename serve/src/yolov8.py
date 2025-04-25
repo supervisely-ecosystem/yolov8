@@ -161,16 +161,21 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             ]
         elif self.task_type == "instance segmentation":
             self.general_class_names = list(self.model.names.values())
-            bbox_class_names = [f"{cls}_bbox" for cls in self.class_names]
-            mask_class_names = self.class_names
-            self.class_names = bbox_class_names + mask_class_names
-            bbox_obj_classes = [
-                sly.ObjClass(name, sly.Rectangle) for name in bbox_class_names
-            ]
             mask_obj_classes = [
-                sly.ObjClass(name, sly.Bitmap) for name in mask_class_names
+                sly.ObjClass(name, sly.Bitmap) for name in self.class_names
             ]
-            obj_classes = bbox_obj_classes + mask_obj_classes
+            obj_classes = mask_obj_classes
+
+            use_bboxes = self.custom_inference_settings_dict.get(
+                "include_bboxes_instance_seg", False
+            )
+            if use_bboxes:
+                bbox_class_names = [f"{cls}_bbox" for cls in self.class_names]
+                bbox_obj_classes = [
+                    sly.ObjClass(name, sly.Rectangle) for name in bbox_class_names
+                ]
+                obj_classes += bbox_obj_classes
+                self.class_names += bbox_class_names
         elif self.task_type == "pose estimation":
             if self.class_names == ["person_bbox", "person"]:  # human pose estimation
                 obj_classes = [
