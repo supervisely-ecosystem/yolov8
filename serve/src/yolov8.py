@@ -366,6 +366,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if prediction.masks:
                 masks = prediction.masks.data
                 for box, mask in zip(boxes_data, masks):
+                    confidence = float(box[4])
                     cls_idx = int(box[5])
                     mask = mask.cpu().numpy()
                     class_name = self.general_class_names[cls_idx]
