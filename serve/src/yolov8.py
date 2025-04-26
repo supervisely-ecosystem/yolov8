@@ -161,16 +161,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             ]
         elif self.task_type == "instance segmentation":
             self.general_class_names = list(self.model.names.values())
-            bbox_class_names = [f"{cls}_bbox" for cls in self.class_names]
-            mask_class_names = self.class_names
-            self.class_names = bbox_class_names + mask_class_names
-            bbox_obj_classes = [
-                sly.ObjClass(name, sly.Rectangle) for name in bbox_class_names
+            obj_classes = [
+                sly.ObjClass(name, sly.Bitmap) for name in self.class_names
             ]
-            mask_obj_classes = [
-                sly.ObjClass(name, sly.Bitmap) for name in mask_class_names
-            ]
-            obj_classes = bbox_obj_classes + mask_obj_classes
+            self.class_names = self.general_class_names
         elif self.task_type == "pose estimation":
             if self.class_names == ["person_bbox", "person"]:  # human pose estimation
                 obj_classes = [
@@ -372,20 +366,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if prediction.masks:
                 masks = prediction.masks.data
                 for box, mask in zip(boxes_data, masks):
-                    left, top, right, bottom, confidence, cls_index = (
-                        int(box[0]),
-                        int(box[1]),
-                        int(box[2]),
-                        int(box[3]),
-                        float(box[4]),
-                        int(box[5]),
-                    )
+                    confidence = float(box[4])
+                    cls_idx = int(box[5])
                     mask = mask.cpu().numpy()
-                    mask_class_name = self.general_class_names[cls_index]
-                    dtos.append(PredictionMask(mask_class_name, mask, confidence))
-                    bbox_class_name = self.general_class_names[cls_index] + "_bbox"
-                    bbox = [top, left, bottom, right]
-                    dtos.append(PredictionBBox(bbox_class_name, bbox, confidence))
+                    class_name = self.general_class_names[cls_idx]
+                    dtos.append(PredictionMask(class_name, mask, confidence))
         elif self.task_type == "pose estimation":
             boxes_data = prediction.boxes.data
             keypoints_data = prediction.keypoints.data
