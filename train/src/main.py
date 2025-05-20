@@ -17,11 +17,6 @@ os.environ["PYTHONPATH"] = os.environ.get("PYTHONPATH", "") + os.pathsep + str(p
 if "LOGLEVEL" in os.environ:
     os.environ["LOGLEVEL"] = os.environ["LOGLEVEL"].upper()
 
-# make all GPUs visible to torch.distributed (only if the user hasn't already set this)
-import torch
-if torch.cuda.is_available() and "CUDA_VISIBLE_DEVICES" not in os.environ:
-    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(torch.cuda.device_count()))
-
 import math
 import random
 import threading
@@ -543,6 +538,15 @@ n_workers_input_notification = NotificationBox(
     ),
     box_type="warning",
 )
+device_input = Input(placeholder="e.g. “0” or “0,1,2” or “cpu”")
+device_input_f = Field(
+    device_input,
+    title="Device(s) to use",
+    description=(
+        "Comma-separated CUDA device indices (e.g. “0” or “0,1”) or “cpu”. "
+        "Defaults to all GPUs if blank."
+    ),
+)
 freeze_layers = Switch(switched=False)
 freeze_layers_f = Field(
     content=freeze_layers,
@@ -674,6 +678,7 @@ train_params_content = Container(
         save_checkpoints_content,
         n_workers_input_f,
         n_workers_input_notification,
+        device_input_f,
         freeze_layers_f,
         n_frozen_layers_input_f,
         model_benchmark_f,
@@ -1759,9 +1764,14 @@ def start_training():
         progress_bar_epochs(message="Epochs:", total=n_epochs_input.get_value()),
     )
     # train model and upload best checkpoints to team files
-    device = ",".join([str(i) for i in range(torch.cuda.device_count())]) if torch.cuda.is_available() else "cpu"
-    data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
+    device = device_input.get_value().strip() or (
+        ",".join(str(i) for i in range(torch.cuda.device_count()))
+        if torch.cuda.is_available() else "cpu"
+    )
+    if device.lower() != "cpu":
+        os.environ["CUDA_VISIBLE_DEVICES"] = device
     sly.logger.info(f"Using device: {device}")
+    data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
 
     def watcher_func():
         watcher.watch()
@@ -2776,9 +2786,14 @@ def auto_train(request: Request):
         ),
     )
     # train model and upload best checkpoints to team files
-    device = ",".join([str(i) for i in range(torch.cuda.device_count())]) if torch.cuda.is_available() else "cpu"
-    data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
+    device = device_input.get_value().strip() or (
+        ",".join(str(i) for i in range(torch.cuda.device_count()))
+        if torch.cuda.is_available() else "cpu"
+    )
+    if device.lower() != "cpu":
+        os.environ["CUDA_VISIBLE_DEVICES"] = device
     sly.logger.info(f"Using device: {device}")
+    data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
 
     def watcher_func():
         watcher.watch()
