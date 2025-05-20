@@ -3,7 +3,25 @@ import re
 from dotenv import load_dotenv
 from dataclasses import asdict
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+import sys
+from dataclasses import asdict
+from pathlib import Path
+
+# If the launcher spawns torch.distributed workers, make sure they can
+# find your `src/` package by adding the `train` folder to PYTHONPATH.
+project_root = Path(__file__).parents[1]  # train/
+sys.path.insert(0, str(project_root))
+os.environ["PYTHONPATH"] = os.environ.get("PYTHONPATH", "") + os.pathsep + str(project_root)
+
+# enforce uppercase LOGLEVEL for torch.elastic
+if "LOGLEVEL" in os.environ:
+    os.environ["LOGLEVEL"] = os.environ["LOGLEVEL"].upper()
+
+# make all GPUs visible to torch.distributed (only if the user hasn't already set this)
+import torch
+if torch.cuda.is_available() and "CUDA_VISIBLE_DEVICES" not in os.environ:
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(torch.cuda.device_count()))
+
 import math
 import random
 import threading
@@ -1741,7 +1759,7 @@ def start_training():
         progress_bar_epochs(message="Epochs:", total=n_epochs_input.get_value()),
     )
     # train model and upload best checkpoints to team files
-    device = 0 if torch.cuda.is_available() else "cpu"
+    device = ",".join([str(i) for i in range(torch.cuda.device_count())]) if torch.cuda.is_available() else "cpu"
     data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
     sly.logger.info(f"Using device: {device}")
 
@@ -2758,7 +2776,7 @@ def auto_train(request: Request):
         ),
     )
     # train model and upload best checkpoints to team files
-    device = 0 if torch.cuda.is_available() else "cpu"
+    device = ",".join([str(i) for i in range(torch.cuda.device_count())]) if torch.cuda.is_available() else "cpu"
     data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
     sly.logger.info(f"Using device: {device}")
 
