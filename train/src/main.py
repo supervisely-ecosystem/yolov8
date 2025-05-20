@@ -17,6 +17,11 @@ os.environ["PYTHONPATH"] = os.environ.get("PYTHONPATH", "") + os.pathsep + str(p
 if "LOGLEVEL" in os.environ:
     os.environ["LOGLEVEL"] = os.environ["LOGLEVEL"].upper()
 
+# make all GPUs visible to torch.distributed (only if the user hasn't already set this)
+import torch
+if torch.cuda.is_available() and "CUDA_VISIBLE_DEVICES" not in os.environ:
+    os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(str(i) for i in range(torch.cuda.device_count()))
+
 import math
 import random
 import threading
@@ -30,7 +35,6 @@ import pandas as pd
 import ruamel.yaml
 import supervisely as sly
 import supervisely.io.env as env
-import torch
 import src.globals as g
 from src.utils import custom_plot, get_eval_results_dir_name, verify_train_val_sets
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
