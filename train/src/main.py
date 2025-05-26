@@ -1764,6 +1764,7 @@ def start_training():
     )
     # train model and upload best checkpoints to team files
     if torch.cuda.is_available():
+        global devices
         if devices:
             devices = devices.strip()
             if len(devices) > 1:
@@ -1774,8 +1775,8 @@ def start_training():
             device = 0
     else:
         device = "cpu"
-    
-    print(F"Device: {device}")
+
+    print(f"Device: {device}")
     data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
     sly.logger.info(f"Using device: {device}")
 
