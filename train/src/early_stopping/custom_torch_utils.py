@@ -817,6 +817,6 @@ class EarlyStopping:
                 f"To update EarlyStopping(patience={self.patience}) pass a new patience value, "
                 f"i.e. `patience=300` or use `patience=0` to disable EarlyStopping."
             )
-        if self.stop_event.is_set():
+        if self.stop_event and self.stop_event.is_set():
             stop = True
         return stop

@@ -3,7 +3,29 @@ import re
 from dotenv import load_dotenv
 from dataclasses import asdict
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+devices = os.environ.get("modal.state.devices")
+if devices:
+    os.environ["CUDA_VISIBLE_DEVICES"] = devices.strip()
+    print(f"Devices: {devices}")
+else:
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+
+import sys
+from dataclasses import asdict
+from pathlib import Path
+
+# If the launcher spawns torch.distributed workers, make sure they can
+# find your `src/` package by adding the `train` folder to PYTHONPATH.
+project_root = Path(__file__).parents[1]  # train/
+sys.path.insert(0, str(project_root))
+os.environ["PYTHONPATH"] = (
+    os.environ.get("PYTHONPATH", "") + os.pathsep + str(project_root)
+)
+
+# enforce uppercase LOGLEVEL for torch.elastic
+if "LOGLEVEL" in os.environ:
+    os.environ["LOGLEVEL"] = os.environ["LOGLEVEL"].upper()
+
 import math
 import random
 import threading
@@ -1741,7 +1763,20 @@ def start_training():
         progress_bar_epochs(message="Epochs:", total=n_epochs_input.get_value()),
     )
     # train model and upload best checkpoints to team files
-    device = 0 if torch.cuda.is_available() else "cpu"
+    if torch.cuda.is_available():
+        global devices
+        if devices:
+            devices = devices.strip()
+            if len(devices) > 1:
+                device = [int(i) for i in devices.split(",")]
+            else:
+                device = int(devices)
+        else:
+            device = 0
+    else:
+        device = "cpu"
+
+    print(f"Device: {device}")
     data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
     sly.logger.info(f"Using device: {device}")
 
@@ -2153,16 +2188,16 @@ def start_training():
                             ds_info = ds_infos_dict[dataset_name]
                             for batched_names in sly.batched(image_names, 200):
                                 batch = api.image.get_list(
-                                        ds_info.id,
-                                        filters=[
-                                            {
-                                                "field": "name",
-                                                "operator": "in",
-                                                "value": batched_names,
-                                            }
-                                        ],
-                                        force_metadata_for_links=False,
-                                    )
+                                    ds_info.id,
+                                    filters=[
+                                        {
+                                            "field": "name",
+                                            "operator": "in",
+                                            "value": batched_names,
+                                        }
+                                    ],
+                                    force_metadata_for_links=False,
+                                )
                                 image_infos.extend(batch)
                         return image_infos
 
@@ -2237,7 +2272,6 @@ def start_training():
                 report_id = bm.report.id
                 eval_metrics = bm.key_metrics
                 primary_metric_name = bm.primary_metric_name
-                
 
                 # 8. UI updates
                 benchmark_report_template = api.file.get_info_by_path(
@@ -2304,12 +2338,21 @@ def start_training():
         task_type=task_type,
         config_path=None,
     )
-    
+
     try:
         sly.logger.info("Creating experiment info")
-        create_experiment(selected_model_name, remote_artifacts_dir, local_artifacts_dir, report_id, eval_metrics, primary_metric_name)
+        create_experiment(
+            selected_model_name,
+            remote_artifacts_dir,
+            local_artifacts_dir,
+            report_id,
+            eval_metrics,
+            primary_metric_name,
+        )
     except Exception as e:
-        sly.logger.warning(f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}")
+        sly.logger.warning(
+            f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}"
+        )
 
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
@@ -2758,7 +2801,18 @@ def auto_train(request: Request):
         ),
     )
     # train model and upload best checkpoints to team files
-    device = 0 if torch.cuda.is_available() else "cpu"
+    if torch.cuda.is_available():
+        if devices:
+            devices = devices.strip()
+            if len(devices) > 1:
+                device = [int(i) for i in devices.split(",")]
+            else:
+                device = int(device)
+        else:
+            device = 0
+    else:
+        device = "cpu"
+
     data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
     sly.logger.info(f"Using device: {device}")
 
@@ -3215,16 +3269,16 @@ def auto_train(request: Request):
                             ds_info = ds_infos_dict[dataset_name]
                             for batched_names in sly.batched(image_names, 200):
                                 batch = api.image.get_list(
-                                        ds_info.id,
-                                        filters=[
-                                            {
-                                                "field": "name",
-                                                "operator": "in",
-                                                "value": batched_names,
-                                            }
-                                        ],
-                                        force_metadata_for_links=False,
-                                    )
+                                    ds_info.id,
+                                    filters=[
+                                        {
+                                            "field": "name",
+                                            "operator": "in",
+                                            "value": batched_names,
+                                        }
+                                    ],
+                                    force_metadata_for_links=False,
+                                )
                                 image_infos.extend(batch)
                         return image_infos
 
@@ -3360,9 +3414,18 @@ def auto_train(request: Request):
 
     try:
         sly.logger.info("Creating experiment info")
-        create_experiment(selected_model_name, remote_artifacts_dir, local_artifacts_dir, report_id, eval_metrics, primary_metric_name)
+        create_experiment(
+            selected_model_name,
+            remote_artifacts_dir,
+            local_artifacts_dir,
+            report_id,
+            eval_metrics,
+            primary_metric_name,
+        )
     except Exception as e:
-        sly.logger.warning(f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}")
+        sly.logger.warning(
+            f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}"
+        )
 
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
@@ -3410,11 +3473,18 @@ def dump_yaml_checkpoint_info(weights_path, selected_model_name):
 
 
 def create_experiment(
-    model_name, remote_dir, local_dir, report_id=None, eval_metrics=None, primary_metric_name=None
+    model_name,
+    remote_dir,
+    local_dir,
+    report_id=None,
+    eval_metrics=None,
+    primary_metric_name=None,
 ):
     train_info = TrainInfo(**g.sly_yolo_generated_metadata)
     experiment_info = yolov8_artifacts.convert_train_to_experiment_info(train_info)
-    experiment_info.experiment_name = f"{g.app_session_id}_{project_info.name}_{model_name}"
+    experiment_info.experiment_name = (
+        f"{g.app_session_id}_{project_info.name}_{model_name}"
+    )
     experiment_info.model_name = model_name
     experiment_info.framework_name = f"{yolov8_artifacts.framework_name}"
     experiment_info.train_size = g.train_size
