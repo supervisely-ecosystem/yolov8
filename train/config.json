@@ -31,5 +31,9 @@
   "community_agent": false,
   "license": {
     "type": "AGPL-3.0"
+  },
+  "modal_template": "train/modal.html",
+  "modal_template_state": {
+    "devices": null
   }
 }
