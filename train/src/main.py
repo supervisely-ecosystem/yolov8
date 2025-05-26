@@ -3,7 +3,7 @@ import re
 from dotenv import load_dotenv
 from dataclasses import asdict
 
-devices = os.environ.get("modal.state.model")
+devices = os.environ.get("modal.state.devices")
 if devices:
     os.environ["CUDA_VISIBLE_DEVICES"] = devices.strip()
     print(f"Devices: {devices}")
