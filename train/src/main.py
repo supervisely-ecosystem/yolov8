@@ -1770,7 +1770,7 @@ def start_training():
             if len(devices) > 1:
                 device = [int(i) for i in devices.split(",")]
             else:
-                device = int(device)
+                device = int(devices)
         else:
             device = 0
     else:
