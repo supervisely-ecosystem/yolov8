@@ -1763,7 +1763,19 @@ def start_training():
         progress_bar_epochs(message="Epochs:", total=n_epochs_input.get_value()),
     )
     # train model and upload best checkpoints to team files
-    device = 0 if torch.cuda.is_available() else "cpu"
+    if torch.cuda.is_available():
+        if devices:
+            devices = devices.strip()
+            if len(devices) > 1:
+                device = [int(i) for i in devices.split(",")]
+            else:
+                device = int(device)
+        else:
+            device = 0
+    else:
+        device = "cpu"
+    
+    print(F"Device: {device}")
     data_path = os.path.join(g.yolov8_project_dir, "data_config.yaml")
     sly.logger.info(f"Using device: {device}")
 
