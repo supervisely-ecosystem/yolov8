@@ -27,5 +27,12 @@
   "task_location": "application_sessions",
   "license": {
     "type": "AGPL-3.0"
+  },
+  "files": {
+    "models_det": "models/det_models_data.json",
+    "models_seg": "models/seg_models_data.json",
+    "models_pose": "models/pose_models_data.json",
+    "inference_settings": "serve/custom_settings.yaml",
+    "hyperparams": "train/training_params.yml"
   }
 }
