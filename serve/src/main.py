@@ -20,6 +20,7 @@ m = YOLOv8Model(
         root_source_path, "serve", "custom_settings.yaml"
     ),
 )
+m._inactivity_timeout = 15
 
 if sly.is_production():
     m.serve()
