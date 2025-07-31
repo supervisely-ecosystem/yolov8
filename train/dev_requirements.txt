@@ -1,3 +1,3 @@
 # git+https://github.com/supervisely/supervisely.git@some-test-branch
 
-supervisely[model-benchmark]==6.73.347
+supervisely[model-benchmark]==6.73.409
