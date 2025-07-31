@@ -711,7 +711,7 @@ card_train_params.lock()
 start_training_button = Button("start training")
 stop_training_button = Button(text="stop training", button_type="danger")
 stop_training_tooltip = Tooltip(
-    text="all training artefacts will be saved",
+    text="all training artifacts will be saved",
     content=stop_training_button,
     placement="right",
 )
@@ -741,8 +741,8 @@ progress_bar_epochs = Progress()
 progress_bar_iters = Progress(hide_on_finish=False)
 making_training_vis_f = Field(Empty(), "", "Making training visualizations...")
 making_training_vis_f.hide()
-uploading_artefacts_f = Field(Empty(), "", "Uploading Artefacts...")
-uploading_artefacts_f.hide()
+uploading_artifacts_f = Field(Empty(), "", "Uploading Artifacts...")
+uploading_artifacts_f.hide()
 creating_report_f = Field(Empty(), "", "Creating report on model...")
 creating_report_f.hide()
 plot_titles = ["train", "val", "precision & recall"]
@@ -1984,7 +1984,7 @@ def start_training():
 
     making_training_vis_f.hide()
     # rename best checkpoint file
-    uploading_artefacts_f.show()
+    uploading_artifacts_f.show()
     if not os.path.isfile(watch_file):
         sly.logger.warning(
             "The file with results does not exist, training was not completed successfully."
@@ -2097,7 +2097,7 @@ def start_training():
             remote_dir=upload_artifacts_dir,
         )
         sly.logger.info("Training artifacts uploaded successfully")
-    uploading_artefacts_f.hide()
+    uploading_artifacts_f.hide()
     remote_weights_dir = yolov8_artifacts.get_weights_path(remote_artifacts_dir)
 
     # ------------------------------------- Model Benchmark ------------------------------------- #
