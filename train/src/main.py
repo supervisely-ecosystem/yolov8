@@ -1,7 +1,6 @@
 import os
 import re
 from dotenv import load_dotenv
-from dataclasses import asdict
 
 devices = os.environ.get("modal.state.devices")
 if devices:
