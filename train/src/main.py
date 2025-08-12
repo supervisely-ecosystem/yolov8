@@ -3420,9 +3420,7 @@ def auto_train(request: Request):
             primary_metric_name,
         )
     except Exception as e:
-        sly.logger.error(
-            f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}"
-        )
+        sly.logger.error(f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}")
 
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
