@@ -3483,13 +3483,14 @@ def create_experiment(
     train_info = TrainInfo(**g.sly_yolo_generated_metadata)
     experiment_info = yolov8_artifacts.convert_train_to_experiment_info(train_info)
     experiment_info.experiment_name = (
-        f"{g.app_session_id}_{project_info.name}_{model_name}"
+        f"{g.app_session_id} {project_info.name} {model_name}"
     )
     experiment_info.model_name = model_name
     experiment_info.framework_name = f"{yolov8_artifacts.framework_name}"
     experiment_info.train_size = g.train_size
     experiment_info.val_size = g.val_size
     experiment_info.evaluation_report_id = report_id
+    experiment_info.experiment_report_id = None
     if report_id is not None:
         experiment_info.evaluation_report_link = f"/model-benchmark?id={str(report_id)}"
     experiment_info.evaluation_metrics = eval_metrics
