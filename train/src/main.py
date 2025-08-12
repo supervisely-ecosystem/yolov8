@@ -2349,7 +2349,7 @@ def start_training():
             primary_metric_name,
         )
     except Exception as e:
-        sly.logger.warning(
+        sly.logger.error(
             f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}"
         )
 
@@ -3400,7 +3400,7 @@ def auto_train(request: Request):
         card_train_artifacts.uncollapse()
 
     # upload sly_metadata.json
-    yolov8_artifacts.generate_metadata(
+    g.sly_yolo_generated_metadata = yolov8_artifacts.generate_metadata(
         app_name=yolov8_artifacts.app_name,
         task_id=g.app_session_id,
         artifacts_folder=remote_artifacts_dir,
@@ -3422,7 +3422,7 @@ def auto_train(request: Request):
             primary_metric_name,
         )
     except Exception as e:
-        sly.logger.warning(
+        sly.logger.error(
             f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}"
         )
 
