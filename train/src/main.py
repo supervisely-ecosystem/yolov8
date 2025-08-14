@@ -1,7 +1,6 @@
 import os
 import re
 from dotenv import load_dotenv
-from dataclasses import asdict
 
 devices = os.environ.get("modal.state.devices")
 if devices:
@@ -2350,9 +2349,7 @@ def start_training():
             primary_metric_name,
         )
     except Exception as e:
-        sly.logger.warning(
-            f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}"
-        )
+        sly.logger.error(f"Couldn't create experiment, this training session will not appear in the experiments table. Error: {e}")
 
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
@@ -3401,7 +3398,7 @@ def auto_train(request: Request):
         card_train_artifacts.uncollapse()
 
     # upload sly_metadata.json
-    yolov8_artifacts.generate_metadata(
+    g.sly_yolo_generated_metadata = yolov8_artifacts.generate_metadata(
         app_name=yolov8_artifacts.app_name,
         task_id=g.app_session_id,
         artifacts_folder=remote_artifacts_dir,
@@ -3423,9 +3420,7 @@ def auto_train(request: Request):
             primary_metric_name,
         )
     except Exception as e:
-        sly.logger.warning(
-            f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}"
-        )
+        sly.logger.error(f"Couldn't create experiment, this training session will not appear in experiments table. Error: {e}")
 
     # delete app data since it is no longer needed
     sly.fs.remove_dir(g.app_data_dir)
@@ -3483,13 +3478,14 @@ def create_experiment(
     train_info = TrainInfo(**g.sly_yolo_generated_metadata)
     experiment_info = yolov8_artifacts.convert_train_to_experiment_info(train_info)
     experiment_info.experiment_name = (
-        f"{g.app_session_id}_{project_info.name}_{model_name}"
+        f"{g.app_session_id} {project_info.name} {model_name}"
     )
     experiment_info.model_name = model_name
     experiment_info.framework_name = f"{yolov8_artifacts.framework_name}"
     experiment_info.train_size = g.train_size
     experiment_info.val_size = g.val_size
     experiment_info.evaluation_report_id = report_id
+    experiment_info.experiment_report_id = None
     if report_id is not None:
         experiment_info.evaluation_report_link = f"/model-benchmark?id={str(report_id)}"
     experiment_info.evaluation_metrics = eval_metrics
