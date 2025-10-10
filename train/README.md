@@ -14,7 +14,7 @@
   <a href="#Acknowledgment">Acknowledgment</a>
 </p>
 
-[![](https://img.shields.io/badge/supervisely-ecosystem-brightgreen)](../../../../supervisely-ecosystem/yolov8/train)
+[![](https://img.shields.io/badge/supervisely-ecosystem-brightgreen)](../../../../../supervisely-ecosystem/yolov8/train)
 [![](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://supervisely.com/slack)
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/supervisely-ecosystem/yolov8)
 [![views](https://app.supervisely.com/img/badges/views/supervisely-ecosystem/yolov8/train.png)](https://supervisely.com)
@@ -77,7 +77,7 @@ You can use your trained models outside Supervisely platform without any depende
 - [Export to YOLOv8 format](../../../../supervisely-ecosystem/export-to-yolov8) - app allows to transform data from Supervisely format to YOLOv8 format.   
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/export-to-yolov8" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/01d6658f-11c3-40a3-8ff5-100a27fa1480" height="70px" margin-bottom="20px"/>  
 
-- [Serve YOLOv8 | v9 | v10 | v11](../../../../supervisely-ecosystem/yolov8/serve) - app allows to deploy YOLOv8 | v9 | v10 | v11 model as REST API service.   
+- [Serve YOLOv8 | v9 | v10 | v11](../../../../../supervisely-ecosystem/yolov8/serve) - app allows to deploy YOLOv8 | v9 | v10 | v11 model as REST API service.   
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/yolov8/serve" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/721f5344-013c-4466-bc05-88cc3efef5ca" height="70px" margin-bottom="20px"/>
 
 - [NN Image Labeling](../../../../supervisely-ecosystem/supervisely-ecosystem%252Fnn-image-labeling%252Fannotation-tool) - integrate any deployed NN to Supervisely Image Labeling UI. Configure inference settings and model output classes. Press `Apply` button (or use hotkey) and detections with their confidences will immediately appear on the image.   
