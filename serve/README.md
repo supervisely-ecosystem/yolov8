@@ -12,7 +12,7 @@
   <a href="#Acknowledgment">Acknowledgment</a>
 </p>
 
-[![](https://img.shields.io/badge/supervisely-ecosystem-brightgreen)](../../../../../supervisely-ecosystem/yolov8/serve)
+[![](https://img.shields.io/badge/supervisely-ecosystem-brightgreen)](https://ecosystem.supervisely.com/apps/supervisely-ecosystem/yolov8/serve)
 [![](https://img.shields.io/badge/slack-chat-green.svg?logo=slack)](https://supervisely.com/slack)
 ![GitHub release (latest SemVer)](https://img.shields.io/github/v/release/supervisely-ecosystem/yolov8)
 [![views](https://app.supervisely.com/img/badges/views/supervisely-ecosystem/yolov8/serve.png)](https://supervisely.com)
@@ -100,7 +100,7 @@ https://user-images.githubusercontent.com/91027877/249004380-e8a4758b-0356-4efc-
 - [Apply NN to Videos Project](../../../../supervisely-ecosystem/apply-nn-to-videos-project) - app allows to label your videos using served Supervisely models.  
   <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/apply-nn-to-videos-project" src="https://imgur.com/LDo8K1A.png" height="70px" margin-bottom="20px" />
 
-- [Train YOLOv8 | v9 | v10 | v11](../../../../../supervisely-ecosystem/yolov8/train) - app allows to create custom YOLO (v8, v9, v10, v11) weights through training process.
+- [Train YOLOv8 | v9 | v10 | v11](https://ecosystem.supervisely.com/apps/supervisely-ecosystem/yolov8/train) - app allows to create custom YOLO (v8, v9, v10, v11) weights through training process.
     <img data-key="sly-module-link" data-module-slug="supervisely-ecosystem/yolov8/train" src="https://github.com/supervisely-ecosystem/yolov8/assets/115161827/82348f9a-38fc-4736-885c-d6786e37a218" height="70px" margin-bottom="20px"/>
 
 - [Export to YOLOv8 format](../../../../supervisely-ecosystem/export-to-yolov8) - transform annotations from Supervisely format to YOLOv8 format.
