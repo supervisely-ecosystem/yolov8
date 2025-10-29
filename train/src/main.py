@@ -858,9 +858,9 @@ server = app.get_server()
 @dataset_selector.value_changed
 def on_dataset_selected(new_dataset_ids):
     sly.logger.debug(f"Selected datasets widget value changed to: {new_dataset_ids}")
-    if new_dataset_ids == []:
+    if not new_dataset_ids:
         select_data_button.hide()
-    elif new_dataset_ids != [] and reselect_data_button.is_hidden():
+    else:
         select_data_button.show()
     update_globals(new_dataset_ids)
     if sly.project.download.is_cached(project_id):
