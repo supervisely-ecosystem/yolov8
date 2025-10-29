@@ -876,7 +876,11 @@ def on_dataset_selected(new_dataset_ids):
 @select_data_button.click
 def select_input_data():
     selected_datasets = set()
-    for dataset_id in dataset_selector.get_selected_ids():
+    dataset_ids = dataset_selector.get_selected_ids()
+    if not dataset_ids:
+        sly.logger.warning("No datasets selected")
+        return
+    for dataset_id in dataset_ids:
         selected_datasets.add(dataset_id)
         for ds in api.dataset.get_nested(project_id=project_id, dataset_id=dataset_id):
             selected_datasets.add(ds.id)
