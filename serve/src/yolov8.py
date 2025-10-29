@@ -347,7 +347,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         """Converts YOLO Results to a List of Prediction DTOs."""
         dtos = []
         if self.task_type == "object detection":
-            boxes_data = prediction.boxes.data
+            boxes = getattr(prediction, "boxes", None)
+            if boxes is None:
+                return dtos
+            boxes_data = getattr(boxes, "data", [])
             for box in boxes_data:
                 left, top, right, bottom, confidence, cls_index = (
                     int(box[0]),
@@ -362,7 +365,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     PredictionBBox(self.class_names[cls_index], bbox, confidence)
                 )
         elif self.task_type == "instance segmentation":
-            boxes_data = prediction.boxes.data
+            boxes_data = getattr(prediction.boxes, "data", [])
             if prediction.masks:
                 masks = prediction.masks.data
                 for box, mask in zip(boxes_data, masks):
@@ -372,7 +375,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     class_name = self.general_class_names[cls_idx]
                     dtos.append(PredictionMask(class_name, mask, confidence))
         elif self.task_type == "pose estimation":
-            boxes_data = prediction.boxes.data
+            boxes_data = getattr(prediction.boxes, "data", [])
             keypoints_data = prediction.keypoints.data
             point_threshold = settings.get("point_threshold", 0.1)
             if self.class_names == [
