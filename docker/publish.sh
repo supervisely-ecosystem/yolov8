@@ -1,2 +1,2 @@
-docker build -t supervisely/yolov8:1.0.51 . && \
-docker push supervisely/yolov8:1.0.51
+docker build --no-cache -t supervisely/yolov8:test-inf-opt . && \
+docker push supervisely/yolov8:test-inf-opt
