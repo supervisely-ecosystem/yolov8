@@ -24,4 +24,4 @@ RUN pip3 install dill==0.2.8.2 tf2onnx==1.16.1 skl2onnx==1.17.0
 RUN python3 -m pip install supervisely[tracking,model-benchmark]==6.73.483
 RUN python3 -c "from supervisely.nn.tracker import *"
 
-LABEL python_sdk_version=6.73.479
+LABEL python_sdk_version=6.73.483
