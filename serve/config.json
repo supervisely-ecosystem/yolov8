@@ -1,38 +1,38 @@
 {
-  "name": "Serve YOLOv8 | v9 | v10 | v11",
-  "type": "app",
-  "version": "2.0.0",
-  "description": "Deploy YOLOv8 | v9 | v10 | v11 as REST API service",
-  "categories": [
-    "neural network",
-    "images",
-    "object detection",
-    "pose estimation",
-    "instance segmentation",
-    "serve"
-  ],
-  "icon": "https://github.com/user-attachments/assets/712dc827-1153-46a0-b749-f76850aca4eb",
-  "icon_cover": true,
-  "poster": "https://github.com/user-attachments/assets/8d234078-7d17-4c55-8c53-5534297e1e8c",
-  "need_gpu": true,
-  "gpu": "required",
-  "session_tags": [
-    "deployed_nn"
-  ],
-  "community_agent": false,
-  "docker_image": "supervisely/yolov8:1.0.56",
-  "instance_version": "6.15.35",
-  "entrypoint": "python3 -m uvicorn src.main:m.app --app-dir ./serve --host 0.0.0.0 --port 8000 --ws websockets",
-  "port": 8000,
-  "task_location": "application_sessions",
-  "license": {
-    "type": "AGPL-3.0"
-  },
-  "files": {
-    "models_det": "models/det_models_data.json",
-    "models_seg": "models/seg_models_data.json",
-    "models_pose": "models/pose_models_data.json",
-    "inference_settings": "serve/custom_settings.yaml",
-    "hyperparams": "train/training_params.yml"
-  }
+    "name": "Serve YOLOv8 | v9 | v10 | v11",
+    "type": "app",
+    "version": "2.0.0",
+    "description": "Deploy YOLOv8 | v9 | v10 | v11 as REST API service",
+    "categories": [
+        "neural network",
+        "images",
+        "object detection",
+        "pose estimation",
+        "instance segmentation",
+        "serve"
+    ],
+    "icon": "https://github.com/user-attachments/assets/712dc827-1153-46a0-b749-f76850aca4eb",
+    "icon_cover": true,
+    "poster": "https://github.com/user-attachments/assets/8d234078-7d17-4c55-8c53-5534297e1e8c",
+    "need_gpu": true,
+    "gpu": "required",
+    "session_tags": [
+        "deployed_nn"
+    ],
+    "community_agent": false,
+    "docker_image": "supervisely/yolov8:1.0.57",
+    "instance_version": "6.15.35",
+    "entrypoint": "python3 -m uvicorn src.main:m.app --app-dir ./serve --host 0.0.0.0 --port 8000 --ws websockets",
+    "port": 8000,
+    "task_location": "application_sessions",
+    "license": {
+        "type": "AGPL-3.0"
+    },
+    "files": {
+        "models_det": "models/det_models_data.json",
+        "models_seg": "models/seg_models_data.json",
+        "models_pose": "models/pose_models_data.json",
+        "inference_settings": "serve/custom_settings.yaml",
+        "hyperparams": "train/training_params.yml"
+    }
 }
