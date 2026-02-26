@@ -71,6 +71,8 @@ RUN pip install --upgrade \
 # ============================================================================
 FROM supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
 
+ARG tag_ref_name
+
 # Copy Python environment and required system libs from builder
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /usr/bin/ffmpeg /usr/bin/ffmpeg
@@ -82,6 +84,14 @@ COPY --from=builder /usr/lib/*-linux-gnu/libXext.so.* /usr/lib/
 COPY --from=builder /usr/lib/*-linux-gnu/libXrender.so.* /usr/lib/
 COPY --from=builder /usr/lib/*-linux-gnu/libexiv2.so.* /usr/lib/
 COPY --from=builder /usr/lib/*-linux-gnu/libboost*.so.* /usr/lib/
+
+# remove OS package managers & related metadata
+RUN set -eux; \
+  rm -rf /var/lib/apt/lists/* /etc/apt /var/cache/apt /var/lib/apt; \
+  rm -f \
+    /usr/bin/apt /usr/bin/apt-get /usr/bin/apt-cache /usr/bin/apt-config /usr/bin/apt-key \
+    /usr/bin/dpkg /usr/bin/dpkg-query /usr/bin/dpkg-deb /usr/bin/dpkg-divert; \
+  rm -rf /var/lib/dpkg /usr/share/dpkg || true
 
 ENV PATH="/opt/venv/bin:$PATH"
 
