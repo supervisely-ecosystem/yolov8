@@ -2,7 +2,7 @@
 set -euo pipefail
 
 IMAGE_NAME=supervisely/yolov8
-IMAGE_TAG=hardened-dev03
+IMAGE_TAG=hardened-dev04
 IMAGE_REF="${IMAGE_NAME}:${IMAGE_TAG}"
 
 docker build -t "${IMAGE_REF}" . && \
