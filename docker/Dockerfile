@@ -50,11 +50,11 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install pip==26.0.1 setuptools==78.1.1 wheel==0.46.2
 
-# Keep NumPy on 1.x for binary wheels that are not yet NumPy 2 compatible.
-# Use a global pip constraint to prevent later installs from silently upgrading to NumPy 2.x.
-RUN printf "numpy==1.26.4\n" > /tmp/pip-constraints.txt
+# Use a global pip constraint to keep binary wheels mutually compatible.
+# We pin NumPy and key native deps that frequently break across NumPy major versions.
+RUN printf "numpy==2.0.0\nscipy==1.14.1\nonnxruntime-gpu==1.19.2\n" > /tmp/pip-constraints.txt
 ENV PIP_CONSTRAINT=/tmp/pip-constraints.txt
-RUN pip install --no-cache-dir numpy==1.26.4
+RUN pip install --no-cache-dir numpy==2.0.0 scipy==1.14.1
 
 RUN pip install networkx==2.8.8
 RUN pip install torch==2.3.1 torchvision==0.18.1 --index-url https://download.pytorch.org/whl/cu121
@@ -62,16 +62,13 @@ RUN pip install protobuf==3.20.1 onnx==1.12.0
 RUN pip install requests==2.28.2 urllib3==1.26.15 packaging==21.3 ruamel.yaml==0.17.21
 RUN pip install dill==0.2.8.2 tf2onnx==1.16.1 skl2onnx==1.17.0
 RUN pip install ultralytics==8.3.15
-RUN pip install onnxruntime-gpu==1.18.0 \
+RUN pip install onnxruntime-gpu==1.19.2 \
   --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/
 
 # todo: remove; temp
 # RUN pip install supervisely[tracking,model-benchmark]==$tag_ref_name
 # RUN python -c "from supervisely.nn.tracker import *"
 RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
-
-# Build-time sanity check: confirm NumPy hasn't been upgraded to 2.x
-RUN python -c "import numpy as np; print('NumPy:', np.__version__)"
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
