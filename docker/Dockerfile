@@ -105,6 +105,7 @@ RUN set -eux; \
 ENV PATH="/opt/venv/bin:$PATH" \
     LD_LIBRARY_PATH="/usr/lib:/usr/local/lib"
 
+# Set NVIDIA Container Toolkit environment variables for GPU support
 ENV NVIDIA_VISIBLE_DEVICES=all \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility
 
