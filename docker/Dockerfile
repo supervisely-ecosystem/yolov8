@@ -5,7 +5,9 @@
 # ARG tag_ref_name=6.73.531
 ARG tag_ref_name=0.0.1
 
-FROM python:3.10-slim-bookworm AS builder
+# NOTE: CUDA Python wheels and NVIDIA runtime support are primarily Linux/x86_64.
+# Building on Apple Silicon should use buildx/emulation; force linux/amd64 here.
+FROM --platform=linux/amd64 python:3.10-slim-bookworm AS builder
 
 ENV LANG=C.UTF-8 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -33,9 +35,11 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install pip==26.0.1
 RUN pip install setuptools==78.1.1 wheel==0.46.2
 
-RUN pip install nvidia-cudnn-cu11==8.9.4.25 --no-cache-dir
-RUN pip install --pre --extra-index-url https://pypi.nvidia.com/ \
-  tensorrt==9.0.1.post11.dev4 --no-cache-dir
+# CUDA stack: align with CUDA 12.x (torch cu121 + onnxruntime-cuda-12 index below)
+# Install runtime CUDA libraries via NVIDIA pip wheels (no apt needed).
+RUN pip install --no-cache-dir \
+  nvidia-cuda-runtime-cu12 \
+  nvidia-cudnn-cu12
 
 RUN pip install networkx==2.8.8
 RUN pip install torch==2.3.1 torchvision==0.18.1 \
@@ -69,7 +73,7 @@ RUN pip install --upgrade \
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
 # ============================================================================
-FROM supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
+FROM --platform=linux/amd64 supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
 
 ARG tag_ref_name
 
