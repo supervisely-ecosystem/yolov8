@@ -14,8 +14,10 @@ ENV LANG=C.UTF-8 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_PREFER_BINARY=1
+    PIP_PREFER_BINARY=1 \
+    DEBIAN_FRONTEND=noninteractive
 
+# Base build + runtime shared libs
 RUN apt-get update && apt-get install -y --no-install-recommends \
   build-essential \
   ca-certificates \
@@ -27,7 +29,24 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   libsm6 \
   libxext6 \
   libxrender1 \
+  wget \
   && rm -rf /var/lib/apt/lists/*
+
+# Install CUDA runtime libs from NVIDIA Debian 12 repo (bookworm)
+# This ensures shared libs are present at OS level for CUDA-enabled wheels.
+RUN set -eux; \
+  wget -qO /tmp/cuda-keyring.deb https://developer.download.nvidia.com/compute/cuda/repos/debian12/x86_64/cuda-keyring_1.1-1_all.deb; \
+  dpkg -i /tmp/cuda-keyring.deb; \
+  rm -f /tmp/cuda-keyring.deb; \
+  apt-get update; \
+  apt-get install -y --no-install-recommends \
+    cuda-cudart-12-1 \
+    libcublas-12-1 \
+    libcufft-12-1 \
+    libcurand-12-1 \
+    libcusolver-12-1 \
+    libcusparse-12-1; \
+  rm -rf /var/lib/apt/lists/*
 
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
@@ -35,8 +54,7 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install pip==26.0.1
 RUN pip install setuptools==78.1.1 wheel==0.46.2
 
-# CUDA stack: align with CUDA 12.x (torch cu121 + onnxruntime-cuda-12 index below)
-# Install runtime CUDA libraries via NVIDIA pip wheels (no apt needed).
+# Keep Python CUDA wheels too (some packages expect these package-provided libs)
 RUN pip install --no-cache-dir \
   nvidia-cuda-runtime-cu12 \
   nvidia-cudnn-cu12
@@ -89,6 +107,17 @@ COPY --from=builder /usr/lib/*-linux-gnu/libXrender.so.* /usr/lib/
 COPY --from=builder /usr/lib/*-linux-gnu/libexiv2.so.* /usr/lib/
 COPY --from=builder /usr/lib/*-linux-gnu/libboost*.so.* /usr/lib/
 
+# Copy CUDA runtime libs required by torch cu121 / onnxruntime-gpu
+COPY --from=builder /usr/lib/*-linux-gnu/libcudart.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libcublas.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libcublasLt.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libcufft.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libcurand.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libcusolver.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libcusparse.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libnvrtc.so.* /usr/lib/
+COPY --from=builder /usr/lib/*-linux-gnu/libnvJitLink.so.* /usr/lib/
+
 # remove OS package managers & related metadata
 RUN set -eux; \
   rm -rf /var/lib/apt/lists/* /etc/apt /var/cache/apt /var/lib/apt; \
@@ -97,6 +126,7 @@ RUN set -eux; \
     /usr/bin/dpkg /usr/bin/dpkg-query /usr/bin/dpkg-deb /usr/bin/dpkg-divert; \
   rm -rf /var/lib/dpkg /usr/share/dpkg || true
 
-ENV PATH="/opt/venv/bin:$PATH"
+ENV PATH="/opt/venv/bin:$PATH" \
+    LD_LIBRARY_PATH="/usr/lib:/usr/local/lib:${LD_LIBRARY_PATH}"
 
 LABEL python_sdk_version="$tag_ref_name"
