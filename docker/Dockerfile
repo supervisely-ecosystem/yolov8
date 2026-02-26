@@ -50,7 +50,10 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install pip==26.0.1 setuptools==78.1.1 wheel==0.46.2
 
-# Keep NumPy on 1.x for binary wheels that are not yet NumPy 2 compatible
+# Keep NumPy on 1.x for binary wheels that are not yet NumPy 2 compatible.
+# Use a global pip constraint to prevent later installs from silently upgrading to NumPy 2.x.
+RUN printf "numpy==1.26.4\n" > /tmp/pip-constraints.txt
+ENV PIP_CONSTRAINT=/tmp/pip-constraints.txt
 RUN pip install --no-cache-dir numpy==1.26.4
 
 RUN pip install networkx==2.8.8
@@ -66,6 +69,9 @@ RUN pip install onnxruntime-gpu==1.18.0 \
 # RUN pip install supervisely[tracking,model-benchmark]==$tag_ref_name
 # RUN python -c "from supervisely.nn.tracker import *"
 RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
+
+# Build-time sanity check: confirm NumPy hasn't been upgraded to 2.x
+RUN python -c "import numpy as np; print('NumPy:', np.__version__)"
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
