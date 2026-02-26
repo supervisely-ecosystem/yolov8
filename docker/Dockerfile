@@ -96,6 +96,7 @@ COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libcusparse.so
 COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libnvrtc.so* /usr/lib/
 COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libnvJitLink.so* /usr/lib/
 
+# Clean up apt and dpkg to minimize attack surface and image size, since we won't need them at runtime
 RUN set -eux; \
   rm -rf /var/lib/apt/lists/* /etc/apt /var/cache/apt /var/lib/apt; \
   rm -f /usr/bin/apt /usr/bin/apt-get /usr/bin/apt-cache /usr/bin/apt-config /usr/bin/apt-key \
