@@ -79,6 +79,10 @@ RUN python -c "import numpy as np; print('NumPy:', np.__version__)"
 FROM supervisely/py-sdk-hardened:${tag_ref_name} AS runtime
 ARG tag_ref_name
 
+# Enforce the same NumPy constraint at runtime too (Supervisely may run pip on container start)
+COPY --from=builder /tmp/pip-constraints.txt /etc/pip-constraints.txt
+ENV PIP_CONSTRAINT=/etc/pip-constraints.txt
+
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /usr/bin/ffmpeg /usr/bin/ffmpeg
 
@@ -115,5 +119,8 @@ ENV PATH="/opt/venv/bin:$PATH" \
 # Set NVIDIA Container Toolkit environment variables for GPU support
 ENV NVIDIA_VISIBLE_DEVICES=all \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Runtime sanity check: ensure NumPy/SciPy import works with pinned NumPy
+RUN python -c "import numpy as np; print('NumPy(runtime):', np.__version__); import scipy as sp; print('SciPy(runtime):', sp.__version__)"
 
 LABEL python_sdk_version="$tag_ref_name"
