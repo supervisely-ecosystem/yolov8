@@ -50,6 +50,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 RUN pip install pip==26.0.1 setuptools==78.1.1 wheel==0.46.2
 
+# Keep NumPy on 1.x for binary wheels that are not yet NumPy 2 compatible
+RUN pip install --no-cache-dir numpy==1.26.4
+
 RUN pip install networkx==2.8.8
 RUN pip install torch==2.3.1 torchvision==0.18.1 --index-url https://download.pytorch.org/whl/cu121
 RUN pip install protobuf==3.20.1 onnx==1.12.0
