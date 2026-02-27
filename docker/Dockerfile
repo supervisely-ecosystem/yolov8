@@ -71,7 +71,7 @@ RUN pip install torch==2.3.1 torchvision==0.18.1 \
   --extra-index-url https://pypi.org/simple
 RUN pip install onnx==1.16.2
 RUN pip install requests==2.28.2 urllib3==1.26.15 packaging==21.3 ruamel.yaml==0.17.21
-RUN pip install dill==0.2.8.2 tf2onnx==1.16.1 skl2onnx==1.17.0
+RUN pip install dill==0.2.8.2
 RUN pip install ultralytics==8.3.15
 RUN pip install filelock==3.20.3 pillow==12.1.1
 RUN pip install onnxruntime-gpu==1.19.2 \
