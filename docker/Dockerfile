@@ -67,7 +67,7 @@ RUN pip install --upgrade \
   /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/wheel*
 
 RUN pip install networkx==2.8.8
-RUN pip install torch==2.7.1+cu128 torchvision==0.22.1+cu128 \
+RUN pip install --no-cache-dir torch==2.7.1+cu128 torchvision==0.22.1+cu128 \
   --index-url https://download.pytorch.org/whl/cu128 \
   --extra-index-url https://pypi.org/simple
 RUN pip install onnx==1.17.0
@@ -115,23 +115,6 @@ COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcusolver.so
 COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcusparse.so* /usr/lib/
 COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libnvrtc.so* /usr/lib/
 COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libnvJitLink.so* /usr/lib/
-
-# Remove Python packages that may be present in the hardened base image.
-RUN set -eux; \
-  rm -rf \
-    /usr/local/lib/python*/site-packages/torch \
-    /usr/local/lib/python*/site-packages/torch-* \
-    /usr/local/lib/python*/site-packages/torchvision \
-    /usr/local/lib/python*/site-packages/torchvision-* \
-    /usr/local/lib/python*/dist-packages/torch \
-    /usr/local/lib/python*/dist-packages/torch-* \
-    /usr/local/lib/python*/dist-packages/torchvision \
-    /usr/local/lib/python*/dist-packages/torchvision-* \
-    /usr/lib/python*/dist-packages/torch \
-    /usr/lib/python*/dist-packages/torch-* \
-    /usr/lib/python*/dist-packages/torchvision \
-    /usr/lib/python*/dist-packages/torchvision-* \
-    || true
 
 # Clean up apt and dpkg to minimize attack surface and image size, since we won't need them at runtime
 RUN set -eux; \
