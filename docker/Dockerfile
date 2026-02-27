@@ -1,7 +1,9 @@
 # ============================================================================
 # STAGE 1: Builder Stage
 # ============================================================================
-ARG tag_ref_name=6.73.531
+
+# temp
+ARG tag_ref_name=0.0.1
 
 FROM python:3.10-slim-bookworm AS builder
 
@@ -73,10 +75,10 @@ RUN pip install filelock==3.20.3 pillow==12.1.1
 RUN pip install onnxruntime-gpu==1.19.2 \
   --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/
 
-RUN pip install supervisely[tracking,model-benchmark]==$tag_ref_name
-RUN python -c "from supervisely.nn.tracker import *"
-
-ARG tag_ref_name=0.0.1
+# temp, remove later
+# RUN pip install supervisely[tracking,model-benchmark]==$tag_ref_name
+# RUN python -c "from supervisely.nn.tracker import *"
+RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
