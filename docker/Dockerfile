@@ -37,13 +37,13 @@ RUN set -eux; \
   rm -f /tmp/cuda-keyring.deb; \
   apt-get update; \
   apt-get install -y --no-install-recommends \
-    cuda-toolkit-12-6 \
-    cuda-cudart-12-6 \
-    libcublas-12-6 \
-    libcufft-12-6 \
-    libcurand-12-6 \
-    libcusolver-12-6 \
-    libcusparse-12-6; \
+    cuda-toolkit-12-8 \
+    cuda-cudart-12-8 \
+    libcublas-12-8 \
+    libcufft-12-8 \
+    libcurand-12-8 \
+    libcusolver-12-8 \
+    libcusparse-12-8; \
   rm -rf /var/lib/apt/lists/*
 
 RUN python -m venv /opt/venv
@@ -67,8 +67,8 @@ RUN pip install --upgrade \
   /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/wheel*
 
 RUN pip install networkx==2.8.8
-RUN pip install torch==2.3.1 torchvision==0.18.1 \
-  --index-url https://download.pytorch.org/whl/cu121 \
+RUN pip install torch==2.7.1+cu128 torchvision==0.22.1+cu128 \
+  --index-url https://download.pytorch.org/whl/cu128 \
   --extra-index-url https://pypi.org/simple
 RUN pip install onnx==1.17.0
 RUN pip install requests==2.28.2 urllib3==1.26.15 packaging==21.3 ruamel.yaml==0.17.21
@@ -106,15 +106,15 @@ COPY --from=builder /usr/lib/*-linux-gnu/libexiv2.so.* /usr/lib/
 COPY --from=builder /usr/lib/*-linux-gnu/libboost*.so.* /usr/lib/
 
 # CUDA runtime libs from apt-installed toolkit/runtime
-COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libcudart.so* /usr/lib/
-COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libcublas.so* /usr/lib/
-COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libcublasLt.so* /usr/lib/
-COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libcufft.so* /usr/lib/
-COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libcurand.so* /usr/lib/
-COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libcusolver.so* /usr/lib/
-COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libcusparse.so* /usr/lib/
-COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libnvrtc.so* /usr/lib/
-COPY --from=builder /usr/local/cuda-12.6/targets/x86_64-linux/lib/libnvJitLink.so* /usr/lib/
+COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcudart.so* /usr/lib/
+COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcublas.so* /usr/lib/
+COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcublasLt.so* /usr/lib/
+COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcufft.so* /usr/lib/
+COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcurand.so* /usr/lib/
+COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcusolver.so* /usr/lib/
+COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcusparse.so* /usr/lib/
+COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libnvrtc.so* /usr/lib/
+COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libnvJitLink.so* /usr/lib/
 
 # Clean up apt and dpkg to minimize attack surface and image size, since we won't need them at runtime
 RUN set -eux; \
