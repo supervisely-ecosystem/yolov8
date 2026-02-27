@@ -67,7 +67,7 @@ RUN pip install --upgrade \
   /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/wheel*
 
 RUN pip install networkx==2.8.8
-RUN pip install --no-cache-dir torch==2.7.1+cu128 torchvision==0.22.1+cu128 \
+RUN pip install torch==2.7.1+cu128 torchvision==0.22.1+cu128 \
   --index-url https://download.pytorch.org/whl/cu128 \
   --extra-index-url https://pypi.org/simple
 RUN pip install onnx==1.17.0
