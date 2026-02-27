@@ -116,6 +116,23 @@ COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libcusparse.so
 COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libnvrtc.so* /usr/lib/
 COPY --from=builder /usr/local/cuda-12.8/targets/x86_64-linux/lib/libnvJitLink.so* /usr/lib/
 
+# Remove Python packages that may be present in the hardened base image.
+RUN set -eux; \
+  rm -rf \
+    /usr/local/lib/python*/site-packages/torch \
+    /usr/local/lib/python*/site-packages/torch-* \
+    /usr/local/lib/python*/site-packages/torchvision \
+    /usr/local/lib/python*/site-packages/torchvision-* \
+    /usr/local/lib/python*/dist-packages/torch \
+    /usr/local/lib/python*/dist-packages/torch-* \
+    /usr/local/lib/python*/dist-packages/torchvision \
+    /usr/local/lib/python*/dist-packages/torchvision-* \
+    /usr/lib/python*/dist-packages/torch \
+    /usr/lib/python*/dist-packages/torch-* \
+    /usr/lib/python*/dist-packages/torchvision \
+    /usr/lib/python*/dist-packages/torchvision-* \
+    || true
+
 # Clean up apt and dpkg to minimize attack surface and image size, since we won't need them at runtime
 RUN set -eux; \
   rm -rf /var/lib/apt/lists/* /etc/apt /var/cache/apt /var/lib/apt; \
