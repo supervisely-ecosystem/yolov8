@@ -66,7 +66,9 @@ RUN pip install --upgrade \
   /opt/venv/lib/python3.10/site-packages/setuptools/_vendor/wheel*
 
 RUN pip install networkx==2.8.8
-RUN pip install torch==2.3.1 torchvision==0.18.1 --index-url https://download.pytorch.org/whl/cu121
+RUN pip install torch==2.3.1 torchvision==0.18.1 \
+  --index-url https://download.pytorch.org/whl/cu121 \
+  --extra-index-url https://pypi.org/simple
 RUN pip install onnx==1.16.2
 RUN pip install requests==2.28.2 urllib3==1.26.15 packaging==21.3 ruamel.yaml==0.17.21
 RUN pip install dill==0.2.8.2 tf2onnx==1.16.1 skl2onnx==1.17.0
