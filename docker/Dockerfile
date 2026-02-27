@@ -52,7 +52,7 @@ RUN pip install pip==26.0.1 setuptools==78.1.1
 
 # Use a global pip constraint to keep binary wheels mutually compatible.
 # We pin NumPy and key native deps that frequently break across NumPy major versions.
-RUN printf "numpy==2.0.0\nscipy==1.14.1\nonnxruntime-gpu==1.19.2\nprotobuf==6.33.5\nonnx==1.16.2\nfilelock==3.20.3\npillow==12.1.1\n" > /tmp/pip-constraints.txt
+RUN printf "numpy==2.0.0\nscipy==1.14.1\nonnxruntime-gpu==1.19.2\nprotobuf==6.33.5\nonnx==1.17.0\nfilelock==3.20.3\npillow==12.1.1\n" > /tmp/pip-constraints.txt
 ENV PIP_CONSTRAINT=/tmp/pip-constraints.txt
 RUN pip install --no-cache-dir numpy==2.0.0 scipy==1.14.1
 
@@ -69,7 +69,7 @@ RUN pip install networkx==2.8.8
 RUN pip install torch==2.3.1 torchvision==0.18.1 \
   --index-url https://download.pytorch.org/whl/cu121 \
   --extra-index-url https://pypi.org/simple
-RUN pip install onnx==1.16.2
+RUN pip install onnx==1.17.0
 RUN pip install requests==2.28.2 urllib3==1.26.15 packaging==21.3 ruamel.yaml==0.17.21
 RUN pip install dill==0.2.8.2
 RUN pip install ultralytics==8.3.15
