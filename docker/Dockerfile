@@ -1,9 +1,7 @@
 # ============================================================================
 # STAGE 1: Builder Stage
 # ============================================================================
-# todo: remove; temp
-# ARG tag_ref_name=6.73.531
-ARG tag_ref_name=0.0.1
+ARG tag_ref_name=6.73.531
 
 FROM python:3.10-slim-bookworm AS builder
 
@@ -65,10 +63,10 @@ RUN pip install ultralytics==8.3.15
 RUN pip install onnxruntime-gpu==1.19.2 \
   --extra-index-url https://aiinfra.pkgs.visualstudio.com/PublicPackages/_packaging/onnxruntime-cuda-12/pypi/simple/
 
-# todo: remove; temp
-# RUN pip install supervisely[tracking,model-benchmark]==$tag_ref_name
-# RUN python -c "from supervisely.nn.tracker import *"
-RUN pip install git+https://github.com/supervisely/supervisely.git@hardened-docker-images
+RUN pip install supervisely[tracking,model-benchmark]==$tag_ref_name
+RUN python -c "from supervisely.nn.tracker import *"
+
+ARG tag_ref_name=0.0.1
 
 # ============================================================================
 # STAGE 2: Runtime Stage (Hardened)
@@ -116,8 +114,5 @@ ENV PATH="/opt/venv/bin:$PATH" \
 # Set NVIDIA Container Toolkit environment variables for GPU support
 ENV NVIDIA_VISIBLE_DEVICES=all \
     NVIDIA_DRIVER_CAPABILITIES=compute,utility
-
-# Runtime sanity check: ensure NumPy/SciPy import works with pinned NumPy
-RUN python -c "import numpy as np; print('NumPy(runtime):', np.__version__); import scipy as sp; print('SciPy(runtime):', sp.__version__)"
 
 LABEL python_sdk_version="$tag_ref_name"
