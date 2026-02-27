@@ -93,6 +93,8 @@ ARG tag_ref_name
 COPY --from=builder /tmp/pip-constraints.txt /etc/pip-constraints.txt
 ENV PIP_CONSTRAINT=/etc/pip-constraints.txt
 
+# Base image may already contain /opt/venv; remove it so we don't keep stale dist-info
+RUN rm -rf /opt/venv
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /usr/bin/ffmpeg /usr/bin/ffmpeg
 
