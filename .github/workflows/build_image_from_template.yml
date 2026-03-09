@@ -19,3 +19,4 @@ jobs:
       image_name: "${{ github.event.repository.name }}"
       tag_version: "${{ github.event.inputs.tag_version }}"
       cve_checks: ${{ inputs.cve_checks }}
+      runtime_base_image: "py-cuda-hardened"
