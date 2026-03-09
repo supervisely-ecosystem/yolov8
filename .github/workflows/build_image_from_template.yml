@@ -21,3 +21,4 @@ jobs:
       cve_checks: ${{ inputs.cve_checks }}
       runtime_base_image: "py-cuda-hardened"
       requirements_file: "train/dev_requirements.txt"
+      skip_tag_check: true
