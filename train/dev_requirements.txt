@@ -2,7 +2,7 @@
 
 # supervisely[model-benchmark]==6.73.486
 networkx==2.8.8
-torch==2.7.1+cu128
+torch==2.9.0+cu128
 torchvision==0.22.1+cu128
 onnx==1.17.0
 onnxruntime-gpu==1.19.2
