@@ -1,3 +1,11 @@
 # git+https://github.com/supervisely/supervisely.git@some-test-branch
 
-supervisely[model-benchmark]==6.73.486
+# supervisely[model-benchmark]==6.73.486
+networkx==2.8.8
+torch==2.7.1+cu128
+torchvision==0.22.1+cu128
+onnx==1.17.0
+onnxruntime-gpu==1.19.2
+dill==0.2.8.2
+ultralytics==8.3.15
+filelock==3.20.3
