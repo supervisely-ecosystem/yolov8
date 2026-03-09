@@ -1,0 +1,11 @@
+name: Build App Image From Template (Release)
+run-name: Build App Image for "${{ github.event.repository.name }}"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dummy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Dummy workflow OK"
