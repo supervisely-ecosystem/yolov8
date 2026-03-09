@@ -11,7 +11,7 @@ on:
         description: "Run CVE checks on the built image before pushing to registry"
         required: false
         type: boolean
-        default: false
+        default: true
 jobs:
   build-image:
     uses: supervisely-ecosystem/workflows/.github/workflows/build_image_from_template.yml@per-app-dockerimages
