@@ -7,10 +7,6 @@ on:
       tag_version:
         description: "Tag version to build image for"
         required: false
-      cve_checks:
-        description: "Run CVE checks on the built image before pushing to registry"
-        required: false
-        type: boolean
         default: true
 jobs:
   build-image:
@@ -22,3 +18,4 @@ jobs:
       runtime_base_image: "py-cuda-hardened"
       requirements_file: "train/dev_requirements.txt"
       skip_tag_check: true
+      cve_checks: true
