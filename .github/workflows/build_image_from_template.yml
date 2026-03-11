@@ -3,9 +3,17 @@ run-name: Build App Image for "${{ github.event.repository.name }}"
 
 on:
   workflow_dispatch:
-
+    inputs:
+      tag_version:
+        description: "Tag version to build image for"
+        required: false
 jobs:
-  dummy:
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo "Dummy workflow OK"
+  build-image:
+    uses: supervisely-ecosystem/workflows/.github/workflows/build_image_from_template.yml@per-app-dockerimages
+    with:
+      image_name: "${{ github.event.repository.name }}"
+      tag_version: "${{ github.event.inputs.tag_version }}"
+      cve_checks: true
+      runtime_base_image: "base-py-cuda-hardened"
+      requirements_file: "train/dev_requirements.txt"
+      skip_tag_check: true
