@@ -1,5 +1,5 @@
-name: Build App Image From Template (Release)
-run-name: Build App Image for "${{ github.event.repository.name }}"
+name: Manual Build App Image From Template
+run-name: Manual Build App Image for "${{ github.event.repository.name }}"
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ on:
         required: false
 jobs:
   build-image:
-    uses: supervisely-ecosystem/workflows/.github/workflows/build_image_from_template.yml@per-app-dockerimages
+    uses: supervisely-ecosystem/workflows/.github/workflows/build_image_from_template.yml@master
     with:
       image_name: "${{ github.event.repository.name }}"
       tag_version: "${{ github.event.inputs.tag_version }}"
