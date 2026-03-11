@@ -16,4 +16,5 @@ jobs:
       cve_checks: true
       runtime_base_image: "base-py-cuda-hardened"
       requirements_file: "train/dev_requirements.txt"
+      config_file: "train/config.json"
       skip_tag_check: true
