@@ -3,6 +3,7 @@ run-name: Build App Image for "${{ github.event.repository.name }}"
 
 on:
   workflow_dispatch:
+<<<<<<< hardened-docker-images
     inputs:
       tag_version:
         description: "Tag version to build image for"
@@ -17,3 +18,11 @@ jobs:
       runtime_base_image: "base-py-cuda-hardened"
       requirements_file: "train/dev_requirements.txt"
       skip_tag_check: true
+=======
+
+jobs:
+  dummy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Dummy workflow OK"
+>>>>>>> master
