@@ -1056,30 +1056,38 @@ def select_classes():
         if cls.name in selected_classes
     ]
     task_type = task_type_select.get_value()
-    if task_type == "pose estimation" and (
-        "graph" not in selected_shapes or "rectangle" not in selected_shapes
-    ):
-        sly.app.show_dialog(
-            title="Pose estimation task requires input project to have at least one class of shape graph and one class of shape rectangle",
-            description="Please, select both classes of shape rectangle and graph or change task type",
-            status="warning",
-        )
+    if task_type == "pose estimation":
+        if not all(shape == "graph" for shape in selected_shapes):
+            sly.app.show_dialog(
+                title="Pose estimation task requires only classes with shape graph",
+                description="Please, select only classes of shape graph or change task type",
+                status="warning",
+            )
+            return
+    elif task_type == "instance segmentation":
+        if not all(shape in ["bitmap", "polygon"] for shape in selected_shapes):
+            sly.app.show_dialog(
+                title="Instance segmentation task requires only classes with shape bitmap or polygon",
+                description="Please, select only classes of shape bitmap or polygon or change task type",
+                status="warning",
+            )
+            return
+    # For object detection, any shapes are allowed, no validation needed
+    n_classes = len(classes_table.get_selected_classes())
+    if n_classes > 1:
+        classes_done.text = f"{n_classes} classes were selected successfully"
     else:
-        n_classes = len(classes_table.get_selected_classes())
-        if n_classes > 1:
-            classes_done.text = f"{n_classes} classes were selected successfully"
-        else:
-            classes_done.text = f"{n_classes} class was selected successfully"
-        select_classes_button.hide()
-        classes_done.show()
-        select_other_classes_button.show()
-        classes_table.disable()
-        task_type_select.disable()
-        curr_step = stepper.get_active_step()
-        curr_step += 1
-        stepper.set_active_step(curr_step)
-        card_train_val_split.unlock()
-        card_train_val_split.uncollapse()
+        classes_done.text = f"{n_classes} class was selected successfully"
+    select_classes_button.hide()
+    classes_done.show()
+    select_other_classes_button.show()
+    classes_table.disable()
+    task_type_select.disable()
+    curr_step = stepper.get_active_step()
+    curr_step += 1
+    stepper.set_active_step(curr_step)
+    card_train_val_split.unlock()
+    card_train_val_split.uncollapse()
 
 
 @select_other_classes_button.click
