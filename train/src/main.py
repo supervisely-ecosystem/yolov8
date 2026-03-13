@@ -1050,6 +1050,14 @@ def select_task(task_type):
 @select_classes_button.click
 def select_classes():
     selected_classes = classes_table.get_selected_classes()
+    if len(selected_classes) == 0:
+        sly.app.show_dialog(
+            title="No classes selected",
+            description="Please, select at least one class to proceed",
+            status="warning",
+        )
+        return
+    
     selected_shapes = [
         cls.geometry_type.geometry_name()
         for cls in project_meta.obj_classes
@@ -1072,7 +1080,8 @@ def select_classes():
                 status="warning",
             )
             return
-    # For object detection, any shapes are allowed, no validation needed
+
+    # For object detection any shapes are allowed
     n_classes = len(classes_table.get_selected_classes())
     if n_classes > 1:
         classes_done.text = f"{n_classes} classes were selected successfully"
