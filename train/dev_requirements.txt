@@ -3,6 +3,7 @@
 # supervisely[model-benchmark]==6.73.486
 --extra-index-url https://download.pytorch.org/whl/cu128
 networkx==2.8.8
+numpy<2.3.3
 torch==2.9.0+cu128
 torchvision==0.24.0+cu128
 onnx==1.21.0rc1
