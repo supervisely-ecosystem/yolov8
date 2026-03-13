@@ -1059,16 +1059,16 @@ def select_classes():
     if task_type == "pose estimation":
         if not all(shape == "graph" for shape in selected_shapes):
             sly.app.show_dialog(
-                title="Pose estimation task requires only classes with shape graph",
-                description="Please, select only classes of shape graph or change task type",
+                title="Incompatible Classes selected",
+                description="Pose estimation task requires only classes with shape graph. Please, select only classes of shape graph or change task type",
                 status="warning",
             )
             return
     elif task_type == "instance segmentation":
         if not all(shape in ["bitmap", "polygon"] for shape in selected_shapes):
             sly.app.show_dialog(
-                title="Instance segmentation task requires only classes with shape bitmap or polygon",
-                description="Please, select only classes of shape bitmap or polygon or change task type",
+                title="Incompatible Classes selected",
+                description="Instance segmentation task requires only classes with shape bitmap or polygon. Please, select only classes of shape bitmap or polygon or change task type",
                 status="warning",
             )
             return
