@@ -15,8 +15,8 @@
       "files_file"
     ]
   },
-  "docker_image": "supervisely/yolov8:6.73.545",
-  "instance_version": "6.15.40",
+  "docker_image": "supervisely/yolov8:6.73.567",
+  "instance_version": "6.15.60",
   "main_script": "export_weights/src/main.py",
   "modal_template": "export_weights/src/modal.html",
   "modal_template_state": {
