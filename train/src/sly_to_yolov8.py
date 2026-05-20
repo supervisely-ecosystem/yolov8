@@ -131,10 +131,10 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
             found_node = False
             for node_id in graph_nodes.keys():
                 if node_label == g.node_id2label.get(node_id):
-                    visibility = 2
                     graph_node = graph_nodes[node_id]
                     point_x = round(graph_node.location.col / img_size[1], 6)
                     point_y = round(graph_node.location.row / img_size[0], 6)
+                    visibility = 0 if graph_node.disabled else 2
                     found_node = True
                     break
             if not found_node:
