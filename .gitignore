@@ -9,3 +9,4 @@ app_data/
 **/__pycache__/
 benchmark/
 train/src/test.py
+CLAUDE.md
