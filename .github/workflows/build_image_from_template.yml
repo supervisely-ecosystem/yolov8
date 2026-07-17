@@ -33,6 +33,7 @@ jobs:
       tag_ref_name: "${{ inputs.tag_ref_name }}"
       cve_checks: ${{ inputs.enable_cve_checks }}
       runtime_base_image: "base-py-cuda-hardened"
+      extra_builder_libs: "build-essential"
       requirements_file: "train/dev_requirements.txt"
       config_file: "train/config.json"
       skip_tag_check: ${{ inputs.skip_tag_check }}

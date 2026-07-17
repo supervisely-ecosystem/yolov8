@@ -12,6 +12,7 @@ jobs:
     uses: supervisely-ecosystem/workflows/.github/workflows/build_image_from_template.yml@master
     with:
       runtime_base_image: "base-py-cuda-hardened"
+      extra_builder_libs: "build-essential"
       requirements_file: "train/dev_requirements.txt"
       config_file: "train/config.json"
       cve_checks: true
