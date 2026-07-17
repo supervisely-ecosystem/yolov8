@@ -5,7 +5,7 @@ from src.monkey_patching_fix import monkey_patching_fix
 monkey_patching_fix()
 
 import os
-from typing import Any, Dict, Generator, List, Union, Literal
+from typing import Any, Dict, Generator, List, Union, Literal, Optional
 from threading import Event
 import re
 
@@ -49,6 +49,35 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     team_id = sly.env.team_id()
     in_train = False
     TENSORRT_MAX_BATCH_SIZE = 1
+
+    @staticmethod
+    def _clip_bbox(
+        bbox: List[int], image_shape: tuple[int, int]
+    ) -> Optional[List[int]]:
+        """Clip a model box to the image and reject boxes with no pixels.
+
+        BoT-SORT crops detections with NumPy slicing before resizing them. An
+        out-of-frame or degenerate prediction can therefore produce an empty
+        crop and crash OpenCV's ``resize`` assertion.
+        """
+        top, left, bottom, right = bbox
+        height, width = image_shape[:2]
+        top = max(0, min(top, height))
+        left = max(0, min(left, width))
+        bottom = max(0, min(bottom, height))
+        right = max(0, min(right, width))
+        if bottom <= top or right <= left:
+            return None
+        return [top, left, bottom, right]
+
+    def _bbox_from_prediction(self, box, image_shape: tuple[int, int]):
+        left, top, right, bottom = (
+            int(box[0]),
+            int(box[1]),
+            int(box[2]),
+            int(box[3]),
+        )
+        return self._clip_bbox([top, left, bottom, right], image_shape)
 
     def initialize_custom_gui(self):
         """Create custom GUI layout for model selection. This method is called once when the application is started."""
@@ -297,7 +326,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def _create_label(
         self, dto: Union[PredictionMask, PredictionBBox, PredictionKeypoints]
     ):
-        if self.task_type == "object detection" or dto.class_name.endswith("_bbox"):
+        if isinstance(dto, PredictionBBox):
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
                 raise KeyError(
@@ -308,9 +337,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if dto.score is not None:
                 tags.append(sly.Tag(self._get_confidence_tag_meta(), dto.score))
             label = sly.Label(geometry, obj_class, tags)
-        elif self.task_type == "instance segmentation" and not dto.class_name.endswith(
-            "_bbox"
-        ):
+        elif isinstance(dto, PredictionMask):
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
                 raise KeyError(
@@ -327,9 +354,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if dto.score is not None:
                 tags.append(sly.Tag(self._get_confidence_tag_meta(), dto.score))
             label = sly.Label(geometry, obj_class, tags)
-        elif self.task_type == "pose estimation" and not dto.class_name.endswith(
-            "_bbox"
-        ):
+        elif isinstance(dto, PredictionKeypoints):
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
                 raise KeyError(
@@ -358,16 +383,12 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if boxes is None:
                 return dtos
             boxes_data = getattr(boxes, "data", [])
+            image_shape = prediction.orig_shape
             for box in boxes_data:
-                left, top, right, bottom, confidence, cls_index = (
-                    int(box[0]),
-                    int(box[1]),
-                    int(box[2]),
-                    int(box[3]),
-                    float(box[4]),
-                    int(box[5]),
-                )
-                bbox = [top, left, bottom, right]
+                bbox = self._bbox_from_prediction(box, image_shape)
+                if bbox is None:
+                    continue
+                confidence, cls_index = float(box[4]), int(box[5])
                 dtos.append(
                     PredictionBBox(self.class_names[cls_index], bbox, confidence)
                 )
@@ -384,6 +405,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
         elif self.task_type == "pose estimation":
             boxes_data = getattr(prediction.boxes, "data", [])
             keypoints_data = prediction.keypoints.data
+            image_shape = prediction.orig_shape
             point_threshold = settings.get("point_threshold", 0.1)
             if self.class_names == [
                 "person_bbox",
@@ -393,14 +415,10 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 if len(point_labels) == 17:
                     point_labels.append("fictive")
                 for box, keypoints in zip(boxes_data, keypoints_data):
-                    left, top, right, bottom, confidence, cls_index = (
-                        int(box[0]),
-                        int(box[1]),
-                        int(box[2]),
-                        int(box[3]),
-                        float(box[4]),
-                        int(box[5]),
-                    )
+                    bbox = self._bbox_from_prediction(box, image_shape)
+                    if bbox is None:
+                        continue
+                    confidence, cls_index = float(box[4]), int(box[5])
                     included_labels, included_point_coordinates = [], []
                     if keypoints_data.shape[-1] == 3:
                         point_coordinates, point_scores = (
@@ -434,18 +452,13 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                             )
                         )
                         bbox_class_name = self.general_class_names[cls_index] + "_bbox"
-                        bbox = [top, left, bottom, right]
                         dtos.append(PredictionBBox(bbox_class_name, bbox, confidence))
             else:
                 for box, keypoints in zip(boxes_data, keypoints_data):
-                    left, top, right, bottom, confidence, cls_index = (
-                        int(box[0]),
-                        int(box[1]),
-                        int(box[2]),
-                        int(box[3]),
-                        float(box[4]),
-                        int(box[5]),
-                    )
+                    bbox = self._bbox_from_prediction(box, image_shape)
+                    if bbox is None:
+                        continue
+                    confidence, cls_index = float(box[4]), int(box[5])
                     keypoints_template = self.cls2config[
                         self.general_class_names[cls_index]
                     ]
@@ -475,7 +488,6 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                             )
                         )
                         bbox_class_name = self.general_class_names[cls_index] + "_bbox"
-                        bbox = [top, left, bottom, right]
                         dtos.append(PredictionBBox(bbox_class_name, bbox, confidence))
         return dtos
 
