@@ -326,7 +326,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
     def _create_label(
         self, dto: Union[PredictionMask, PredictionBBox, PredictionKeypoints]
     ):
-        if self.task_type == "object detection" or dto.class_name.endswith("_bbox"):
+        if isinstance(dto, PredictionBBox):
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
                 raise KeyError(
@@ -337,9 +337,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if dto.score is not None:
                 tags.append(sly.Tag(self._get_confidence_tag_meta(), dto.score))
             label = sly.Label(geometry, obj_class, tags)
-        elif self.task_type == "instance segmentation" and not dto.class_name.endswith(
-            "_bbox"
-        ):
+        elif isinstance(dto, PredictionMask):
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
                 raise KeyError(
@@ -356,9 +354,7 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             if dto.score is not None:
                 tags.append(sly.Tag(self._get_confidence_tag_meta(), dto.score))
             label = sly.Label(geometry, obj_class, tags)
-        elif self.task_type == "pose estimation" and not dto.class_name.endswith(
-            "_bbox"
-        ):
+        elif isinstance(dto, PredictionKeypoints):
             obj_class = self.model_meta.get_obj_class(dto.class_name)
             if obj_class is None:
                 raise KeyError(
