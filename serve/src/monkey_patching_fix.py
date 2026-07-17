@@ -54,3 +54,27 @@ def monkey_patching_fix():
     except ImportError:
         # Tracking is optional for image-only inference.
         pass
+
+    try:
+        from supervisely.nn.tracker.botsort_tracker import BotSortTracker
+
+        original_stracks_to_tracks = BotSortTracker._stracks_to_tracks
+
+        def safe_stracks_to_tracks(self, output_stracks, detection_track_map, labels):
+            tracks = original_stracks_to_tracks(
+                self, output_stracks, detection_track_map, labels
+            )
+            # The SDK can return a tracker class ID that belongs to a
+            # different pose label (for example, GraphNodes for a bbox).
+            # VideoFigure validates the geometry against the video object's
+            # class, so the original label is the authoritative source.
+            for track in tracks:
+                label = getattr(track, "original_label", None)
+                if label is not None:
+                    track.class_name = label.obj_class.name
+                    track.class_sly_id = label.obj_class.sly_id
+            return tracks
+
+        BotSortTracker._stracks_to_tracks = safe_stracks_to_tracks
+    except ImportError:
+        pass
