@@ -57,8 +57,24 @@ def monkey_patching_fix():
 
     try:
         from supervisely.nn.tracker.botsort_tracker import BotSortTracker
+        from supervisely.geometry.graph import GraphNodes
 
         original_stracks_to_tracks = BotSortTracker._stracks_to_tracks
+        original_update = BotSortTracker.update
+
+        def safe_update(self, frame, annotation):
+            graph_labels = [
+                label
+                for label in annotation.labels
+                if isinstance(label.geometry, GraphNodes)
+            ]
+            has_mixed_geometry = graph_labels and len(graph_labels) != len(annotation.labels)
+            if has_mixed_geometry:
+                # Pose annotations contain a redundant Rectangle plus a
+                # GraphNodes label. BoT-SORT requires one geometry type per
+                # track ID, so track and return only the graph labels.
+                annotation = annotation.clone(labels=graph_labels)
+            return original_update(self, frame, annotation)
 
         def safe_stracks_to_tracks(self, output_stracks, detection_track_map, labels):
             tracks = original_stracks_to_tracks(
@@ -76,5 +92,6 @@ def monkey_patching_fix():
             return tracks
 
         BotSortTracker._stracks_to_tracks = safe_stracks_to_tracks
+        BotSortTracker.update = safe_update
     except ImportError:
         pass
