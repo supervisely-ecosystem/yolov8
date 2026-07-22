@@ -1,6 +1,6 @@
 # git+https://github.com/supervisely/supervisely.git@some-test-branch
 
-supervisely[model-benchmark, tracking]==6.73.572
+supervisely[model-benchmark, tracking]==6.73.573
 ultralytics==8.2.26
 --extra-index-url https://download.pytorch.org/whl/cu128
 torch==2.9.0+cu128
