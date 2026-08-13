@@ -35,12 +35,14 @@ assert len(PIG_TEMPLATE_LABELS) == 24
 
 def dto_to_nodes(dto: PredictionKeypoints) -> List[sly.Node]:
     """Mirrors the PredictionKeypoints branch of YOLOv8Model._create_label
-    (serve/src/yolov8.py) exactly, without importing that module."""
-    disabled_flags: Optional[List[bool]] = getattr(dto, "disabled", None)
+    (serve/src/yolov8.py) exactly, without importing that module. Bounds-safe on
+    purpose: a `.disabled` list shorter than `.labels`/`.coordinates` must not raise,
+    it should just default the missing entries to enabled."""
+    disabled_flags: Optional[List[bool]] = getattr(dto, "disabled", None) or []
     nodes = []
     for i, (node_label, coordinate) in enumerate(zip(dto.labels, dto.coordinates)):
         x, y = coordinate
-        is_disabled = bool(disabled_flags[i]) if disabled_flags is not None else False
+        is_disabled = bool(disabled_flags[i]) if i < len(disabled_flags) else False
         nodes.append(sly.Node(label=node_label, row=y, col=x, disabled=is_disabled))
     return nodes
 
@@ -145,6 +147,29 @@ def test_disabled_flag_round_trips_through_json_like_a_manual_annotation():
     restored_hidden = sly.geometry.graph.Node.from_json(hidden_json)
     assert restored_visible.disabled is False
     assert restored_hidden.disabled is True
+
+
+def test_disabled_list_shorter_than_labels_does_not_crash():
+    """Defensive guard: if `.disabled` is ever malformed (too short) relative to
+    `.labels`/`.coordinates`, building nodes must not raise -- missing entries
+    default to enabled rather than throwing IndexError."""
+    labels = PIG_TEMPLATE_LABELS[:5]
+    coords = [(float(i), float(i)) for i in range(5)]
+    dto = PredictionKeypoints("new pig on track keypoints", labels, coords)
+    dto.disabled = [True]  # only 1 entry for 5 labels
+    nodes = dto_to_nodes(dto)  # must not raise
+    assert len(nodes) == 5
+    assert [n.disabled for n in nodes] == [True, False, False, False, False]
+
+
+def test_disabled_explicitly_none_or_empty_behaves_like_missing():
+    labels = PIG_TEMPLATE_LABELS[:2]
+    coords = [(1.0, 1.0), (2.0, 2.0)]
+    for disabled_value in (None, []):
+        dto = PredictionKeypoints("new pig on track keypoints", labels, coords)
+        dto.disabled = disabled_value
+        nodes = dto_to_nodes(dto)  # must not raise
+        assert [n.disabled for n in nodes] == [False, False]
 
 
 def test_disabled_count_below_two_visible_would_have_skipped_instance_pre_feature():

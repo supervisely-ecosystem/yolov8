@@ -12,70 +12,61 @@ Run with:  python -m pytest tests/test_keypoints_confidence.py -v
 
 import pytest
 
-from src.keypoints_confidence import count_visible, split_keypoints_by_confidence
+from src.keypoints_confidence import count_visible, select_visible_indices
 
-LABELS = ["nose_end", "back_base", "front_right_elbow", "belly_bottom", "breast"]
-COORDS = [(1.0, 1.0), (2.0, 2.0), (3.0, 3.0), (4.0, 4.0), (5.0, 5.0)]
+SCORES = [0.9, 0.05, 0.95, 0.02, 0.6]
 
 
 def test_all_above_threshold_are_included_and_enabled():
-    labels, coords, disabled = split_keypoints_by_confidence(
-        LABELS, COORDS, [0.9, 0.8, 0.95, 0.5, 0.6], point_threshold=0.1, keep_all_keypoints=False
+    indices, disabled = select_visible_indices(
+        [0.9, 0.8, 0.95, 0.5, 0.6], point_threshold=0.1, keep_all_keypoints=False
     )
-    assert labels == LABELS
-    assert coords == COORDS
-    assert disabled == [False] * len(LABELS)
+    assert indices == [0, 1, 2, 3, 4]
+    assert disabled == [False] * 5
 
 
 def test_default_behavior_drops_low_confidence_points_unchanged():
     """keep_all_keypoints=False must reproduce the pre-existing behavior exactly:
     sub-threshold points are dropped, not retained as disabled."""
-    scores = [0.9, 0.05, 0.95, 0.02, 0.6]
-    labels, coords, disabled = split_keypoints_by_confidence(
-        LABELS, COORDS, scores, point_threshold=0.1, keep_all_keypoints=False
+    indices, disabled = select_visible_indices(
+        SCORES, point_threshold=0.1, keep_all_keypoints=False
     )
-    assert labels == ["nose_end", "front_right_elbow", "breast"]
-    assert coords == [(1.0, 1.0), (3.0, 3.0), (5.0, 5.0)]
+    assert indices == [0, 2, 4]  # only the points scoring >= 0.1
     assert disabled == [False, False, False]
 
 
 def test_keep_all_keypoints_marks_low_confidence_points_disabled_instead_of_dropping():
-    scores = [0.9, 0.05, 0.95, 0.02, 0.6]
-    labels, coords, disabled = split_keypoints_by_confidence(
-        LABELS, COORDS, scores, point_threshold=0.1, keep_all_keypoints=True
+    indices, disabled = select_visible_indices(
+        SCORES, point_threshold=0.1, keep_all_keypoints=True
     )
-    # all 24 (here: 5) labels are always present, in the original order
-    assert labels == LABELS
-    assert coords == COORDS
+    # every index is present, in original order
+    assert indices == [0, 1, 2, 3, 4]
     assert disabled == [False, True, False, True, False]
 
 
 def test_keep_all_keypoints_with_all_points_confident_has_none_disabled():
-    scores = [0.9, 0.8, 0.95, 0.5, 0.6]
-    labels, coords, disabled = split_keypoints_by_confidence(
-        LABELS, COORDS, scores, point_threshold=0.1, keep_all_keypoints=True
+    indices, disabled = select_visible_indices(
+        [0.9, 0.8, 0.95, 0.5, 0.6], point_threshold=0.1, keep_all_keypoints=True
     )
-    assert labels == LABELS
-    assert disabled == [False] * len(LABELS)
+    assert indices == [0, 1, 2, 3, 4]
+    assert disabled == [False] * 5
 
 
 def test_keep_all_keypoints_with_all_points_unconfident_marks_all_disabled():
     scores = [0.0, 0.01, 0.02, 0.0, 0.09]
-    labels, coords, disabled = split_keypoints_by_confidence(
-        LABELS, COORDS, scores, point_threshold=0.1, keep_all_keypoints=True
+    indices, disabled = select_visible_indices(
+        scores, point_threshold=0.1, keep_all_keypoints=True
     )
-    assert labels == LABELS
-    assert coords == COORDS
-    assert disabled == [True] * len(LABELS)
+    assert indices == [0, 1, 2, 3, 4]
+    assert disabled == [True] * 5
 
 
 def test_without_keep_all_keypoints_all_points_unconfident_yields_nothing():
     scores = [0.0, 0.01, 0.02, 0.0, 0.09]
-    labels, coords, disabled = split_keypoints_by_confidence(
-        LABELS, COORDS, scores, point_threshold=0.1, keep_all_keypoints=False
+    indices, disabled = select_visible_indices(
+        scores, point_threshold=0.1, keep_all_keypoints=False
     )
-    assert labels == []
-    assert coords == []
+    assert indices == []
     assert disabled == []
 
 
@@ -83,26 +74,32 @@ def test_without_keep_all_keypoints_all_points_unconfident_yields_nothing():
 def test_score_exactly_at_threshold_counts_as_visible(keep_all_keypoints):
     # ">= point_threshold" -> a point exactly at the threshold is confident/enabled,
     # regardless of keep_all_keypoints
-    labels, coords, disabled = split_keypoints_by_confidence(
-        ["a"], [(0.0, 0.0)], [0.1], point_threshold=0.1, keep_all_keypoints=keep_all_keypoints
+    indices, disabled = select_visible_indices(
+        [0.1], point_threshold=0.1, keep_all_keypoints=keep_all_keypoints
     )
-    assert labels == ["a"]
+    assert indices == [0]
     assert disabled == [False]
 
 
 def test_empty_input_returns_empty_lists():
-    labels, coords, disabled = split_keypoints_by_confidence(
-        [], [], [], point_threshold=0.1, keep_all_keypoints=True
+    indices, disabled = select_visible_indices(
+        [], point_threshold=0.1, keep_all_keypoints=True
     )
-    assert (labels, coords, disabled) == ([], [], [])
+    assert (indices, disabled) == ([], [])
 
 
 def test_output_lists_are_always_same_length_as_each_other():
     for keep_all_keypoints in (False, True):
-        labels, coords, disabled = split_keypoints_by_confidence(
-            LABELS, COORDS, [0.9, 0.05, 0.95, 0.02, 0.6], 0.1, keep_all_keypoints
-        )
-        assert len(labels) == len(coords) == len(disabled)
+        indices, disabled = select_visible_indices(SCORES, 0.1, keep_all_keypoints)
+        assert len(indices) == len(disabled)
+
+
+def test_indices_are_a_subset_in_ascending_original_order():
+    for keep_all_keypoints in (False, True):
+        indices, _ = select_visible_indices(SCORES, 0.1, keep_all_keypoints)
+        assert indices == sorted(indices)
+        assert len(set(indices)) == len(indices)  # no duplicates
+        assert all(0 <= i < len(SCORES) for i in indices)  # always in-bounds
 
 
 def test_count_visible():
