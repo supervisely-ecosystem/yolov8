@@ -11,6 +11,13 @@ max_det: 300
 agnostic_nms: False
 # point confidence threshold (for pose estimation)
 point_threshold: 0.1
+# for pose estimation: when true, every keypoint declared in the model's graph
+# template is always included in the prediction; points scoring below
+# "point_threshold" are kept but marked disabled/not-visible instead of being
+# removed from the graph. This matches the semantics of a manually annotated
+# keypoint that was hidden (Ctrl) rather than deleted, so predictions keep the
+# same node set as your training data.
+keep_all_keypoints: false
 # IoU threshold to filter out predictions that significantly overlap with ground truth objects
 # (the greater the value, the fewer predictions will remain)
 # If the value is 0.0, no filtering will be done

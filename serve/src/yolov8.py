@@ -40,6 +40,7 @@ from supervisely.nn.prediction_dto import (
 )
 
 from supervisely.nn.artifacts.yolov8 import YOLOv8
+from src.keypoints_confidence import count_visible, split_keypoints_by_confidence
 from src.keypoints_template import dict_to_template, human_template
 from src.models import yolov8_models
 import src.workflow as w
@@ -360,10 +361,12 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                 raise KeyError(
                     f"Class {dto.class_name} not found in model classes {self.get_classes()}"
                 )
+            disabled_flags = getattr(dto, "disabled", None)
             nodes = []
-            for label, coordinate in zip(dto.labels, dto.coordinates):
+            for i, (node_label, coordinate) in enumerate(zip(dto.labels, dto.coordinates)):
                 x, y = coordinate
-                nodes.append(sly.Node(label=label, row=y, col=x))
+                is_disabled = bool(disabled_flags[i]) if disabled_flags is not None else False
+                nodes.append(sly.Node(label=node_label, row=y, col=x, disabled=is_disabled))
             label = sly.Label(sly.GraphNodes(nodes), obj_class)
         return label
 
@@ -407,6 +410,11 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
             keypoints_data = prediction.keypoints.data
             image_shape = prediction.orig_shape
             point_threshold = settings.get("point_threshold", 0.1)
+            # when set, every keypoint declared in the template is always emitted;
+            # points scoring below `point_threshold` are kept but marked disabled
+            # instead of being dropped from the graph, matching the semantics of a
+            # manually annotated (Ctrl-hidden) not-visible keypoint.
+            keep_all_keypoints = settings.get("keep_all_keypoints", False)
             if self.class_names == [
                 "person_bbox",
                 "person",
@@ -419,38 +427,56 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                     if bbox is None:
                         continue
                     confidence, cls_index = float(box[4]), int(box[5])
-                    included_labels, included_point_coordinates = [], []
+                    included_labels, included_point_coordinates, included_disabled = (
+                        [],
+                        [],
+                        [],
+                    )
                     if keypoints_data.shape[-1] == 3:
                         point_coordinates, point_scores = (
                             keypoints[:, :2],
                             keypoints[:, 2],
                         )
+                        # the "fictive" placeholder is not a real template node and is
+                        # never emitted, regardless of `keep_all_keypoints`
+                        real_labels, real_coordinates, real_scores = [], [], []
                         for j, (point_coordinate, point_score) in enumerate(
                             zip(point_coordinates, point_scores)
                         ):
-                            if (
-                                point_score >= point_threshold
-                                and point_labels[j] != "fictive"
-                            ):
-                                included_labels.append(point_labels[j])
-                                included_point_coordinates.append(
-                                    point_coordinate.cpu().numpy()
-                                )
+                            if point_labels[j] == "fictive":
+                                continue
+                            real_labels.append(point_labels[j])
+                            real_coordinates.append(point_coordinate.cpu().numpy())
+                            real_scores.append(float(point_score))
+                        (
+                            included_labels,
+                            included_point_coordinates,
+                            included_disabled,
+                        ) = split_keypoints_by_confidence(
+                            real_labels,
+                            real_coordinates,
+                            real_scores,
+                            point_threshold,
+                            keep_all_keypoints,
+                        )
                     elif keypoints_data.shape[-1] == 2:
+                        # no per-point confidence available, so there is nothing to
+                        # threshold on: always include every point, never disabled
                         for j, point_coordinate in enumerate(keypoints):
                             included_labels.append(point_labels[j])
                             included_point_coordinates.append(
                                 point_coordinate.cpu().numpy()
                             )
-                    if len(included_labels) > 1:
+                            included_disabled.append(False)
+                    if count_visible(included_disabled) > 1:
                         kpt_class_name = self.general_class_names[cls_index]
-                        dtos.append(
-                            sly.nn.PredictionKeypoints(
-                                kpt_class_name,
-                                included_labels,
-                                included_point_coordinates,
-                            )
+                        kpt_dto = sly.nn.PredictionKeypoints(
+                            kpt_class_name,
+                            included_labels,
+                            included_point_coordinates,
                         )
+                        kpt_dto.disabled = included_disabled
+                        dtos.append(kpt_dto)
                         bbox_class_name = self.general_class_names[cls_index] + "_bbox"
                         dtos.append(PredictionBBox(bbox_class_name, bbox, confidence))
             else:
@@ -469,24 +495,31 @@ class YOLOv8Model(sly.nn.inference.ObjectDetection):
                         node["label"] for node in keypoints_template["nodes"].values()
                     ]
                     n_label2point = self.node_label_to_point(keypoints)
-                    included_labels, included_point_coordinates = [], []
-                    for j, node_label in enumerate(node_labels):
+                    node_coordinates, node_scores = [], []
+                    for node_label in node_labels:
                         kpt = n_label2point[node_label]
-                        point_coordinate, point_score = kpt[:2], kpt[2]
-                        if point_score >= point_threshold:
-                            included_labels.append(point_labels[j])
-                            included_point_coordinates.append(
-                                point_coordinate.cpu().numpy()
-                            )
-                    if len(included_labels) > 1:
+                        node_coordinates.append(kpt[:2].cpu().numpy())
+                        node_scores.append(float(kpt[2]))
+                    (
+                        included_labels,
+                        included_point_coordinates,
+                        included_disabled,
+                    ) = split_keypoints_by_confidence(
+                        point_labels,
+                        node_coordinates,
+                        node_scores,
+                        point_threshold,
+                        keep_all_keypoints,
+                    )
+                    if count_visible(included_disabled) > 1:
                         kpt_class_name = self.general_class_names[cls_index]
-                        dtos.append(
-                            sly.nn.PredictionKeypoints(
-                                kpt_class_name,
-                                included_labels,
-                                included_point_coordinates,
-                            )
+                        kpt_dto = sly.nn.PredictionKeypoints(
+                            kpt_class_name,
+                            included_labels,
+                            included_point_coordinates,
                         )
+                        kpt_dto.disabled = included_disabled
+                        dtos.append(kpt_dto)
                         bbox_class_name = self.general_class_names[cls_index] + "_bbox"
                         dtos.append(PredictionBBox(bbox_class_name, bbox, confidence))
         return dtos
