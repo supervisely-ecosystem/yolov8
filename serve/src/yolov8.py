@@ -1,4 +1,4 @@
-from src.monkey_patching_fix import monkey_patching_fix
+from .monkey_patching_fix import monkey_patching_fix
 
 # Monkey patching to avoid a problem with installing wrong onnxruntime requirements
 # issue: https://github.com/ultralytics/ultralytics/issues/5093
@@ -40,10 +40,10 @@ from supervisely.nn.prediction_dto import (
 )
 
 from supervisely.nn.artifacts.yolov8 import YOLOv8
-from src.keypoints_confidence import count_visible, select_visible_indices
-from src.keypoints_template import dict_to_template, human_template
-from src.models import yolov8_models
-import src.workflow as w
+from .keypoints_confidence import count_visible, select_visible_indices
+from .keypoints_template import dict_to_template, human_template
+from .models import yolov8_models
+from . import workflow as w
 
 
 class YOLOv8Model(sly.nn.inference.ObjectDetection):
