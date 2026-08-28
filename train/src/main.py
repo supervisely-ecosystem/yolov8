@@ -2079,9 +2079,13 @@ def start_training():
     if not app.is_stopped():
 
         def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
-            value = monitor.bytes_read
+            # SDK 6.74.16+ feeds a byte increment, older versions passed the encoder monitor
+            if hasattr(monitor, "bytes_read"):
+                value, total = monitor.bytes_read, monitor.len
+            else:
+                value, total = progress.current + monitor, progress.total
             if progress.total == 0:
-                progress.set(value, monitor.len, report=False)
+                progress.set(value, total, report=False)
             else:
                 progress.set_current_value(value, report=False)
             artifacts_pbar.update(progress.current - artifacts_pbar.n)
@@ -2820,12 +2824,13 @@ def auto_train(request: Request):
     )
     # train model and upload best checkpoints to team files
     if torch.cuda.is_available():
+        global devices
         if devices:
             devices = devices.strip()
             if len(devices) > 1:
                 device = [int(i) for i in devices.split(",")]
             else:
-                device = int(device)
+                device = int(devices)
         else:
             device = 0
     else:
@@ -3169,9 +3174,13 @@ def auto_train(request: Request):
     if not app.is_stopped():
 
         def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
-            value = monitor.bytes_read
+            # SDK 6.74.16+ feeds a byte increment, older versions passed the encoder monitor
+            if hasattr(monitor, "bytes_read"):
+                value, total = monitor.bytes_read, monitor.len
+            else:
+                value, total = progress.current + monitor, progress.total
             if progress.total == 0:
-                progress.set(value, monitor.len, report=False)
+                progress.set(value, total, report=False)
             else:
                 progress.set_current_value(value, report=False)
             artifacts_pbar.update(progress.current - artifacts_pbar.n)
