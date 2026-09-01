@@ -2086,13 +2086,13 @@ def start_training():
             total_cnt=total_size,
             is_size=True,
         )
-        progress_cb = make_upload_monitor(progress, artifacts_pbar)
         with progress_bar_upload_artifacts(
             message="Uploading train artifacts to Team Files...",
             total=total_size,
             unit="bytes",
             unit_scale=True,
         ) as artifacts_pbar:
+            progress_cb = make_upload_monitor(progress, artifacts_pbar)
             remote_artifacts_dir = api.file.upload_directory(
                 team_id=sly.env.team_id(),
                 local_dir=local_artifacts_dir,
@@ -3169,13 +3169,13 @@ def auto_train(request: Request):
             total_cnt=total_size,
             is_size=True,
         )
-        progress_cb = make_upload_monitor(progress, artifacts_pbar)
         with progress_bar_upload_artifacts(
             message="Uploading train artifacts to Team Files...",
             total=total_size,
             unit="bytes",
             unit_scale=True,
         ) as artifacts_pbar:
+            progress_cb = make_upload_monitor(progress, artifacts_pbar)
             remote_artifacts_dir = api.file.upload_directory(
                 team_id=sly.env.team_id(),
                 local_dir=local_artifacts_dir,
