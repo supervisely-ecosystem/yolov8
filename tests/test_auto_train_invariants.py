@@ -81,3 +81,29 @@ def test_both_upload_sites_share_one_progress_callback(tree):
     assert "from src.upload_progress import make_upload_monitor" in source
     assert source.count("make_upload_monitor(progress, artifacts_pbar)") == 2
     assert "def upload_monitor(" not in source
+
+
+def test_progress_callback_is_built_inside_the_progress_bar_block(tree):
+    """`artifacts_pbar` is bound by the `with` statement, so building the callback above it
+    raises UnboundLocalError right after a successful training."""
+    offenders = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.With):
+            continue
+        binds_pbar = any(
+            isinstance(item.optional_vars, ast.Name)
+            and item.optional_vars.id == "artifacts_pbar"
+            for item in node.items
+        )
+        if not binds_pbar:
+            continue
+        built_inside = any(
+            isinstance(inner, ast.Call)
+            and isinstance(inner.func, ast.Name)
+            and inner.func.id == "make_upload_monitor"
+            for inner in ast.walk(node)
+        )
+        if not built_inside:
+            offenders.append(node.lineno)
+
+    assert not offenders, f"make_upload_monitor is built outside the with block at {offenders}"
