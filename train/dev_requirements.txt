@@ -13,4 +13,4 @@ dill==0.2.8.2
 ruamel.yaml==0.18.10
 ultralytics==8.3.15
 filelock==3.20.3
-supervisely[model-benchmark, tracking] @ git+https://github.com/supervisely/supervisely.git@cross-loop-fix
+supervisely[model-benchmark, tracking] @ git+https://github.com/supervisely/supervisely.git@a7f51b523dec44206665f434bb5d359783719bfd
