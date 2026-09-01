@@ -43,6 +43,7 @@ import src.globals as g
 from src.utils import custom_plot, get_eval_results_dir_name, verify_train_val_sets
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.dataset_cache import download_project
+from src.upload_progress import make_upload_monitor
 import src.workflow as w
 from src.metrics_watcher import Watcher
 from src.serve import YOLOv8ModelMB
@@ -2078,18 +2079,6 @@ def start_training():
 
     if not app.is_stopped():
 
-        def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
-            # SDK 6.74.16+ feeds a byte increment, older versions passed the encoder monitor
-            if hasattr(monitor, "bytes_read"):
-                value, total = monitor.bytes_read, monitor.len
-            else:
-                value, total = progress.current + monitor, progress.total
-            if progress.total == 0:
-                progress.set(value, total, report=False)
-            else:
-                progress.set_current_value(value, report=False)
-            artifacts_pbar.update(progress.current - artifacts_pbar.n)
-
         local_files = sly.fs.list_files_recursively(local_artifacts_dir)
         total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
         progress = sly.Progress(
@@ -2097,7 +2086,7 @@ def start_training():
             total_cnt=total_size,
             is_size=True,
         )
-        progress_cb = partial(upload_monitor, api=api, progress=progress)
+        progress_cb = make_upload_monitor(progress, artifacts_pbar)
         with progress_bar_upload_artifacts(
             message="Uploading train artifacts to Team Files...",
             total=total_size,
@@ -3173,18 +3162,6 @@ def auto_train(request: Request):
 
     if not app.is_stopped():
 
-        def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
-            # SDK 6.74.16+ feeds a byte increment, older versions passed the encoder monitor
-            if hasattr(monitor, "bytes_read"):
-                value, total = monitor.bytes_read, monitor.len
-            else:
-                value, total = progress.current + monitor, progress.total
-            if progress.total == 0:
-                progress.set(value, total, report=False)
-            else:
-                progress.set_current_value(value, report=False)
-            artifacts_pbar.update(progress.current - artifacts_pbar.n)
-
         local_files = sly.fs.list_files_recursively(local_artifacts_dir)
         total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
         progress = sly.Progress(
@@ -3192,7 +3169,7 @@ def auto_train(request: Request):
             total_cnt=total_size,
             is_size=True,
         )
-        progress_cb = partial(upload_monitor, api=api, progress=progress)
+        progress_cb = make_upload_monitor(progress, artifacts_pbar)
         with progress_bar_upload_artifacts(
             message="Uploading train artifacts to Team Files...",
             total=total_size,
