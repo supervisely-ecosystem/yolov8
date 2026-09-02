@@ -2078,22 +2078,8 @@ def start_training():
 
     if not app.is_stopped():
 
-        def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
-            value = monitor.bytes_read
-            if progress.total == 0:
-                progress.set(value, monitor.len, report=False)
-            else:
-                progress.set_current_value(value, report=False)
-            artifacts_pbar.update(progress.current - artifacts_pbar.n)
-
         local_files = sly.fs.list_files_recursively(local_artifacts_dir)
         total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
-        progress = sly.Progress(
-            message="",
-            total_cnt=total_size,
-            is_size=True,
-        )
-        progress_cb = partial(upload_monitor, api=api, progress=progress)
         with progress_bar_upload_artifacts(
             message="Uploading train artifacts to Team Files...",
             total=total_size,
@@ -2104,7 +2090,7 @@ def start_training():
                 team_id=sly.env.team_id(),
                 local_dir=local_artifacts_dir,
                 remote_dir=upload_artifacts_dir,
-                progress_size_cb=progress_cb,
+                progress_size_cb=artifacts_pbar,
             )
         progress_bar_upload_artifacts.hide()
     else:
@@ -2820,12 +2806,13 @@ def auto_train(request: Request):
     )
     # train model and upload best checkpoints to team files
     if torch.cuda.is_available():
+        global devices
         if devices:
             devices = devices.strip()
             if len(devices) > 1:
                 device = [int(i) for i in devices.split(",")]
             else:
-                device = int(device)
+                device = int(devices)
         else:
             device = 0
     else:
@@ -3168,22 +3155,8 @@ def auto_train(request: Request):
 
     if not app.is_stopped():
 
-        def upload_monitor(monitor, api: sly.Api, progress: sly.Progress):
-            value = monitor.bytes_read
-            if progress.total == 0:
-                progress.set(value, monitor.len, report=False)
-            else:
-                progress.set_current_value(value, report=False)
-            artifacts_pbar.update(progress.current - artifacts_pbar.n)
-
         local_files = sly.fs.list_files_recursively(local_artifacts_dir)
         total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
-        progress = sly.Progress(
-            message="",
-            total_cnt=total_size,
-            is_size=True,
-        )
-        progress_cb = partial(upload_monitor, api=api, progress=progress)
         with progress_bar_upload_artifacts(
             message="Uploading train artifacts to Team Files...",
             total=total_size,
@@ -3194,7 +3167,7 @@ def auto_train(request: Request):
                 team_id=sly.env.team_id(),
                 local_dir=local_artifacts_dir,
                 remote_dir=upload_artifacts_dir,
-                progress_size_cb=progress_cb,
+                progress_size_cb=artifacts_pbar,
             )
         progress_bar_upload_artifacts.hide()
     else:
