@@ -43,7 +43,6 @@ import src.globals as g
 from src.utils import custom_plot, get_eval_results_dir_name, verify_train_val_sets
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.dataset_cache import download_project
-from src.upload_progress import make_upload_monitor
 import src.workflow as w
 from src.metrics_watcher import Watcher
 from src.serve import YOLOv8ModelMB
@@ -2081,23 +2080,17 @@ def start_training():
 
         local_files = sly.fs.list_files_recursively(local_artifacts_dir)
         total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
-        progress = sly.Progress(
-            message="",
-            total_cnt=total_size,
-            is_size=True,
-        )
         with progress_bar_upload_artifacts(
             message="Uploading train artifacts to Team Files...",
             total=total_size,
             unit="bytes",
             unit_scale=True,
         ) as artifacts_pbar:
-            progress_cb = make_upload_monitor(progress, artifacts_pbar)
             remote_artifacts_dir = api.file.upload_directory(
                 team_id=sly.env.team_id(),
                 local_dir=local_artifacts_dir,
                 remote_dir=upload_artifacts_dir,
-                progress_size_cb=progress_cb,
+                progress_size_cb=artifacts_pbar,
             )
         progress_bar_upload_artifacts.hide()
     else:
@@ -3164,23 +3157,17 @@ def auto_train(request: Request):
 
         local_files = sly.fs.list_files_recursively(local_artifacts_dir)
         total_size = sum([sly.fs.get_file_size(file_path) for file_path in local_files])
-        progress = sly.Progress(
-            message="",
-            total_cnt=total_size,
-            is_size=True,
-        )
         with progress_bar_upload_artifacts(
             message="Uploading train artifacts to Team Files...",
             total=total_size,
             unit="bytes",
             unit_scale=True,
         ) as artifacts_pbar:
-            progress_cb = make_upload_monitor(progress, artifacts_pbar)
             remote_artifacts_dir = api.file.upload_directory(
                 team_id=sly.env.team_id(),
                 local_dir=local_artifacts_dir,
                 remote_dir=upload_artifacts_dir,
-                progress_size_cb=progress_cb,
+                progress_size_cb=artifacts_pbar,
             )
         progress_bar_upload_artifacts.hide()
     else:
