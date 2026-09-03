@@ -4,6 +4,7 @@ import supervisely as sly
 import src.globals as g
 import numpy as np
 import math
+from src.training_classes import resolve_training_class_names
 
 
 def check_bbox_exist_on_images(api, selected_classes, datasets, project_meta, progress):
@@ -172,16 +173,13 @@ def _transform_label(class_names, img_size, label: sly.Label, task_type, labels_
 
 
 def _create_data_config(output_dir, meta: sly.ProjectMeta, task_type):
-    class_names = []
-    class_colors = []
-    for obj_class in meta.obj_classes:
-        if (
-            task_type == "pose estimation"
-            and obj_class.geometry_type.geometry_name() != "graph"
-        ):
-            continue
-        class_names.append(obj_class.name)
-        class_colors.append(obj_class.color)
+    class_names = resolve_training_class_names(meta.obj_classes, task_type)
+    class_names_set = set(class_names)
+    class_colors = [
+        obj_class.color
+        for obj_class in meta.obj_classes
+        if obj_class.name in class_names_set
+    ]
     if task_type in ["object detection", "instance segmentation"]:
         data_yaml = {
             "train": os.path.join(output_dir, "images/train"),

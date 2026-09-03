@@ -43,6 +43,7 @@ import src.globals as g
 from src.utils import custom_plot, get_eval_results_dir_name, verify_train_val_sets
 from src.sly_to_yolov8 import check_bbox_exist_on_images, transform
 from src.dataset_cache import download_project
+from src.training_classes import resolve_training_class_names
 import src.workflow as w
 from src.metrics_watcher import Watcher
 from src.serve import YOLOv8ModelMB
@@ -2379,6 +2380,16 @@ def auto_train(request: Request):
     task_type = state["task_type"]
     use_cache = state.get("use_cache", True)
 
+    g.center_matches.clear()
+    g.keypoints_classes.clear()
+    g.node_id2label.clear()
+    g.keypoints_template = None
+
+    project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
+    training_class_names = resolve_training_class_names(
+        project_meta.obj_classes, task_type
+    )
+
     select_data_button.hide()
 
     local_dir = g.root_model_checkpoint_dir
@@ -2448,10 +2459,9 @@ def auto_train(request: Request):
         progress=progress_bar_download_project,
     )
 
-    project_meta = sly.ProjectMeta.from_json(api.project.get_meta(project_id))
     selected_classes = [cls.name for cls in project_meta.obj_classes]
 
-    n_classes = len(classes_table.get_selected_classes())
+    n_classes = len(training_class_names)
     if n_classes > 1:
         classes_done.text = f"{n_classes} classes were selected successfully"
     else:
@@ -2486,7 +2496,7 @@ def auto_train(request: Request):
         total_config = {"nodes": {}, "edges": []}
         for cls in project_meta.obj_classes:
             if (
-                cls.name in selected_classes
+                cls.name in training_class_names
                 and cls.geometry_type.geometry_name() == "graph"
             ):
                 g.keypoints_classes.append(cls.name)
