@@ -7,7 +7,7 @@ from pathlib import Path
 import torch
 
 import supervisely as sly
-from streaming_frames import use_streaming_frames
+from src.streaming_frames import use_streaming_frames
 from src.yolov8 import YOLOv8Model
 
 
