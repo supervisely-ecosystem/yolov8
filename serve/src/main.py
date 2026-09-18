@@ -7,6 +7,7 @@ from pathlib import Path
 import torch
 
 import supervisely as sly
+from src.streaming_frames import use_streaming_frames
 from src.yolov8 import YOLOv8Model
 
 
@@ -20,6 +21,11 @@ m = YOLOv8Model(
         root_source_path, "serve", "custom_settings.yaml"
     ),
 )
+
+# Frames now come from the video in one streamed decode rather than one
+# videos.download-frame request each. Applied after construction, which is
+# what creates the cache it replaces. See streaming_frames.py for why.
+use_streaming_frames(m)
 
 if sly.is_production():
     m.serve()
